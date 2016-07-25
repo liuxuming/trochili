@@ -1,0 +1,20 @@
+/*!
+    \file  main.c
+    \brief the header file of main
+*/
+
+/*
+    Copyright (C) 2016 GigaDevice
+
+    2014-12-26, V1.0.0, firmware for GD32F1x0(x=3,5)
+    2016-01-15, V2.0.0, firmware for GD32F1x0(x=3,5,7,9)
+    2016-04-30, V3.0.0, firmware update for GD32F1x0(x=3,5,7,9)
+*/
+
+#ifndef MAIN_H
+#define MAIN_H
+
+/* constants definitions */
+#define BKP_VALUE    0x32F0
+    
+#endif

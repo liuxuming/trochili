@@ -1,0 +1,16 @@
+; *************************************************************
+; *** Scatter-Loading Description File  
+; *************************************************************
+LR_IROM1 0x20000000 0x0000b000  {    ; load region size_region	  ,40k
+  ER_IROM1 0x20000000 0x0000b000  {  ; load address = execution address
+   startup_stm32f10x_hd.o	(RESET,+First)	
+       .ANY (+RO)
+  }
+  RW_IRAM1 0x2000b000 0x00003000  {  ; RW data		 ;16k
+   .ANY (+RW +ZI)
+  }
+  ARM_LIB_HEAP  0x2000e000 EMPTY  0x0001000   {}	   ;4k
+  ARM_LIB_STACK 0x2000fffc EMPTY -0x0000ffc   {}	   ;4k
+}
+
+
