@@ -35,8 +35,6 @@ static TState SetThreadReady(TThread* pThread, TThreadStatus status, TBool* pHiR
 {
     TState state = eFailure;
     TError error = THREAD_ERR_STATUS;
-    TQueuePos pos = eQuePosTail;
-    TThreadStatus newStatus = eThreadReady;
 
     /* 线程状态校验,只有状态符合的线程才能被操作 */
     if (pThread->Status == status)
@@ -50,12 +48,14 @@ static TState SetThreadReady(TThread* pThread, TThreadStatus status, TBool* pHiR
         uThreadLeaveQueue(&ThreadAuxiliaryQueue, pThread);
         if (pThread == uKernelVariable.CurrentThread)
         {
-            pos = eQuePosHead;
-            newStatus = eThreadRunning;
+            uThreadEnterQueue(&ThreadReadyQueue, pThread, eQuePosHead);
+            pThread->Status = eThreadRunning;
         }
-        uThreadEnterQueue(&ThreadReadyQueue, pThread, pos);
-        pThread->Status = newStatus;
-
+        else
+        {
+            uThreadEnterQueue(&ThreadReadyQueue, pThread, eQuePosTail);
+            pThread->Status = eThreadReady;
+        }
         state = eSuccess;
         error = THREAD_ERR_NONE;
 
@@ -195,25 +195,25 @@ static void CheckThreadStack(TThread* pThread)
 static void xSuperviseThread(TThread* pThread)
 {
     TReg32 imask;
-
-    /*
-     * 调用用户ASR线程主函数，这类函数的特点是唤醒执行后，
-     * 会被系统自动挂起，等待下次唤醒。
-     */
     KNL_ASSERT((pThread == uKernelVariable.CurrentThread), "");
+
+#if (TCLC_IRQ_ENABLE)
     if (pThread->Property &THREAD_PROP_ASR)
     {
         while (eTrue)
         {
+            /*
+            * 调用用户ASR线程主函数，这类函数的特点是唤醒执行后，
+            * 会被系统自动挂起，等待下次唤醒。
+            */
             pThread->Entry(pThread->Argument);
 
+            /*
+            * 当ASR之行结束后，准备挂起时，此时ISR可能会又一次进入尝试唤醒ASR，
+            * 不巧此时ASR为运行状态。为了避免ASR丢失下轮的唤醒请求，在这里略纠结
+            * 的添加了检查
+            */
             CpuEnterCritical(&imask);
-
-            /* 
-             * 当ASR之行结束后，准备挂起时，此时ISR可能会又一次进入兵尝试唤醒ASR，
-             * 不巧此时ASR为运行状态。为了避免ASR丢失下轮的唤醒请求，在这里略纠结
-             * 的添加了检查
-             */
             if (pThread->SyncValue == 0U)
             {
                 uThreadSuspendSelf();
@@ -222,19 +222,16 @@ static void xSuperviseThread(TThread* pThread)
             {
                 pThread->SyncValue = 0U;
             }
-
             CpuLeaveCritical(imask);
         }
     }
-    else
-    {
-        pThread->Entry(pThread->Argument);
+#endif
 
-        /* 防止RUNFOREVER线程不小心退出导致非法指令等死机的问题 */
-        uKernelVariable.Diagnosis |= KERNEL_DIAG_THREAD_ERROR;
-        pThread->Diagnosis |= THREAD_DIAG_INVALID_EXIT;
-        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
-    }
+    /* 普通线程需要注意用户不小心退出导致非法指令等死机的问题 */
+    pThread->Entry(pThread->Argument);
+    uKernelVariable.Diagnosis |= KERNEL_DIAG_THREAD_ERROR;
+    pThread->Diagnosis |= THREAD_DIAG_INVALID_EXIT;
+    uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
 }
 
 
@@ -540,7 +537,9 @@ void uThreadCreate(TThread* pThread, TThreadStatus status, TProperty property, T
     pThread->LockList = (TObjNode*)0;
 #endif
 
+#if (TCLC_IRQ_ENABLE)
     pThread->SyncValue = 0;
+#endif
 
     /* 初始线程运行诊断信息 */
     pThread->Diagnosis = THREAD_DIAG_NORMAL;
@@ -703,9 +702,6 @@ TState uThreadSetPriority(TThread* pThread, TPriority priority, TBool flag, TBoo
  *************************************************************************************************/
 void uThreadResumeFromISR(TThread* pThread)
 {
-    TQueuePos pos = eQuePosTail;
-    TThreadStatus newStatus = eThreadReady;
-
     /*
      * 操作线程，完成线程队列和状态转换,注意只有中断处理时，
      * 当前线程才会处在内核线程辅助队列里(因为还没来得及线程切换)
@@ -717,12 +713,16 @@ void uThreadResumeFromISR(TThread* pThread)
         uThreadLeaveQueue(&ThreadAuxiliaryQueue, pThread);
         if (pThread == uKernelVariable.CurrentThread)
         {
-            pos = eQuePosHead;
-            newStatus = eThreadRunning;
+            uThreadEnterQueue(&ThreadReadyQueue, pThread, eQuePosHead);
+            pThread->Status = eThreadRunning;
         }
-        uThreadEnterQueue(&ThreadReadyQueue, pThread, pos);
-        pThread->Status = newStatus;
+        else
+        {
+            uThreadEnterQueue(&ThreadReadyQueue, pThread, eQuePosTail);
+            pThread->Status = eThreadReady;
+        }
     }
+#if (TCLC_IRQ_ENABLE)
     else
     {
         if (pThread->Property &THREAD_PROP_ASR)
@@ -730,6 +730,7 @@ void uThreadResumeFromISR(TThread* pThread)
             pThread->SyncValue = 1U;
         }
     }
+#endif
 }
 
 

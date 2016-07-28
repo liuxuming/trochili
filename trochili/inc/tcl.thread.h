@@ -129,7 +129,9 @@ struct ThreadDef
     TObjNode*     LockList;                  /* 线程占有的锁的队列                               */
 #endif
 
+#if (TCLC_IRQ_ENABLE)
     TBase32       SyncValue;
+#endif
     TThreadQueue* Queue;                     /* 指向线程所属线程队列的指针                       */
     TBase32       ThreadID;                  /* 线程ID                                           */
     TObjNode      ObjNode;                   /* 线程所在队列的节点                               */

@@ -198,9 +198,23 @@ static void DispatchTimer(TTimer* pTimer)
         /* 如果定时器所在的线程处于延时状态则把线程放入内核线程活动队列 */
         pThread = (TThread*)(pTimer->Owner);
         KNL_ASSERT((pThread->Status == eThreadDelayed), "");
+        /*
+         * 操作线程，完成线程队列和状态转换,注意只有中断处理时，
+         * 当前线程才会处在内核线程辅助队列里(因为还没来得及线程切换)
+         * 当前线程返回就绪队列时，一定要回到相应的队列头
+         * 当线程进出就绪队列时，不需要处理线程的时钟节拍数
+         */
         uThreadLeaveQueue(uKernelVariable.ThreadAuxiliaryQueue, pThread);
-        uThreadEnterQueue(uKernelVariable.ThreadReadyQueue, pThread, eQuePosTail);
-
+        if (pThread == uKernelVariable.CurrentThread)
+        {
+            uThreadEnterQueue(uKernelVariable.ThreadReadyQueue, pThread, eQuePosHead);
+            pThread->Status = eThreadRunning;
+        }
+        else
+        {
+            uThreadEnterQueue(uKernelVariable.ThreadReadyQueue, pThread, eQuePosTail);
+            pThread->Status = eThreadReady;
+        }
         /*
          * 当线程离开就绪队列时，已经放弃它的本轮执行，哪怕时间片并未耗尽。
          * 当线程再次进入就绪队列时，需要恢复线程的时钟节拍数，
