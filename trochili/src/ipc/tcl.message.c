@@ -16,17 +16,6 @@
 
 #if ((TCLC_IPC_ENABLE)&&(TCLC_IPC_MQUE_ENABLE))
 
-#if 0
-static void SaveMessage(TMsgQueue* pMsgQue, void** pMsg2, TMsgType type);
-static void ConsumeMessage(TMsgQueue* pMsgQue, void** pMsg2);
-static TState TryReceiveMessage(TMsgQueue* pMsgQue, void** pMsg2, TBool* pHiRP, TError* pError);
-static TState ReceiveMessage(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option, TTimeTick timeo,
-                             TReg32* pIMask, TError* pError);
-static TState TrySendMessage(TMsgQueue* pMsgQue, void** pMsg2, TMsgType type, TBool* pHiRP,
-                             TError* pError);
-static TState SendMessage(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option, TTimeTick
-                          timeo, TReg32* pIMask, TError* pError);
-#endif
 
 /*************************************************************************************************
  *  功能：将消息保存到消息队列                                                                   *
@@ -92,403 +81,6 @@ static void ConsumeMessage(TMsgQueue* pMsgQue, void** pMsg2)
     }
 }
 
-#if 0
-/*************************************************************************************************
- *  功能：线程/ISR尝试从消息队列中读取消息                                                       *
- *  参数：(1) pMsgQue 消息队列的地址                                                             *
- *        (2) pMsg2   保存消息结构地址的指针变量                                                 *
- *        (3) pHiRP   是否需要线程调度标记                                                       *
- *        (4) pError  详细调用结果                                                               *
- *  返回: (1) eFailure   操作失败                                                                *
- *        (2) eSuccess   操作成功                                                                *
- *  说明：                                                                                       *
- *************************************************************************************************/
-/* 处理消息队列读数据的情况
-(1) 处理消息队列为满的情况：如果是容量是1的消息队列，读取操作会导致消息队列状态从满直接到空，
-否则消息队列进入 eMQPartial 状态
-(2) 处理消息队列普通的情况：如果消息队列中只有1个消息，对列读取操作可能导致消息队列进入空状态
-否则消息队列保持 eMQPartial 状态
-(3) 无论是消息队列满还是消息队列普通状态：最终状态只有普通和空。
- */
-static TState TryReceiveMessage2(TMsgQueue* pMsgQue, void** pMsg2, TBool* pHiRP, TError* pError)
-{
-    TMsgType type;
-    TState state;
-    TIpcContext* pContext = (TIpcContext*)0;
-
-    /* 检查消息队列状态 */
-    if (pMsgQue->Status == eMQEmpty)
-    {
-        *pError = IPC_ERR_INVALID_STATUS;
-        state = eFailure;
-    }
-    else if (pMsgQue->Status == eMQFull)
-    {
-        /* 从消息队列中读取一个消息给当前线程 */
-        ConsumeMessage(pMsgQue, pMsg2);
-
-        /* 尝试唤醒写阻塞队列中的一个线程 */
-        /* 在消息队列满并且有线程阻塞在写队列中的情况下，
-        唤醒新的线程并且将该线程携带的消息写入队列，
-        所以保持消息队列状态不变 */
-        if (pMsgQue->Property & IPC_PROP_AUXIQ_AVAIL)
-        {
-            pContext = (TIpcContext*)(pMsgQue->Queue.AuxiliaryHandle->Owner);
-        }
-        else
-        {
-            if (pMsgQue->Property & IPC_PROP_PRIMQ_AVAIL)
-            {
-                pContext = (TIpcContext*)(pMsgQue->Queue.PrimaryHandle->Owner);
-            }
-        }
-
-        if (pContext !=  (TIpcContext*)0)
-        {
-            uIpcUnblockThread(pContext, eSuccess, IPC_ERR_NONE, pHiRP);
-
-            /* 根据线程所处的分队列判断消息类型 */
-            type = ((pContext->Option) & IPC_OPT_UARGENT) ? eUrgentMessage : eNormalMessage;
-
-            /* 并且将该线程发送的消息写入消息队列 */
-            SaveMessage(pMsgQue, pContext->Data.Addr2, type);
-        }
-        else
-        {
-            pMsgQue->Status = (pMsgQue->Tail == pMsgQue->Head) ? eMQEmpty : eMQPartial;
-        }
-
-        /* 设置线程成功读取消息队列标记 */
-        *pError = IPC_ERR_NONE;
-        state = eSuccess;
-    }
-    else
-        /* if (mq->Status == eMQPartial) */
-    {
-        /* 从消息队列中读取一个消息给当前线程 */
-        ConsumeMessage(pMsgQue, pMsg2);
-        pMsgQue->Status = (pMsgQue->Tail == pMsgQue->Head) ? eMQEmpty : eMQPartial;
-
-        *pError = IPC_ERR_NONE;
-        state = eSuccess;
-    }
-
-    return state;
-}
-
-
-/*************************************************************************************************
- *  功能：线程/ISR尝试向消息队列中发送消息                                                       *
- *  参数：(1) pMsgQue 消息队列的地址                                                             *
- *        (2) pMsg2   保存消息结构地址的指针变量                                                 *
- *        (3) type    消息类型                                                                   *
- *        (4) pHiRP   是否需要线程调度标记                                                       *
- *        (5) pError  详细调用结果                                                               *
- *  返回: (1) eFailure   操作失败                                                                *
- *        (2) eSuccess   操作成功                                                                *
- *  说明：                                                                                       *
- *************************************************************************************************/
-static TState TrySendMessage2(TMsgQueue* pMsgQue, void** pMsg2, TMsgType type, TBool* pHiRP,
-                              TError* pError)
-{
-    TState state;
-    TIpcContext* pContext = (TIpcContext*)0;
-
-    /* 检查消息队列状态，如果消息队列满则返回失败 */
-    if (pMsgQue->Status == eMQFull)
-    {
-        *pError = IPC_ERR_INVALID_STATUS;
-        state = eFailure;
-    }
-    else if (pMsgQue->Status == eMQEmpty)
-    {
-        /* 尝试唤醒写阻塞队列中的一个线程 */
-        if (pMsgQue->Property & IPC_PROP_PRIMQ_AVAIL)
-        {
-            pContext = (TIpcContext*)(pMsgQue->Queue.PrimaryHandle->Owner);
-        }
-
-        /* 在消息队列为空的情况下，如果队列中有线程等待，则说明是读阻塞队列，
-        保持消息队列状态不变 */
-        if (pContext != (TIpcContext*)0)
-        {
-            uIpcUnblockThread(pContext, eSuccess, IPC_ERR_NONE, pHiRP);
-
-            /* 将消息发送给该线程 */
-            *(pContext->Data.Addr2) = *pMsg2;
-        }
-        else
-        {
-            /* 将线程发送的消息写入消息队列 */
-            SaveMessage(pMsgQue, pMsg2, type);
-            pMsgQue->Status = (pMsgQue->Tail == pMsgQue->Head) ? eMQFull : eMQPartial;
-        }
-
-        *pError = IPC_ERR_NONE;
-        state = eSuccess;
-    }
-    else
-        /* if (mq->Status == eMQPartial) */
-    {
-        /* 将线程发送的消息写入消息队列 */
-        SaveMessage(pMsgQue, pMsg2, type);
-
-        /* 消息队列空的情况，如果是消息队列的容量是1，那么它的状态从空直接到 eMQFull，
-           否则消息队列进入 eMQPartial 状态 */
-        /* 消息队列普通的情况，消息对列写操作可能导致消息队列进入 eMQFull
-           状态或者保持 eMQPartial 状态 */
-        pMsgQue->Status = (pMsgQue->Tail == pMsgQue->Head) ? eMQFull : eMQPartial;
-
-        *pError = IPC_ERR_NONE;
-        state = eSuccess;
-    }
-
-    return state;
-}
-
-
-/*************************************************************************************************
- *  功能: 用于线程接收消息队列中的消息                                                           *
- *  参数: (1) pMsgQue  消息队列结构地址                                                          *
- *        (2) pMsg2    保存消息结构地址的指针变量                                                *
- *        (2) option   访问消息队列的模式                                                        *
- *        (3) timeo    时限阻塞模式下访问邮箱的时限长度                                          *
- *        (4) pIMask   中断屏蔽寄存器值                                                          *
- *        (5) pError   详细调用结果                                                              *
- *  返回: (1) eFailure 操作失败                                                                  *
- *        (2) eSuccess 操作成功                                                                  *
- *  说明：                                                                                       *
- *************************************************************************************************/
-static TState ReceiveMessage2(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option, TTimeTick timeo,
-                              TReg32* pIMask, TError* pError)
-{
-    TBool HiRP = eFalse;
-    TState state;
-    TIpcContext* pContext;
-
-    state = TryReceiveMessage2(pMsgQue, (void**)pMsg2, &HiRP, pError);
-
-    /* 如果当前线程能接收消息,直接从函数返回;
-       当前线程不能接收消息，但是采用的是立刻返回方案，则函数也直接返回，
-       如果在ISR环境下则不管结果直接返回。
-       只有是线程环境下并且允许线程调度才可继续操作，
-       否则即使之前唤醒了更高优先级的线程也不许进行调度。
-       或者当当前线程接收消息失败，也不能阻塞当前线程 */
-    if ((uKernelVariable.State == eThreadState) &&
-            (uKernelVariable.Schedulable == eTrue))
-    {
-        /* 如果当前线程唤醒了更高优先级的线程则进行调度。*/
-        if (state == eSuccess)
-        {
-            if (HiRP == eTrue)
-            {
-                uThreadSchedule();
-            }
-        }
-        /* 如果当前线程不能接收消息，并且采用的是等待方式，
-           那么当前线程必须阻塞在消息队列中，并且强制线程调度 */
-        else
-        {
-            if (option & IPC_OPT_WAIT)
-            {
-                /* 得到当前线程的IPC上下文结构地址 */
-                pContext = &(uKernelVariable.CurrentThread->IpcContext);
-
-                /* 保存线程挂起信息 */
-                option |= IPC_OPT_MSGQUEUE | IPC_OPT_READ_DATA;
-                uIpcSaveContext(pContext, (void*)pMsgQue, (TBase32)pMsg2, sizeof(TBase32), option, &state, pError);
-
-                /* 当前线程阻塞在该消息队列的阻塞队列,读取操作导致线程进入PrimaryQueue */
-                uIpcBlockThread(pContext, &(pMsgQue->Queue), timeo);
-
-                /* 当前线程发生被动调度，其它线程得以执行 */
-                uThreadSchedule();
-
-                CpuLeaveCritical(*pIMask);
-                /* 此时此处发生一次调度，当前线程已经阻塞在IPC对象的阻塞队列。
-                处理器开始执行别的线程；当处理器再次处理本线程时，从本处继续运行。*/
-                CpuEnterCritical(pIMask);
-
-                /* 清除线程挂起信息 */
-                uIpcCleanContext(pContext);
-            }
-        }
-    }
-
-    return state;
-}
-
-
-/*************************************************************************************************
- *  功能: 用于线程向消息队列中发送消息                                                           *
- *  参数: (1) pMsgQue  消息队列结构地址                                                          *
- *        (2) pMsg2    保存消息结构地址的指针变量                                                *
- *        (2) option   访问消息队列的参数                                                        *
- *        (3) timeo    时限阻塞模式下访问邮箱的时限长度                                          *
- *        (4) pIMask   中断屏蔽寄存器值                                                          *
- *        (5) pError   详细调用结果                                                              *
- *  返回: (1) eFailure   操作失败                                                                *
- *        (2) eSuccess   操作成功                                                                *
- *  说明：                                                                                       *
- *************************************************************************************************/
-static TState SendMessage2(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option, TTimeTick
-                           timeo, TReg32* pIMask, TError* pError)
-{
-    TBool HiRP = eFalse;
-    TState state;
-    TMsgType type;
-    TIpcContext* pContext;
-
-    type = (option & IPC_OPT_UARGENT) ? eUrgentMessage : eNormalMessage;
-    state = TrySendMessage2(pMsgQue, (void**)pMsg2, type, &HiRP, pError);
-
-    /* 如果当前线程能发送消息到队列,则直接从函数返回;
-       当前线程不能发送消息，但是采用的是立刻返回方案，则函数也直接返回，
-       如果在ISR环境下则不管结果直接返回。
-       只有是线程环境下并且允许线程调度才可继续操作，
-       否则即使之前唤醒了更高优先级的线程也不许进行调度。
-       或者当当前线程发送消息失败，也不能阻塞当前线程 */
-    if ((uKernelVariable.State == eThreadState) &&
-            (uKernelVariable.Schedulable == eTrue))
-    {
-        /* 如果当前线程唤醒了更高优先级的线程则进行调度。*/
-        if (state == eSuccess)
-        {
-            if (HiRP == eTrue)
-            {
-                uThreadSchedule();
-            }
-        }
-        else
-        {
-            /* 如果当前线程不能发送消息，并且采用的是等待方式，
-               那么当前线程必须阻塞在消息队列中，并且强制线程调度 */
-            if (option & IPC_OPT_WAIT)
-            {
-                if (option & IPC_OPT_UARGENT)
-                {
-                    option |= IPC_OPT_USE_AUXIQ;
-                }
-
-                /* 得到当前线程的IPC上下文结构地址 */
-                pContext = &(uKernelVariable.CurrentThread->IpcContext);
-
-                /* 保存线程挂起信息 */
-                option |= IPC_OPT_MSGQUEUE | IPC_OPT_WRITE_DATA;
-                uIpcSaveContext(pContext, (void*)pMsgQue, (TBase32)pMsg2,  sizeof(TBase32), option, &state, pError);
-
-                /* 当前线程阻塞在该消息队列的阻塞队列 */
-                uIpcBlockThread(pContext, &(pMsgQue->Queue), timeo);
-
-                /* 当前线程发生被动调度，其它线程得以执行 */
-                uThreadSchedule();
-
-                CpuLeaveCritical(*pIMask);
-                /* 因为当前线程已经阻塞在IPC对象的线程阻塞队列，所以处理器需要执行别的线程。
-                当处理器再次处理本线程时，从本处继续运行。*/
-                CpuEnterCritical(pIMask);
-
-                /* 清除线程挂起信息 */
-                uIpcCleanContext(pContext);
-            }
-        }
-    }
-
-    return state;
-}
-
-
-/*************************************************************************************************
- *  功能: 用于线程/ISR接收消息队列中的消息                                                       *
- *  参数: (1) pMsgQue  消息队列结构地址                                                          *
- *        (2) pMsg2    保存消息结构地址的指针变量                                                *
- *        (3) option   访问消息队列的模式                                                        *
- *        (4) timeo    时限阻塞模式下访问邮箱的时限长度                                          *
- *        (5) pError   详细调用结果                                                              *
- *  返回: (1) eFailure   操作失败                                                                *
- *        (2) eSuccess   操作成功                                                                *
- *  说明：                                                                                       *
- *************************************************************************************************/
-extern TState xMQReceive2(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option,
-                          TTimeTick timeo, TError* pError)
-{
-    TState state = eFailure;
-    TError error = IPC_ERR_UNREADY;
-    TReg32 imask;
-    TBool  HiRP = eFalse;
-
-    CpuEnterCritical(&imask);
-
-    if (pMsgQue->Property & IPC_PROP_READY)
-    {
-        /* 如果强制要求在ISR下接收消息 */
-        if (option & IPC_OPT_NO_SCHED)
-        {
-            /* 中断程序只能以非阻塞方式接收消息，并且不考虑线程调度问题      */
-            /* 在中断isr中，当前线程未必是最高就绪优先级线程，也未必处于内核就绪线程队列。
-               所以在isr中调用TryReceiveMessage()后得到的HiRP标记无任何意义。*/
-            KNL_ASSERT((uKernelVariable.State == eIntrState),"");
-            state = TryReceiveMessage(pMsgQue, (void**)pMsg2, &HiRP, &error);
-        }
-        else
-        {
-            /* 自动判断如何接收消息 */
-            state = ReceiveMessage(pMsgQue, pMsg2, option, timeo, &imask, &error);
-        }
-    }
-
-    CpuLeaveCritical(imask);
-
-    *pError = error;
-    return state;
-}
-
-
-/*************************************************************************************************
- *  功能: 用于线程/ISR向消息队列中发送消息                                                       *
- *  参数: (1) pMsgQue  消息队列结构地址                                                          *
- *        (2) pMsg2    保存消息结构地址的指针变量                                                *
- *        (3) option   访问消息队列的模式                                                        *
- *        (4) timeo    时限阻塞模式下访问邮箱的时限长度                                          *
- *        (5) pError   详细调用结果                                                              *
- *  返回: (1) eFailure 操作失败                                                                  *
- *        (2) eSuccess 操作成功                                                                  *
- *  说明：                                                                                       *
- *************************************************************************************************/
-TState xMQSend2(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option, TTimeTick timeo,
-                TError* pError)
-{
-    TState state = eFailure;
-    TError error = IPC_ERR_UNREADY;
-    TBool HiRP = eFalse;
-    TMsgType type;
-    TReg32 imask;
-
-    CpuEnterCritical(&imask);
-    if (pMsgQue->Property & IPC_PROP_READY)
-    {
-        /* 如果强制要求在ISR下发送消息 */
-        if (option & IPC_OPT_NO_SCHED)
-        {
-            /* 中断程序只能以非阻塞方式向队列发送消息，并且不考虑线程调度问题  */
-            /* 在中断isr中，当前线程未必是最高就绪优先级线程，也未必处于内核就绪线程队列。
-            所以在isr中调用TrySendMessage()后得到的HiRP标记无任何意义。*/
-            KNL_ASSERT((uKernelVariable.State == eIntrState),"");
-            type = (option & IPC_OPT_UARGENT) ? eUrgentMessage : eNormalMessage;
-            state = TrySendMessage(pMsgQue, (void**)pMsg2, type, &HiRP, &error);
-        }
-        else
-        {
-            /* 自动判断如何发送消息 */
-            state = SendMessage(pMsgQue, pMsg2, option, timeo, &imask, &error);
-        }
-    }
-    CpuLeaveCritical(imask);
-
-    *pError = error;
-    return state;
-}
-#endif
 
 /*************************************************************************************************
  *  功能：线程/ISR尝试从消息队列中读取消息                                                       *
@@ -501,22 +93,23 @@ TState xMQSend2(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option, TTimeTick t
  *  说明：                                                                                       *
  *************************************************************************************************/
 /* 处理消息队列读数据的情况
-(1) 处理消息队列为满的情况：如果是容量是1的消息队列，读取操作会导致消息队列状态从满直接到空，
-否则消息队列进入 eMQPartial 状态
-(2) 处理消息队列普通的情况：如果消息队列中只有1个消息，对列读取操作可能导致消息队列进入空状态
-否则消息队列保持 eMQPartial 状态
-(3) 无论是消息队列满还是消息队列普通状态：最终状态只有普通和空。
+   (1) 处理消息队列为满的情况：如果是容量是1的消息队列，读取操作会导致消息队列状态从满直接到空，
+       否则消息队列进入 eMQPartial 状态
+   (2) 处理消息队列普通的情况：如果消息队列中只有1个消息，对列读取操作可能导致消息队列进入空状态
+       否则消息队列保持 eMQPartial 状态
+   (3) 无论是消息队列满还是消息队列普通状态：最终状态只有普通和空。
  */
 static TState ReceiveMessage(TMsgQueue* pMsgQue, void** pMsg2, TBool* pHiRP, TError* pError)
 {
+    TState state = eSuccess;
+    TError error = IPC_ERR_NONE;
     TMsgType type;
-    TState state;
     TIpcContext* pContext = (TIpcContext*)0;
 
     /* 检查消息队列状态 */
     if (pMsgQue->Status == eMQEmpty)
     {
-        *pError = IPC_ERR_INVALID_STATUS;
+        error = IPC_ERR_INVALID_STATUS;
         state = eFailure;
     }
     else if (pMsgQue->Status == eMQFull)
@@ -524,10 +117,11 @@ static TState ReceiveMessage(TMsgQueue* pMsgQue, void** pMsg2, TBool* pHiRP, TEr
         /* 从消息队列中读取一个消息给当前线程 */
         ConsumeMessage(pMsgQue, pMsg2);
 
-        /* 尝试唤醒写阻塞队列中的一个线程 */
-        /* 在消息队列满并且有线程阻塞在写队列中的情况下，
-        唤醒新的线程并且将该线程携带的消息写入队列，
-        所以保持消息队列状态不变 */
+        /* 
+			   * 在消息队列满并且有线程阻塞在写队列中的情况下，
+         * 需要将合适的线程接触阻塞并且将该线程携带的消息写入队列，
+         * 所以保持消息队列状态不变 
+			   */
         if (pMsgQue->Property & IPC_PROP_AUXIQ_AVAIL)
         {
             pContext = (TIpcContext*)(pMsgQue->Queue.AuxiliaryHandle->Owner);
@@ -554,10 +148,6 @@ static TState ReceiveMessage(TMsgQueue* pMsgQue, void** pMsg2, TBool* pHiRP, TEr
         {
             pMsgQue->Status = (pMsgQue->Tail == pMsgQue->Head) ? eMQEmpty : eMQPartial;
         }
-
-        /* 设置线程成功读取消息队列标记 */
-        *pError = IPC_ERR_NONE;
-        state = eSuccess;
     }
     else
         /* if (mq->Status == eMQPartial) */
@@ -565,11 +155,9 @@ static TState ReceiveMessage(TMsgQueue* pMsgQue, void** pMsg2, TBool* pHiRP, TEr
         /* 从消息队列中读取一个消息给当前线程 */
         ConsumeMessage(pMsgQue, pMsg2);
         pMsgQue->Status = (pMsgQue->Tail == pMsgQue->Head) ? eMQEmpty : eMQPartial;
-
-        *pError = IPC_ERR_NONE;
-        state = eSuccess;
     }
 
+	*pError = error;
     return state;
 }
 
@@ -588,13 +176,14 @@ static TState ReceiveMessage(TMsgQueue* pMsgQue, void** pMsg2, TBool* pHiRP, TEr
 static TState SendMessage(TMsgQueue* pMsgQue, void** pMsg2, TMsgType type, TBool* pHiRP,
                           TError* pError)
 {
-    TState state;
+    TState state = eSuccess;
+    TError error = IPC_ERR_NONE;
     TIpcContext* pContext = (TIpcContext*)0;
 
     /* 检查消息队列状态，如果消息队列满则返回失败 */
     if (pMsgQue->Status == eMQFull)
     {
-        *pError = IPC_ERR_INVALID_STATUS;
+        error = IPC_ERR_INVALID_STATUS;
         state = eFailure;
     }
     else if (pMsgQue->Status == eMQEmpty)
@@ -620,9 +209,6 @@ static TState SendMessage(TMsgQueue* pMsgQue, void** pMsg2, TMsgType type, TBool
             SaveMessage(pMsgQue, pMsg2, type);
             pMsgQue->Status = (pMsgQue->Tail == pMsgQue->Head) ? eMQFull : eMQPartial;
         }
-
-        *pError = IPC_ERR_NONE;
-        state = eSuccess;
     }
     else
         /* if (mq->Status == eMQPartial) */
@@ -635,11 +221,9 @@ static TState SendMessage(TMsgQueue* pMsgQue, void** pMsg2, TMsgType type, TBool
         /* 消息队列普通的情况，消息对列写操作可能导致消息队列进入 eMQFull
            状态或者保持 eMQPartial 状态 */
         pMsgQue->Status = (pMsgQue->Tail == pMsgQue->Head) ? eMQFull : eMQPartial;
-
-        *pError = IPC_ERR_NONE;
-        state = eSuccess;
     }
 
+	  *pError = error;
     return state;
 }
 
@@ -807,9 +391,9 @@ TState xMQSend(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option, TTimeTick ti
 
                         CpuLeaveCritical(imask);
                         /*
-                                 * 因为当前线程已经阻塞在IPC对象的线程阻塞队列，所以处理器需要执行别的线程。
-                                 * 当处理器再次处理本线程时，从本处继续运行。
-                                 */
+                         * 因为当前线程已经阻塞在IPC对象的线程阻塞队列，所以处理器需要执行别的线程。
+                         * 当处理器再次处理本线程时，从本处继续运行。
+                         */
                         CpuEnterCritical(&imask);
 
                         /* 清除线程挂起信息 */

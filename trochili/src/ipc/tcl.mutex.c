@@ -30,8 +30,8 @@
    2 在isr环境下不可能调用本函数 */
 static TState AddLock(TThread* pThread, TMutex* pMutex, TBool* pHiRP, TError* pError)
 {
-    TState state;
-    TError error;
+    TState state = eSuccess;
+    TError error = IPC_ERR_NONE;
 
     /* 将互斥量加入线程锁队列，按优先级排列 */
     uObjListAddPriorityNode(&(pThread->LockList), &(pMutex->LockNode));
@@ -68,12 +68,11 @@ static TState AddLock(TThread* pThread, TMutex* pMutex, TBool* pHiRP, TError* pE
  *************************************************************************************************/
 static TState RemoveLock(TThread* pThread, TMutex* pMutex, TBool* pHiRP, TError* pError)
 {
-    TState    state;
+    TState state = eSuccess;
+    TError error = IPC_ERR_NONE;
     TPriority priority = TCLC_LOWEST_PRIORITY;
     TObjNode* pHead = (TObjNode*)0;
     TBool     nflag = eFalse;
-    TError    error;
-//    TBool     HiRP;
 
     /* 将互斥量从线程锁队列中移除 */
     pHead = pThread->LockList;

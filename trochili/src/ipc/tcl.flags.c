@@ -28,13 +28,13 @@
  *************************************************************************************************/
 static TState ReceiveFlags(TFlags* pFlags, TBitMask* pPattern, TOption option, TError* pError)
 {
-    TState state;
+    TState state = eFailure;
+	TError error = IPC_ERR_FLAGS;
     TBitMask match;
     TBitMask pattern;
 
     pattern = *pPattern;
     match = (pFlags->Value) & pattern;
-
     if (((option & IPC_OPT_AND) && (match == pattern)) ||
             ((option & IPC_OPT_OR) && (match != 0U)))
     {
@@ -45,14 +45,11 @@ static TState ReceiveFlags(TFlags* pFlags, TBitMask* pPattern, TOption option, T
 
         *pPattern = match;
 
-        *pError = IPC_ERR_NONE;
+        error = IPC_ERR_NONE;
         state = eSuccess;
     }
-    else
-    {
-        *pError = IPC_ERR_FLAGS;
-        state = eFailure;
-    }
+
+	*pError = error;
     return state;
 }
 
@@ -69,28 +66,28 @@ static TState ReceiveFlags(TFlags* pFlags, TBitMask* pPattern, TOption option, T
  *************************************************************************************************/
 static TState SendFlags(TFlags* pFlags, TBitMask pattern, TBool* pHiRP, TError* pError)
 {
-    TObjNode* pHead = (TObjNode*)0;
-    TObjNode* pTail = (TObjNode*)0;
-    TObjNode* pCurrent = (TObjNode*)0;
-    TBitMask mask = 0U;
-    TBool match = eFalse;
-    TOption option;
+    TState state = eError;
+    TError error = IPC_ERR_FLAGS;
+    TObjNode* pHead;
+    TObjNode* pTail;
+    TObjNode* pCurrent;
+    TOption   option;
+    TBitMask  mask;
     TBitMask* pTemp;
-    TState state;
     TIpcContext* pContext;
 
     /* 检查事件是否需要发送 */
     mask = pFlags->Value | pattern;
     if (mask != pFlags->Value)
     {
-        *pError = IPC_ERR_NONE;
-        state = eSuccess;
+        error = eSuccess;
+        state = IPC_ERR_NONE;
 
         /* 把事件发送到事件标记中 */
         pFlags->Value |= pattern;
 
         /* 事件标记是否有线程在等待事件的发生 */
-        if (pFlags->Queue.PrimaryHandle != (TObjNode*)0)
+		if (pFlags->Property & IPC_PROP_PRIMQ_AVAIL)
         {
             /* 开始遍历事件组阻塞队列 */
             pHead = pFlags->Queue.PrimaryHandle;
@@ -99,43 +96,36 @@ static TState SendFlags(TFlags* pFlags, TBitMask pattern, TBool* pHiRP, TError* 
             {
                 pCurrent = pHead;
                 pHead = pHead->Next;
-                match = eFalse;
 
                 /* 获得等待事件标记的线程和相关的事件节点 */
                 pContext =  (TIpcContext*)(pCurrent->Owner);
                 option = pContext->Option;
                 pTemp = (TBitMask*)(pContext->Data.Addr1);
 
-                /*  得到满足要求的事件标记 */
+                /* 得到满足要求的事件标记 */
                 mask = pFlags->Value & (*pTemp);
                 if (((option & IPC_OPT_AND) && (mask == *pTemp)) ||
                         ((option & IPC_OPT_OR) && (mask != 0U)))
                 {
-                    match = eTrue;
                     *pTemp = mask;
                     uIpcUnblockThread(pContext, eSuccess, IPC_ERR_NONE, pHiRP);
-                }
 
-                /* 如果事件标记检查成功 */
-                if ((match == eTrue) && (option & IPC_OPT_CONSUME))
-                {
                     /* 消耗某些事件，如果事件全部被消耗殆尽，则退出 */
-                    pFlags->Value &= (~mask);
-                    if (pFlags->Value == 0U)
+                    if (option & IPC_OPT_CONSUME)
                     {
-                        break;
+                        pFlags->Value &= (~mask);
+                        if (pFlags->Value == 0U)
+                        {
+                            break;
+                        }
                     }
                 }
             }
             while(pCurrent != pTail);
         }
     }
-    else
-    {
-        *pError = IPC_ERR_FLAGS ;
-        state = eError;
-    }
 
+    *pError = error;
     return state;
 }
 
@@ -250,8 +240,7 @@ TState xFlagsSend(TFlags* pFlags, TBitMask pattern, TError* pError)
         * 在中断中,当前线程未必是最高就绪优先级线程,也未必处于内核就绪线程队列，
         * 所以在此处得到的HiRP标记无任何意义。
         */
-        state = SendFlags(pFlags, pattern, &HiRP, pError);
-
+        state = SendFlags(pFlags, pattern, &HiRP, &error);
         /*
          * 如果在ISR环境下则直接返回。
          * 只有是线程环境下并且允许线程调度才可继续操作
@@ -450,7 +439,6 @@ TState xFlagsFlush(TFlags* pFlags, TError* pError)
     *pError = error;
     return state;
 }
-
 
 #endif
 

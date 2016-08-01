@@ -61,7 +61,7 @@ typedef struct IpcBlockedQueueDef TIpcQueue;
 
 /* 线程IPC选项，内核代码使用 */
 #define IPC_OPTION               (TOption)(0x0)
-#define IPC_OPT_NO_SCHED            (TOption)(0x1<<0)    /* 不需要进行线程调度                         */
+#define IPC_OPT_NO_SCHED         (TOption)(0x1<<0)       /* 不需要进行线程调度                         */
 #define IPC_OPT_WAIT             (TOption)(0x1<<1)       /* 永久方式等待IPC                            */
 #define IPC_OPT_TIMED            (TOption)(0x1<<2)       /* 时限方式等待标记                           */
 #define IPC_OPT_UARGENT          (TOption)(0x1<<3)       /* 消息队列、邮件使用                         */
@@ -92,9 +92,9 @@ typedef struct IpcBlockedQueueDef TIpcQueue;
 /* NOTE: not compliant MISRA2004 18.4: Unions shall not be used. */
 union IpcDataDef
 {
-    TBase32  Value;                                /* 保存被传输数据变量的地址址值               */
-    void*  Addr1;                                /* 指向事件标记的一级指针                     */
-    void** Addr2;                                /* 指向消息或者邮件的二级指针                 */
+    TBase32 Value;                                /* 保存被传输数据变量的地址址值               */
+    void*   Addr1;                                /* 指向事件标记的一级指针                     */
+    void**  Addr2;                                /* 指向消息或者邮件的二级指针                 */
 };
 typedef union IpcDataDef TIpcData;
 
