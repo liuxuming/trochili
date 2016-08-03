@@ -143,7 +143,7 @@ TState xSemaphoreObtain(TSemaphore* pSemaphore, TOption option, TTimeTick timeo,
         if (!(option & IPC_OPT_NO_SCHED))
         {
             if ((uKernelVariable.State == eThreadState) &&
-                    (uKernelVariable.Schedulable == eTrue))
+                    (uKernelVariable.SchedLockTimes == 0U))
             {
                 /* 如果当前线程解除了更高优先级线程的阻塞则进行调度。*/
                 if (state == eSuccess)
@@ -229,7 +229,7 @@ TState xSemaphoreRelease(TSemaphore* pSemaphore, TOption option, TTimeTick timeo
         if (!(option & IPC_OPT_NO_SCHED))
         {
             if ((uKernelVariable.State == eThreadState) &&
-                    (uKernelVariable.Schedulable == eTrue))
+                    (uKernelVariable.SchedLockTimes == 0U))
             {
                 /* 如果当前线程解除了更高优先级线程的阻塞则进行调度。*/
                 if (state == eSuccess)
@@ -356,7 +356,7 @@ TState xSemaphoreDelete(TSemaphore* pSemaphore, TError* pError)
          * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
          */
         if ((uKernelVariable.State == eThreadState) &&
-                (uKernelVariable.Schedulable == eTrue) &&
+                (uKernelVariable.SchedLockTimes == 0U) &&
                 (HiRP == eTrue))
         {
             uThreadSchedule();
@@ -406,7 +406,7 @@ TState xSemaphoreReset(TSemaphore* pSemaphore, TError* pError)
          * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
          */
         if ((uKernelVariable.State == eThreadState) &&
-                (uKernelVariable.Schedulable == eTrue) &&
+                (uKernelVariable.SchedLockTimes == 0U) &&
                 (HiRP == eTrue))
         {
             uThreadSchedule();
@@ -452,7 +452,7 @@ TState xSemaphoreFlush(TSemaphore* pSemaphore, TError* pError)
          * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
          */
         if ((uKernelVariable.State == eThreadState) &&
-                (uKernelVariable.Schedulable == eTrue) &&
+                (uKernelVariable.SchedLockTimes == 0U) &&
                 (HiRP == eTrue))
         {
             uThreadSchedule();

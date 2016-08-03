@@ -80,8 +80,8 @@ static TState SendFlags(TFlags* pFlags, TBitMask pattern, TBool* pHiRP, TError* 
     mask = pFlags->Value | pattern;
     if (mask != pFlags->Value)
     {
-        error = eSuccess;
-        state = IPC_ERR_NONE;
+        error = IPC_ERR_NONE;
+        state = eSuccess;
 
         /* 把事件发送到事件标记中 */
         pFlags->Value |= pattern;
@@ -169,7 +169,7 @@ TState xFlagsReceive(TFlags* pFlags, TBitMask* pPattern, TOption option, TTimeTi
              * 但是要处理是否需要将事件消耗的问题
              */
             if ((uKernelVariable.State == eThreadState) &&
-                    (uKernelVariable.Schedulable == eTrue))
+                    (uKernelVariable.SchedLockTimes == 0U))
             {
                 /*
                  * 如果当前线程不能得到事件，并且采用的是等待方式，
@@ -246,7 +246,7 @@ TState xFlagsSend(TFlags* pFlags, TBitMask pattern, TError* pError)
          * 只有是线程环境下并且允许线程调度才可继续操作
          */
         if ((uKernelVariable.State == eThreadState) &&
-                (uKernelVariable.Schedulable == eTrue))
+                (uKernelVariable.SchedLockTimes == 0U))
         {
             /* 如果当前线程解除了更高优先级线程的阻塞则进行调度。*/
             if (state == eSuccess)
@@ -334,7 +334,7 @@ TState xFlagsDelete(TFlags* pFlags, TError* pError)
          * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
          */
         if ((uKernelVariable.State == eThreadState) &&
-                (uKernelVariable.Schedulable == eTrue) &&
+                (uKernelVariable.SchedLockTimes == 0U) &&
                 (HiRP == eTrue))
         {
             uThreadSchedule();
@@ -380,7 +380,7 @@ TState xFlagsReset(TFlags* pFlags, TError* pError)
          * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
          */
         if ((uKernelVariable.State == eThreadState) &&
-                (uKernelVariable.Schedulable == eTrue) &&
+                (uKernelVariable.SchedLockTimes == 0U) &&
                 (HiRP == eTrue))
         {
             uThreadSchedule();
@@ -425,7 +425,7 @@ TState xFlagsFlush(TFlags* pFlags, TError* pError)
          * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
          */
         if ((uKernelVariable.State == eThreadState) &&
-                (uKernelVariable.Schedulable == eTrue) &&
+                (uKernelVariable.SchedLockTimes == 0U) &&
                 (HiRP == eTrue))
         {
             uThreadSchedule();

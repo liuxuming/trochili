@@ -40,15 +40,15 @@ typedef enum
     eThreadState = 2,                                 /* 代码运行在线程态                      */
 } TKernelState;
 
-#define KERNEL_DIAG_ERROR_NONE      (0U)  /* 线程栈溢出                                   */
+#define KERNEL_DIAG_ERROR_NONE      (0U)       /* 线程栈溢出                                   */
 #define KERNEL_DIAG_THREAD_ERROR    (0x1<<0U)  /* 线程栈溢出                                   */
-#define KERNEL_DIAG_SCHED_ERROR    (0x1<<2U)  /* 线程栈溢出                                   */
-#define KERNEL_DIAG_TIMER_ERROR    (0x1<<3U)  /* 线程栈溢出                                   */
+#define KERNEL_DIAG_SCHED_ERROR     (0x1<<2U)  /* 线程栈溢出                                   */
+#define KERNEL_DIAG_TIMER_ERROR     (0x1<<3U)  /* 线程栈溢出                                   */
 
 /* 内核变量结构定义，记录了内核运行时的各种数据 */
 struct KernelVariableDef
 {
-    TBool            Schedulable;                     /* 决定是否允许线程调度                    */
+    TBase32          SchedLockTimes;                  /* 决定是否允许线程调度                    */
     TThread*         NomineeThread;                   /* 内核候选线程指针                        */
     TThread*         CurrentThread;                   /* 内核当前线程指针                        */
     TKernelState     State;                           /* 记录代码执行时所处的运行状态            */

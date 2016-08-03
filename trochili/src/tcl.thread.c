@@ -98,7 +98,7 @@ static TState SetThreadUnready(TThread* pThread, TThreadStatus status, TTimeTick
     if (pThread->Status == eThreadRunning)
     {
         /* 如果内核此时禁止线程调度，那么当前线程不能被操作 */
-        if (uKernelVariable.Schedulable == eTrue)
+        if (uKernelVariable.SchedLockTimes == 0U)
         {
             uThreadLeaveQueue(&ThreadReadyQueue, pThread);
             uThreadEnterQueue(&ThreadAuxiliaryQueue, pThread, eQuePosTail);
@@ -349,7 +349,7 @@ void uThreadLeaveQueue(TThreadQueue* pQueue, TThread* pThread)
  * 只有情况1才需要进行时间片轮转的处理，但此时不涉及线程切换,因为本函数只在ISR中调用。
  */
 
-/* 本函数要求在应用代码里的中断优先级最高 */
+/* 本函数要求比应用代码里的中断优先级要高 */
 void uThreadTickISR(void)
 {
     TThread* pThread;
@@ -368,7 +368,7 @@ void uThreadTickISR(void)
         pThread->Ticks = pThread->BaseTicks;
 
         /* 如果内核此时允许线程调度 */
-        if (uKernelVariable.Schedulable == eTrue)
+        if (uKernelVariable.SchedLockTimes == 0U)
         {
             /* 判断线程是不是处于内核就绪线程队列的某个优先级的队列头 */
             pHandle = ThreadReadyQueue.Handle[pThread->Priority];
@@ -396,8 +396,8 @@ void uThreadTickISR(void)
  *  说明：线程的调度请求可能被ISR最终取消                                                        *
  *************************************************************************************************/
 /*
- * 1 当前线程离开队列即代表它放弃本轮运行，再次进入队列时,时间片需要重新计算,
- *   在队列中的位置也规定一定是在队尾
+ * 1 当前线程离开队列即代表它放弃本轮运行，当前线程返回就绪队列时，一定要回到相应的队列头
+     当线程进出就绪队列时，不需要处理线程的时钟节拍数
  * 2 导致当前线程不是最高就绪优先级的原因有
  *   1 别的优先级更高的线程进入就绪队列
  *   2 当前线程自己离开队列
@@ -407,7 +407,7 @@ void uThreadTickISR(void)
  *   6 时间片中断中，当前线程被轮转
  * 3 在cortex处理器上, 有这样一种可能:
  *   当前线程释放了处理器，但在PendSV中断得到响应之前，又有其它高优先级中断发生，
- *   在高级isr中又把当前线程置为就绪，
+ *   在高级isr中又把当前线程置为运行，
  *   1 并且当前线程仍然是最高就绪优先级，
  *   2 并且当前线程仍然在最高就绪线程队列的队列头。
  *   此时需要考虑取消PENDSV的操作，避免当前线程和自己切换
@@ -430,16 +430,17 @@ void uThreadSchedule(void)
         uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
-    /*
-     * 完成线程的优先级抢占或者时间片轮转;
-     * 或者完成线程调度(我们在这里区分"抢占"和"调度"的含义)
-     */
+    /* 完成线程的优先级抢占或者时间片轮转 */
     if (uKernelVariable.NomineeThread != uKernelVariable.CurrentThread)
     {
 #if (TCLC_THREAD_STACK_CHECK_ENABLE)
         CheckThreadStack(uKernelVariable.NomineeThread);
 #endif
-        uKernelVariable.NomineeThread->Status = eThreadRunning;
+        /*
+         * 此时有两种可能，一是线程正常执行，然后有更高优先级的线程就绪。
+         * 二是当前线程短暂不就绪但是很快又返回运行状态，然后有更高优先级的线程就绪。
+         * 不论哪种情况，都需要将当前线程设置为就绪状态。
+         */
         if (uKernelVariable.CurrentThread->Status == eThreadRunning)
         {
             uKernelVariable.CurrentThread->Status = eThreadReady;
@@ -449,6 +450,12 @@ void uThreadSchedule(void)
     else
     {
         CpuCancelThreadSwitch();
+		/*
+		 * 在定时器、ASR、Deamon等相关操作时，有可能在当先线程尚未切换上下文的时候，
+		 * 重新放回就绪队列，此时在相关代码里已经将当前线程重新设置成运行状态。
+		 * 而在yeild、tick isr里，有可能将当前线程设置成就绪态，而此时当前线程所在
+		 * 队列又只有唯一一个线程就绪，所以这时需要将当前线程重新设置成运行状态。
+		 */
         uKernelVariable.CurrentThread->Status = eThreadRunning;
     }
 }
@@ -740,7 +747,7 @@ void uThreadSuspendSelf(void)
     TThread* pThread = uKernelVariable.CurrentThread;
 
     /* 将当前线程挂起，如果内核此时禁止线程调度，那么当前线程不能被操作 */
-    if (uKernelVariable.Schedulable == eTrue)
+    if (uKernelVariable.SchedLockTimes == 0U)
     {
         uThreadLeaveQueue(&ThreadReadyQueue, pThread);
         uThreadEnterQueue(&ThreadAuxiliaryQueue, pThread, eQuePosTail);
@@ -892,7 +899,7 @@ TState xThreadSetPriority(TThread* pThread, TPriority priority, TError* pError)
                         (pThread->Property & THREAD_PROP_PRIORITY_SAFE))
                 {
                     state = uThreadSetPriority(pThread, priority, eTrue, &HiRP, &error);
-                    if ((uKernelVariable.Schedulable == eTrue) && (HiRP == eTrue))
+                    if ((uKernelVariable.SchedLockTimes == 0U) && (HiRP == eTrue))
                     {
                         uThreadSchedule();
                     }
@@ -1006,7 +1013,7 @@ TState xThreadYield(TError* pError)
 
     /* 只能在线程环境下同时内核允许线程调度的条件下才能调用本函数 */
     if ((uKernelVariable.State == eThreadState) &&
-            (uKernelVariable.Schedulable == eTrue))
+            (uKernelVariable.SchedLockTimes == 0U))
     {
         /* 操作目标是当前线程 */
         pThread = uKernelVariable.CurrentThread;
@@ -1129,7 +1136,7 @@ TState xThreadActivate(TThread* pThread, TError* pError)
             if (pThread->ACAPI &THREAD_ACAPI_ACTIVATE)
             {
                 state = SetThreadReady(pThread, eThreadDormant, &HiRP, &error);
-                if ((uKernelVariable.Schedulable == eTrue) && (HiRP == eTrue))
+                if ((uKernelVariable.SchedLockTimes == 0U) && (HiRP == eTrue))
                 {
                     uThreadSchedule();
                 }
@@ -1235,7 +1242,7 @@ TState xThreadResume(TThread* pThread, TError* pError)
             if (pThread->ACAPI &THREAD_ACAPI_RESUME)
             {
                 state = SetThreadReady(pThread, eThreadSuspended, &HiRP, &error);
-                if ((uKernelVariable.Schedulable == eTrue) && (HiRP == eTrue))
+                if ((uKernelVariable.SchedLockTimes == 0U) && (HiRP == eTrue))
                 {
                     uThreadSchedule();
                 }
@@ -1342,7 +1349,7 @@ TState xThreadUndelay(TThread* pThread, TError* pError)
             if (pThread->ACAPI &THREAD_ACAPI_UNDELAY)
             {
                 state = SetThreadReady(pThread, eThreadDelayed, &HiRP, &error);
-                if ((uKernelVariable.Schedulable == eTrue) && (HiRP == eTrue))
+                if ((uKernelVariable.SchedLockTimes == 0U) && (HiRP == eTrue))
                 {
                     uThreadSchedule();
                 }
@@ -1397,7 +1404,7 @@ TState xThreadUnblock(TThread* pThread, TError* pError)
                  */
                 uIpcUnblockThread(&(pThread->IpcContext), eFailure, IPC_ERR_ABORT, &HiRP);
                 if ((uKernelVariable.State == eThreadState) &&
-                        (uKernelVariable.Schedulable == eTrue) &&
+                        (uKernelVariable.SchedLockTimes == 0U) &&
                         (HiRP == eTrue))
                 {
                     uThreadSchedule();

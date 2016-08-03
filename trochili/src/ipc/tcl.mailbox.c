@@ -167,7 +167,7 @@ TState xMailBoxReceive(TMailBox* pMailbox, TMail* pMail2, TOption option, TTimeT
         if (!(option & IPC_OPT_NO_SCHED))
         {
             if ((uKernelVariable.State == eThreadState) &&
-                    (uKernelVariable.Schedulable == eTrue))
+                    (uKernelVariable.SchedLockTimes == 0U))
             {
                 /* 如果当前线程解除了更高优先级线程的阻塞则进行调度。*/
                 if (state == eSuccess)
@@ -256,7 +256,7 @@ TState xMailBoxSend(TMailBox* pMailbox, TMail* pMail2, TOption option, TTimeTick
         if (!(option &IPC_OPT_NO_SCHED))
         {
             if ((uKernelVariable.State == eThreadState) &&
-                    (uKernelVariable.Schedulable == eTrue))
+                    (uKernelVariable.SchedLockTimes == 0U))
             {
                 /* 如果当前线程解除了更高优先级线程的阻塞则进行调度。*/
                 if (state == eSuccess)
@@ -383,7 +383,7 @@ TState xMailBoxDelete(TMailBox* pMailbox, TError* pError)
          * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
          */
         if ((uKernelVariable.State == eThreadState) &&
-                (uKernelVariable.Schedulable == eTrue) &&
+                (uKernelVariable.SchedLockTimes == 0U) &&
                 (HiRP == eTrue))
         {
             uThreadSchedule();
@@ -430,7 +430,7 @@ TState xMailboxReset(TMailBox* pMailbox, TError* pError)
          * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
          */
         if ((uKernelVariable.State == eThreadState) &&
-                (uKernelVariable.Schedulable == eTrue) &&
+                (uKernelVariable.SchedLockTimes == 0U) &&
                 (HiRP == eTrue))
         {
             uThreadSchedule();
@@ -475,7 +475,7 @@ TState xMailBoxFlush(TMailBox* pMailbox, TError* pError)
          * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
          */
         if ((uKernelVariable.State == eThreadState) &&
-                (uKernelVariable.Schedulable == eTrue) &&
+                (uKernelVariable.SchedLockTimes == 0U) &&
                 (HiRP == eTrue))
         {
             uThreadSchedule();
@@ -521,7 +521,7 @@ TState xMailBoxBroadcast(TMailBox* pMailbox, TMail* pMail2, TError* pError)
              * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
              */
             if ((uKernelVariable.State == eThreadState) &&
-                    (uKernelVariable.Schedulable == eTrue) &&
+                    (uKernelVariable.SchedLockTimes == 0U) &&
                     (HiRP == eTrue))
             {
                 uThreadSchedule();

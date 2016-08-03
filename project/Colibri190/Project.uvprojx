@@ -594,16 +594,6 @@
               <FilePath>..\..\trochili\src\tcl.irq.c</FilePath>
             </File>
             <File>
-              <FileName>tcl.kernel.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\trochili\src\tcl.kernel.c</FilePath>
-            </File>
-            <File>
-              <FileName>tcl.thread.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\trochili\src\tcl.thread.c</FilePath>
-            </File>
-            <File>
               <FileName>tcl.timer.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\trochili\src\tcl.timer.c</FilePath>
@@ -667,6 +657,16 @@
               <FileName>tcl.object.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\trochili\src\tcl.object.c</FilePath>
+            </File>
+            <File>
+              <FileName>tcl.thread.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\trochili\src\tcl.thread.c</FilePath>
+            </File>
+            <File>
+              <FileName>tcl.kernel.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\trochili\src\tcl.kernel.c</FilePath>
             </File>
           </Files>
         </Group>

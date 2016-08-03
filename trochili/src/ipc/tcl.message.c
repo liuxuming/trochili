@@ -138,10 +138,8 @@ static TState ReceiveMessage(TMsgQueue* pMsgQue, void** pMsg2, TBool* pHiRP, TEr
         {
             uIpcUnblockThread(pContext, eSuccess, IPC_ERR_NONE, pHiRP);
 
-            /* 根据线程所处的分队列判断消息类型 */
+            /* 根据线程所处的分队列判断消息类型,并且将该线程发送的消息写入消息队列 */
             type = ((pContext->Option) & IPC_OPT_UARGENT) ? eUrgentMessage : eNormalMessage;
-
-            /* 并且将该线程发送的消息写入消息队列 */
             SaveMessage(pMsgQue, pContext->Data.Addr2, type);
         }
         else
@@ -188,19 +186,17 @@ static TState SendMessage(TMsgQueue* pMsgQue, void** pMsg2, TMsgType type, TBool
     }
     else if (pMsgQue->Status == eMQEmpty)
     {
-        /* 尝试唤醒写阻塞队列中的一个线程 */
+        /*
+         * 在消息队列为空的情况下，如果队列中有线程等待，则说明是读阻塞队列，
+         * 将其中一个线程解除阻塞，并将消息发送给该线程，同时保持消息队列状态不变
+         */
         if (pMsgQue->Property & IPC_PROP_PRIMQ_AVAIL)
         {
             pContext = (TIpcContext*)(pMsgQue->Queue.PrimaryHandle->Owner);
         }
-
-        /* 在消息队列为空的情况下，如果队列中有线程等待，则说明是读阻塞队列，
-        保持消息队列状态不变 */
         if (pContext != (TIpcContext*)0)
         {
             uIpcUnblockThread(pContext, eSuccess, IPC_ERR_NONE, pHiRP);
-
-            /* 将消息发送给该线程 */
             *(pContext->Data.Addr2) = *pMsg2;
         }
         else
@@ -263,7 +259,7 @@ extern TState xMQReceive(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option,
         if(! (option & IPC_OPT_NO_SCHED))
         {
             if ((uKernelVariable.State == eThreadState) &&
-                    (uKernelVariable.Schedulable == eTrue))
+                    (uKernelVariable.SchedLockTimes == 0U))
             {
                 /* 如果当前线程解除了更高优先级线程的阻塞则进行调度。*/
                 if (state == eSuccess)
@@ -353,7 +349,7 @@ TState xMQSend(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option, TTimeTick ti
         if (option & IPC_OPT_NO_SCHED)
         {
             if ((uKernelVariable.State == eThreadState) &&
-                    (uKernelVariable.Schedulable == eTrue))
+                    (uKernelVariable.SchedLockTimes == 0U))
             {
                 /* 如果当前线程解除了更高优先级线程的阻塞则进行调度。*/
                 if (state == eSuccess)
@@ -486,7 +482,7 @@ TState xMQDelete(TMsgQueue* pMsgQue, TError* pError)
          * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
          */
         if ((uKernelVariable.State == eThreadState) &&
-                (uKernelVariable.Schedulable == eTrue) &&
+                (uKernelVariable.SchedLockTimes == 0U) &&
                 (HiRP == eTrue))
         {
             uThreadSchedule();
@@ -536,7 +532,7 @@ TState xMQReset(TMsgQueue* pMsgQue, TError* pError)
          * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
          */
         if ((uKernelVariable.State == eThreadState) &&
-                (uKernelVariable.Schedulable == eTrue) &&
+                (uKernelVariable.SchedLockTimes == 0U) &&
                 (HiRP == eTrue))
         {
             uThreadSchedule();
@@ -581,7 +577,7 @@ TState xMQFlush(TMsgQueue* pMsgQue, TError* pError)
          * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
          */
         if ((uKernelVariable.State == eThreadState) &&
-                (uKernelVariable.Schedulable == eTrue) &&
+                (uKernelVariable.SchedLockTimes == 0U) &&
                 (HiRP == eTrue))
         {
             uThreadSchedule();
@@ -628,7 +624,7 @@ TState xMQBroadcast(TMsgQueue* pMsgQue, TMessage* pMsg2, TError* pError)
              * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
              */
             if ((uKernelVariable.State == eThreadState) &&
-                    (uKernelVariable.Schedulable == eTrue) &&
+                    (uKernelVariable.SchedLockTimes == 0U) &&
                     (HiRP == eTrue))
             {
                 uThreadSchedule();

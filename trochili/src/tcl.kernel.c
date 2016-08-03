@@ -92,7 +92,7 @@ void xKernelLeaveIntrState(void)
          * 最低级别的那个中断在退出中断时来完成。
          * 此处的线程调度体现的是"抢占" 
          */
-        if (uKernelVariable.Schedulable == eTrue)
+        if (uKernelVariable.SchedLockTimes == 0U)
         {
             uThreadSchedule();
         }
@@ -141,7 +141,7 @@ TState xKernelLockSched(void)
     CpuEnterCritical(&imask);
     if (uKernelVariable.State == eThreadState)
     {
-        uKernelVariable.Schedulable = eFalse;
+        uKernelVariable.SchedLockTimes++;
         state = eSuccess;
     }
     CpuLeaveCritical(imask);
@@ -163,8 +163,20 @@ TState xKernelUnlockSched(void)
     CpuEnterCritical(&imask);
     if (uKernelVariable.State == eThreadState)
     {
-        uKernelVariable.Schedulable = eTrue;
-        state = eSuccess;
+        if (uKernelVariable.SchedLockTimes > 0U)
+        {
+            uKernelVariable.SchedLockTimes--;
+			/* 
+			 * 在关闭调度器的阶段，当前线程有可能使得其他更高优先级的线程就绪，ISR也可能将
+			 * 一些高优先级的线程解除阻塞。所以在打开调度器的时候，需要做一次线程调度检查，
+			 * 和系统从中断返回时类似 
+		 	 */
+            if (uKernelVariable.SchedLockTimes == 0U)
+            {
+                uThreadSchedule();
+            }
+            state = eSuccess;
+        }
     }
     CpuLeaveCritical(imask);
     return state;
@@ -237,12 +249,13 @@ void xKernelStart(TUserEntry pUserEntry,
     CpuDisableInt();
 
     /* 初始化基本内核参数 */
-    memset(&uKernelVariable, 0, sizeof(uKernelVariable));
+    memset(&uKernelVariable, 0U, sizeof(uKernelVariable));
     uKernelVariable.UserEntry       = pUserEntry;
     uKernelVariable.CpuSetupEntry   = pCpuEntry;
     uKernelVariable.BoardSetupEntry = pBoardEntry;
     uKernelVariable.TraceEntry      = pTraceEntry;
-    uKernelVariable.Schedulable     = eTrue;
+    uKernelVariable.SchedLockTimes  = 0U;
+    uKernelVariable.State           = eOriginState;
 
     /* 初始化所有内核模块 */
     uThreadModuleInit();                    /* 初始化线程管理模块           */
@@ -303,7 +316,7 @@ static void xRootThreadEntry(TBase32 argument)
     uKernelVariable.State = eThreadState;
 
     /* 临时关闭线程调度功能 */
-    uKernelVariable.Schedulable = eFalse;
+    uKernelVariable.SchedLockTimes = 1U;
 
     /* 
      * 调用用户入口函数，初始化用户程序。
@@ -316,7 +329,7 @@ static void xRootThreadEntry(TBase32 argument)
     uKernelVariable.UserEntry();
 
     /* 开启线程调度功能 */
-    uKernelVariable.Schedulable = eTrue;
+    uKernelVariable.SchedLockTimes = 0U;
 
     /* 打开系统时钟节拍 */
     CpuStartTickClock();

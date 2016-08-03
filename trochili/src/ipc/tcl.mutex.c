@@ -241,7 +241,7 @@ TState xMutexFree(TMutex* pMutex, TError* pError)
         if (uKernelVariable.State == eThreadState)
         {
             state = FreeMutex(pMutex, &HiRP, &error);
-            if (uKernelVariable.Schedulable == eTrue)
+            if (uKernelVariable.SchedLockTimes == 0U)
             {
                 if (state == eSuccess)
                 {
@@ -295,7 +295,7 @@ TState xMutexLock(TMutex* pMutex, TOption option, TTimeTick timeo, TError* pErro
         {
             state = LockMutex(pMutex, &HiRP, &error);
 
-            if (uKernelVariable.Schedulable == eTrue)
+            if (uKernelVariable.SchedLockTimes == 0U)
             {
                 if (state == eFailure)
                 {
@@ -429,7 +429,7 @@ TState xMutexDelete(TMutex* pMutex, TError* pError)
              * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
              */
             if (//(uKernelVariable.State == eThreadState) &&
-                (uKernelVariable.Schedulable == eTrue) &&
+                (uKernelVariable.SchedLockTimes == 0U) &&
                 (HiRP == eTrue))
             {
                 uThreadSchedule();
@@ -500,7 +500,7 @@ TState xMutexReset(TMutex* pMutex, TError* pError)
              * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
              */
             if (//(uKernelVariable.State == eThreadState) &&
-                (uKernelVariable.Schedulable == eTrue) &&
+                (uKernelVariable.SchedLockTimes == 0U) &&
                 (HiRP == eTrue))
             {
                 uThreadSchedule();
@@ -559,7 +559,7 @@ TState xMutexFlush(TMutex* pMutex, TError* pError)
                  * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
                  */
                 if (//(uKernelVariable.State == eThreadState) &&
-                    (uKernelVariable.Schedulable == eTrue) &&
+                    (uKernelVariable.SchedLockTimes == 0U) &&
                     (HiRP == eTrue))
                 {
                     uThreadSchedule();
