@@ -1,4 +1,4 @@
-	    IMPORT  uKernelVariable
+        IMPORT  uKernelVariable
 
         EXPORT  CpuDisableInt
         EXPORT  CpuEnableInt
@@ -35,7 +35,6 @@ CpuLeaveCritical
     MSR     PRIMASK, R0
     BX      LR
 
-
 ;Cortex-M3进入异常服务例程时,自动压栈了R0-R3,R12,LR(R14,连接寄存器),PSR(程序状态寄存器)和PC(R15).
 ;PSP不自动压栈，不需要保存到栈中，而是保存到线程结构中
 PendSV_Handler
@@ -53,22 +52,21 @@ PendSV_Handler
 	
 ; 如果uThreadCurrent和uThreadNominee相等则不需要保存寄存器到栈中
     LDR     R2,  [R0] ;Current
-    ;LDR     R3,  [R1] ;Nominee
     CMP     R2,  R3
     BEQ     LOAD_NOMINEE_FILE
 	
 STORE_CURRENT_FILE    
-    MRS     R3,  PSP
+    MRS     R3,  PSP      ;Current psp
     SUBS    R3,  R3, #0x20
-    STM     R3,  {R4-R11} ;保存r4-r11到uThreadCurrent栈中
-    STR     R3,  [R2,#8]  ;保存psp到uThreadCurrent线程结构
+    STM     R3,  {R4-R11} ;保存r4-r11到CurrentThread栈中
+    STR     R3,  [R2,#8]  ;保存psp到CurrentThread线程结构
 
-    ; 使得uThreadCurrent = uThreadNominee;
-    LDR     R3,  [R1] ;Nominee
-    STR     R3,  [R0] ;Current
+    ; 使得CurrentThread = NomineeThread;
+    LDR     R3,  [R1]     ;Nominee
+    STR     R3,  [R0]     ;Current
 
 LOAD_NOMINEE_FILE
-    LDR     R3,  [R3,#8]   ; 根据uThreadCurrent中取得SP数值到R0
+    LDR     R3,  [R3,#8]   ; 根据CurrentThread中取得SP数值到R3
     LDM     R3,  {R4-R11}  ; 从新线程栈中弹出 r4-11
     ADDS    R3,  R3, #0x20 ; psp指向中断自动压栈后的栈顶
     MSR     PSP, R3
@@ -81,14 +79,18 @@ LOAD_NOMINEE_FILE
     
     ;在这里有可能发生中断，而此时新的当前线程的上下文并没有完全恢复。和线程被中断的情景相似：
     ;硬件自动保存部分寄存器到线程栈中，其它寄存器还游离在处理器上下文中。
-    ;假如在此时产生的中断ISR中调用那些
-    ; (1)会将当前线程从就绪队列中移出的API，
-    ; (2)或者唤醒了更高优先级的线程，
-    ; (3)调整当前线程或者其它就绪线程的优先级
-    ; (4)系统定时器中断，发生时间片轮转
-    ;那么有可能导致一次新的PensSv请求被挂起。
+
+    ;内核保证以下API不会在中断中被调用
+    ; (1)将当前线程从就绪队列中移出的API，
+    ; (2)调整当前线程或者其它就绪线程优先级的API
+    
+    ;假如在此时产生的中断ISR中调用那些 
+    ; (1)唤醒了更高优先级的线程，
+    ; (2)系统定时器中断，发生时间片轮转
+    ;那么有可能导致一次新的PensSv请求被申请。
     ;当下面的语句启动异常返回流程时，会发生前后两个PendSV咬尾中断。
-    ;按照uCM3PendSVHandler的流程，当前线程的上下文中那些游离的寄存器会再次被保存到线程栈中，即不继续
+    
+    ;按照PendSV_Handler的流程，当前线程的上下文中那些游离的寄存器会再次被保存到线程栈中，即不继续
     ;弹栈，也就是说第一次线程上下文切换被强制取消了，转而执行第二次的线程上下文切换。
 
     ; 启动异常返回流程，弹出r0、r1、r2、r3寄存器，切换到任务。

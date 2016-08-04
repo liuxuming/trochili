@@ -152,63 +152,54 @@ void uIpcBlockThread(TIpcContext* pContext, TIpcQueue* pQueue, TTimeTick ticks)
 void uIpcUnblockThread(TIpcContext* pContext, TState state, TError error, TBool* pHiRP)
 {
     TThread* pThread;
-    TQueuePos pos = eQuePosTail;
-    TThreadStatus newStatus = eThreadReady;
-	
-    /* 
-     * 将线程从IPC资源的阻塞队列中移出，加入到内核线程就绪队列,
-     * 如果当前线程刚刚被阻塞到阻塞队列中，但还未发生线程切换，
-     * 而在此时被ISR打断并且ISR又将当前线程唤醒，则当前线程也不必返回就绪队列头 
-     */
     pThread = (TThread*)(pContext->Owner);
 
     /* 只有处于阻塞状态的线程才可以被解除阻塞 */
-    if (pThread->Status != eThreadBlocked)
+    if (pThread->Status == eThreadBlocked)
     {
-        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
-    }
+        /*
+         * 操作线程，完成线程队列和状态转换,注意只有中断处理时，
+         * 当前线程才会处在内核线程辅助队列里(因为还没来得及线程切换)
+         * 当前线程返回就绪队列时，一定要回到相应的队列头
+         * 当线程进出就绪队列时，不需要处理线程的时钟节拍数
+         */
+        uThreadLeaveQueue(uKernelVariable.ThreadAuxiliaryQueue, pThread);
+        if (pThread == uKernelVariable.CurrentThread)
+        {
+            uThreadEnterQueue(uKernelVariable.ThreadReadyQueue, pThread, eQuePosHead);
+            pThread->Status = eThreadRunning;
+        }
+        else
+        {
+            uThreadEnterQueue(uKernelVariable.ThreadReadyQueue, pThread, eQuePosTail);
+            pThread->Status = eThreadReady;
+        }
 
-    /*
-     * 操作线程，完成线程队列和状态转换,注意只有中断处理时，
-     * 当前线程才会处在内核线程辅助队列里(因为还没来得及线程切换)
-     * 当前线程返回就绪队列时，一定要回到相应的队列头
-     * 当线程进出就绪队列时，不需要处理线程的时钟节拍数
-     */
-    uThreadLeaveQueue(uKernelVariable.ThreadAuxiliaryQueue, pThread);
-    if (pThread == uKernelVariable.CurrentThread)
-    {
-        pos = eQuePosHead;
-        newStatus = eThreadRunning;
-    }
-    uThreadEnterQueue(uKernelVariable.ThreadReadyQueue, pThread, pos);
-    pThread->Status = newStatus;
+        /* 将线程从阻塞队列移出 */
+        LeaveBlockedQueue(pContext->Queue, pContext);
 
-    /* 将线程从阻塞队列移出 */
-    LeaveBlockedQueue(pContext->Queue, pContext);
+        /* 设置线程访问资源的结果和错误代码 */
+        *(pContext->State) = state;
+        *(pContext->Error) = error;
 
-    /* 设置线程访问资源的结果和错误代码 */
-    *(pContext->State) = state;
-    *(pContext->Error) = error;
-
-    /* 如果线程是以时限方式访问资源则取消该线程的时限定时器 */
+        /* 如果线程是以时限方式访问资源则取消该线程的时限定时器 */
 #if ((TCLC_IPC_TIMER_ENABLE) && (TCLC_TIMER_ENABLE))
-    if ((pContext->Option & IPC_OPT_TIMED) && (error != IPC_ERR_TIMEO))
-    {
-        KNL_ASSERT((pThread->Timer.Type == eIpcTimer), "");
-        uTimerStop(&(pThread->Timer));
-    }
+        if ((pContext->Option & IPC_OPT_TIMED) && (error != IPC_ERR_TIMEO))
+        {
+            KNL_ASSERT((pThread->Timer.Type == eIpcTimer), "");
+            uTimerStop(&(pThread->Timer));
+        }
 #endif
-
-    /* 设置线程调度请求标记,此标记只在线程环境下有效。
-       在ISR里，当前线程可能在任何队列里，
-       跟当前线程相比较优先级也是无意义的 */
-    /*
-    * 在线程环境下，如果当前线程的优先级已经不再是线程就绪队列的最高优先级，
-    * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
-    */
-    if (pThread->Priority < uKernelVariable.CurrentThread->Priority)
-    {
-        *pHiRP = eTrue;
+        /* 设置线程调度请求标记,此标记只在线程环境下有效。
+         * 在ISR里，当前线程可能在任何队列里，跟当前线程相比较优先级也是无意义的
+         *
+         * 在线程环境下，如果当前线程的优先级已经不再是线程就绪队列的最高优先级，
+         * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
+         */
+        if (pThread->Priority < uKernelVariable.CurrentThread->Priority)
+        {
+            *pHiRP = eTrue;
+        }
     }
 }
 

@@ -40,26 +40,12 @@ static TState SetThreadReady(TThread* pThread, TThreadStatus status, TBool* pHiR
     if (pThread->Status == status)
     {
         /*
-         * 操作线程，完成线程队列和状态转换,注意只有中断处理时，
-         * 当前线程才会处在内核线程辅助队列里(因为还没来得及线程切换)
-         * 当前线程返回就绪队列时，一定要回到相应的队列头
-         * 当线程进出就绪队列时，不需要处理线程的时钟节拍数
+         * 操作线程，完成线程队列和状态转换
+         * 因为是在线程环境下，所以此时pThread一定不是当前线程
          */
         uThreadLeaveQueue(&ThreadAuxiliaryQueue, pThread);
-        if (pThread == uKernelVariable.CurrentThread)
-        {
-            uThreadEnterQueue(&ThreadReadyQueue, pThread, eQuePosHead);
-            pThread->Status = eThreadRunning;
-        }
-        else
-        {
-            uThreadEnterQueue(&ThreadReadyQueue, pThread, eQuePosTail);
-            pThread->Status = eThreadReady;
-        }
-        state = eSuccess;
-        error = THREAD_ERR_NONE;
-
-        /* 因为是在线程环境下，所以此时pThread一定不是当前线程 */
+        uThreadEnterQueue(&ThreadReadyQueue, pThread, eQuePosTail);
+        pThread->Status = eThreadReady;
         if (pThread->Priority < uKernelVariable.CurrentThread->Priority)
         {
             *pHiRP = eTrue;
@@ -72,6 +58,8 @@ static TState SetThreadReady(TThread* pThread, TThreadStatus status, TBool* pHiR
             uTimerStop(&(pThread->Timer));
         }
 #endif
+        state = eSuccess;
+        error = THREAD_ERR_NONE;
     }
 
     *pError = error;
@@ -89,7 +77,8 @@ static TState SetThreadReady(TThread* pThread, TThreadStatus status, TBool* pHiR
  *        (2) eSuccess                                                                           *
  *  说明：                                                                                       *
  *************************************************************************************************/
-static TState SetThreadUnready(TThread* pThread, TThreadStatus status, TTimeTick ticks, TBool* pHiRP, TError* pError)
+static TState SetThreadUnready(TThread* pThread, TThreadStatus status, TTimeTick ticks,
+                               TBool* pHiRP, TError* pError)
 {
     TState state = eFailure;
     TError error = THREAD_ERR_STATUS;
@@ -103,7 +92,6 @@ static TState SetThreadUnready(TThread* pThread, TThreadStatus status, TTimeTick
             uThreadLeaveQueue(&ThreadReadyQueue, pThread);
             uThreadEnterQueue(&ThreadAuxiliaryQueue, pThread, eQuePosTail);
             pThread->Status = status;
-
             *pHiRP = eTrue;
 
             error = THREAD_ERR_NONE;
@@ -450,12 +438,12 @@ void uThreadSchedule(void)
     else
     {
         CpuCancelThreadSwitch();
-		/*
-		 * 在定时器、ASR、Deamon等相关操作时，有可能在当先线程尚未切换上下文的时候，
-		 * 重新放回就绪队列，此时在相关代码里已经将当前线程重新设置成运行状态。
-		 * 而在yeild、tick isr里，有可能将当前线程设置成就绪态，而此时当前线程所在
-		 * 队列又只有唯一一个线程就绪，所以这时需要将当前线程重新设置成运行状态。
-		 */
+        /*
+         * 在定时器、ASR、Deamon等相关操作时，有可能在当先线程尚未切换上下文的时候，
+         * 重新放回就绪队列，此时在相关代码里已经将当前线程重新设置成运行状态。
+         * 而在yeild、tick isr里，有可能将当前线程设置成就绪态，而此时当前线程所在
+         * 队列又只有唯一一个线程就绪，所以这时需要将当前线程重新设置成运行状态。
+         */
         uKernelVariable.CurrentThread->Status = eThreadRunning;
     }
 }
@@ -729,18 +717,24 @@ void uThreadResumeFromISR(TThread* pThread)
             pThread->Status = eThreadReady;
         }
     }
-#if (TCLC_IRQ_ENABLE)
-    else
+    else if (pThread->Status == eThreadRunning)
     {
+#if (TCLC_IRQ_ENABLE)
         if (pThread->Property &THREAD_PROP_ASR)
         {
             pThread->SyncValue = 1U;
         }
-    }
 #endif
+    }
 }
 
 
+/*************************************************************************************************
+ *  功能：将线程自己挂起                                                                         *
+ *  参数：无                                                                                     *
+ *  返回：无                                                                                     *
+ *  说明：函数名的前缀'u'(communal)表示本函数是全局函数                                          *
+ *************************************************************************************************/
 void uThreadSuspendSelf(void)
 {
     /* 操作目标是当前线程 */
