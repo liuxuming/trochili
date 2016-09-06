@@ -91,7 +91,7 @@ static void AppSetupEntry(void)
     TCLM_ASSERT((error == TCLE_IRQ_NONE), "");
 
     /* 初始化事件标记 */
-    state = TclCreateFlags(&LedFlags, TCLP_IPC_DUMMY, &error);
+    state = TclCreateFlags(&LedFlags, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 

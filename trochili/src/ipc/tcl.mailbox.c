@@ -70,7 +70,7 @@ static TState ReceiveMail(TMailBox* pMailbox, void** pMail2, TBool* pHiRP, TErro
     }
     else
     {
-        error = IPC_ERR_INVALID_STATUS;
+        error = IPC_ERR_NORMAL;
         state = eFailure;
     }
 
@@ -123,7 +123,7 @@ static TState SendMail(TMailBox* pMailbox, void** pMail2, TBool* pHiRP, TError* 
     else
     {
         /* 邮箱内已经有邮件了，不能再放入其他邮件 */
-        error = IPC_ERR_INVALID_STATUS;
+        error = IPC_ERR_NORMAL;
         state = eFailure;
     }
 
@@ -163,27 +163,27 @@ TState xMailBoxReceive(TMailBox* pMailbox, TMail* pMail2, TOption option, TTimeT
          */
         state = ReceiveMail(pMailbox, (void**)pMail2, &HiRP, &error);
 
-        /* 如果没有声明不需要调度则进入线程调度处理流程 */
-        if (!(option & IPC_OPT_NO_SCHED))
+        if ((uKernelVariable.State == eThreadState) &&
+                (uKernelVariable.SchedLockTimes == 0U))
         {
-            if ((uKernelVariable.State == eThreadState) &&
-                    (uKernelVariable.SchedLockTimes == 0U))
+            /* 如果当前线程解除了更高优先级线程的阻塞则进行调度。*/
+            if (state == eSuccess)
             {
-                /* 如果当前线程解除了更高优先级线程的阻塞则进行调度。*/
-                if (state == eSuccess)
+                if (HiRP == eTrue)
                 {
-                    if (HiRP == eTrue)
-                    {
-                        uThreadSchedule();
-                    }
+                    uThreadSchedule();
                 }
+            }
+            else
+            {
                 /*
-                 * 如果当前线程不能得到邮件,并且采用的是等待方式,并且内核没有关闭线程调度,
-                 * 那么当前线程必须阻塞在邮箱队列中,并且强制线程调度
-                 */
-                else
+                * 如果当前线程不能得到邮件,并且采用的是等待方式,并且内核没有关闭线程调度,
+                * 那么当前线程必须阻塞在邮箱队列中,并且强制线程调度
+                */
+                if (option & IPC_OPT_WAIT)
                 {
-                    if (option &IPC_OPT_WAIT)
+                    /* 如果当前线程不能被阻塞则函数直接返回 */
+                    if (uKernelVariable.CurrentThread->ACAPI & THREAD_ACAPI_BLOCK)
                     {
                         /* 得到当前线程的IPC上下文结构地址 */
                         pContext = &(uKernelVariable.CurrentThread->IpcContext);
@@ -208,6 +208,10 @@ TState xMailBoxReceive(TMailBox* pMailbox, TMail* pMail2, TOption option, TTimeT
 
                         /* 清除线程IPC阻塞信息 */
                         uIpcCleanContext(pContext);
+                    }
+                    else
+                    {
+                        error = IPC_ERR_ACAPI;
                     }
                 }
             }
@@ -251,28 +255,28 @@ TState xMailBoxSend(TMailBox* pMailbox, TMail* pMail2, TOption option, TTimeTick
          * 所以在此处得到的HiRP标记无任何意义。
          */
         state = SendMail(pMailbox, (void**)pMail2, &HiRP, &error);
-
-        /* 如果没有声明不需要调度则进入线程调度处理流程 */
-        if (!(option &IPC_OPT_NO_SCHED))
+		
+        if ((uKernelVariable.State == eThreadState) &&
+                (uKernelVariable.SchedLockTimes == 0U))
         {
-            if ((uKernelVariable.State == eThreadState) &&
-                    (uKernelVariable.SchedLockTimes == 0U))
+            /* 如果当前线程解除了更高优先级线程的阻塞则进行调度。*/
+            if (state == eSuccess)
             {
-                /* 如果当前线程解除了更高优先级线程的阻塞则进行调度。*/
-                if (state == eSuccess)
+                if (HiRP == eTrue)
                 {
-                    if (HiRP == eTrue)
-                    {
-                        uThreadSchedule();
-                    }
+                    uThreadSchedule();
                 }
+            }
+            else
+            {
                 /*
-                 * 如果当前线程不能发送邮件,并且采用的是等待方式,并且内核没有关闭线程调度,
-                 * 那么当前线程必须阻塞在邮箱队列中,并且强制线程调度
-                 */
-                else
+                * 如果当前线程不能发送邮件,并且采用的是等待方式,并且内核没有关闭线程调度,
+                * 那么当前线程必须阻塞在邮箱队列中,并且强制线程调度
+                */
+                if (option & IPC_OPT_WAIT)
                 {
-                    if (option &IPC_OPT_WAIT)
+                    /* 如果当前线程不能被阻塞则函数直接返回 */
+                    if (uKernelVariable.CurrentThread->ACAPI & THREAD_ACAPI_BLOCK)
                     {
                         /* 发送紧急程度不同的邮件的线程进入不同的阻塞队列 */
                         if (option &IPC_OPT_UARGENT)
@@ -302,6 +306,10 @@ TState xMailBoxSend(TMailBox* pMailbox, TMail* pMail2, TOption option, TTimeTick
 
                         /* 清除线程IPC阻塞信息 */
                         uIpcCleanContext(pContext);
+                    }
+                    else
+                    {
+                        error = IPC_ERR_ACAPI;
                     }
                 }
             }
@@ -531,7 +539,7 @@ TState xMailBoxBroadcast(TMailBox* pMailbox, TMail* pMail2, TError* pError)
         }
         else
         {
-            error = IPC_ERR_INVALID_STATUS;
+            error = IPC_ERR_NORMAL;
         }
     }
 

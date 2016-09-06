@@ -36,7 +36,7 @@ static TState ReleaseSemaphore(TSemaphore* pSemaphore, TBool* pHiRP, TError* pEr
     if (pSemaphore->Value == pSemaphore->LimitedValue)
     {
         state = eFailure;
-        error = IPC_ERR_INVALID_VALUE;
+        error = IPC_ERR_NORMAL;
     }
     else if (pSemaphore->Value == 0U)
     {
@@ -84,7 +84,7 @@ static TState ObtainSemaphore(TSemaphore* pSemaphore, TBool* pHiRP, TError* pErr
 
     if (pSemaphore->Value == 0U)
     {
-        error = IPC_ERR_INVALID_VALUE;
+        error = IPC_ERR_NORMAL;
         state = eFailure;
     }
     else if (pSemaphore->Value == pSemaphore->LimitedValue)
@@ -139,30 +139,31 @@ TState xSemaphoreObtain(TSemaphore* pSemaphore, TOption option, TTimeTick timeo,
     {
         state = ObtainSemaphore(pSemaphore, &HiRP, &error);
 
-        /* 如果没有声明不需要调度则进入线程调度处理流程 */
-        if (!(option & IPC_OPT_NO_SCHED))
+        if ((uKernelVariable.State == eThreadState) &&
+                (uKernelVariable.SchedLockTimes == 0U))
         {
-            if ((uKernelVariable.State == eThreadState) &&
-                    (uKernelVariable.SchedLockTimes == 0U))
+            /* 如果当前线程解除了更高优先级线程的阻塞则进行调度。*/
+            if (state == eSuccess)
             {
-                /* 如果当前线程解除了更高优先级线程的阻塞则进行调度。*/
-                if (state == eSuccess)
+                if (HiRP == eTrue)
                 {
-                    if (HiRP == eTrue)
-                    {
-                        uThreadSchedule();
-                    }
+                    uThreadSchedule();
                 }
-                else
+            }
+            else
+            {
+                /*
+                 * 如果当前线程不能得到信号量，并且采用的是等待方式，
+                 * 那么当前线程必须阻塞在信号量队列中
+                 */
+                if (option & IPC_OPT_WAIT)
                 {
-                    /*
-                     * 如果当前线程不能得到信号量，并且采用的是等待方式，
-                     * 那么当前线程必须阻塞在信号量队列中
-                     */
-                    if (option & IPC_OPT_WAIT)
+                    /* 如果当前线程不能被阻塞则函数直接返回 */
+                    if (uKernelVariable.CurrentThread->ACAPI & THREAD_ACAPI_BLOCK)
                     {
                         /* 得到当前线程的IPC上下文结构地址 */
                         pContext = &(uKernelVariable.CurrentThread->IpcContext);
+
 
                         /* 设定线程正在等待的资源的信息 */
                         uIpcSaveContext(pContext, (void*)pSemaphore, 0U, 0U,
@@ -183,6 +184,10 @@ TState xSemaphoreObtain(TSemaphore* pSemaphore, TOption option, TTimeTick timeo,
 
                         /* 清除线程挂起信息 */
                         uIpcCleanContext(pContext);
+                    }
+                    else
+                    {
+                        error = IPC_ERR_ACAPI;
                     }
                 }
             }
@@ -211,7 +216,6 @@ TState xSemaphoreRelease(TSemaphore* pSemaphore, TOption option, TTimeTick timeo
     TError error = IPC_ERR_UNREADY;
     TBool HiRP = eFalse;
     TIpcContext* pContext;
-
     TReg32 imask;
 
     CpuEnterCritical(&imask);
@@ -225,27 +229,27 @@ TState xSemaphoreRelease(TSemaphore* pSemaphore, TOption option, TTimeTick timeo
          */
         state = ReleaseSemaphore(pSemaphore, &HiRP, &error);
 
-        /* 如果没有声明不需要调度则进入线程调度处理流程 */
-        if (!(option & IPC_OPT_NO_SCHED))
+        if ((uKernelVariable.State == eThreadState) &&
+                (uKernelVariable.SchedLockTimes == 0U))
         {
-            if ((uKernelVariable.State == eThreadState) &&
-                    (uKernelVariable.SchedLockTimes == 0U))
+            /* 如果当前线程解除了更高优先级线程的阻塞则进行调度。*/
+            if (state == eSuccess)
             {
-                /* 如果当前线程解除了更高优先级线程的阻塞则进行调度。*/
-                if (state == eSuccess)
+                if (HiRP == eTrue)
                 {
-                    if (HiRP == eTrue)
-                    {
-                        uThreadSchedule();
-                    }
+                    uThreadSchedule();
                 }
-                else
+            }
+            else
+            {
+                /*
+                 * 如果当前线程不能释放信号量，并且采用的是等待方式，
+                 * 那么当前线程必须阻塞在信号量队列中
+                 */
+                if (option & IPC_OPT_WAIT)
                 {
-                    /*
-                     * 如果当前线程不能释放信号量，并且采用的是等待方式，
-                     * 那么当前线程必须阻塞在信号量队列中
-                     */
-                    if (option & IPC_OPT_WAIT)
+                    /* 如果当前线程不能被阻塞则函数直接返回 */
+                    if (uKernelVariable.CurrentThread->ACAPI & THREAD_ACAPI_BLOCK)
                     {
                         /* 得到当前线程的IPC上下文结构地址 */
                         pContext = &(uKernelVariable.CurrentThread->IpcContext);
@@ -269,6 +273,10 @@ TState xSemaphoreRelease(TSemaphore* pSemaphore, TOption option, TTimeTick timeo
 
                         /* 清除线程挂起信息 */
                         uIpcCleanContext(pContext);
+                    }
+                    else
+                    {
+                        error = IPC_ERR_ACAPI;
                     }
                 }
             }

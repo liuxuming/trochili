@@ -138,7 +138,7 @@ static void ThreadCtrlEntry(TArgument data)
 
         /* 重置后的消息队列需要再次初始化才能使用 */
         state = TclCreateMsgQueue(&LedMQ, (void**)(&LedMsgPool),
-                                MQ_POOL_LEN, TCLP_IPC_DUMMY, &error);
+                                MQ_POOL_LEN, TCLP_IPC_DEFAULT, &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
     }
@@ -153,7 +153,7 @@ static void AppSetupEntry(void)
 
     /* 初始化消息队列 */
     state = TclCreateMsgQueue(&LedMQ, (void**)(&LedMsgPool),
-                            MQ_POOL_LEN, TCLP_IPC_DUMMY, &error);
+                            MQ_POOL_LEN, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 

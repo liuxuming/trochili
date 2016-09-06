@@ -45,7 +45,7 @@ static void KeyAsyncIsrEntry(TArgument data)
     TError error;
 
     /* 非阻塞方式释放信号量 */
-    state = TclReleaseSemaphore((TSemaphore*)data, TCLO_IPC_DUMMY, 0, &error);
+    state = TclReleaseSemaphore((TSemaphore*)data, TCLO_IPC_DEFAULT, 0, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 }
@@ -85,7 +85,7 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化信号量 */
-    state = TclCreateSemaphore(&LedSemaphore, 0U, 1u, TCLP_IPC_DUMMY, &error);
+    state = TclCreateSemaphore(&LedSemaphore, 0U, 1u, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 

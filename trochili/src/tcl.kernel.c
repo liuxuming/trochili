@@ -166,11 +166,11 @@ TState xKernelUnlockSched(void)
         if (uKernelVariable.SchedLockTimes > 0U)
         {
             uKernelVariable.SchedLockTimes--;
-			/* 
-			 * 在关闭调度器的阶段，当前线程有可能使得其他更高优先级的线程就绪，ISR也可能将
-			 * 一些高优先级的线程解除阻塞。所以在打开调度器的时候，需要做一次线程调度检查，
-			 * 和系统从中断返回时类似 
-		 	 */
+            /* 
+             * 在关闭调度器的阶段，当前线程有可能使得其他更高优先级的线程就绪，ISR也可能将
+             * 一些高优先级的线程解除阻塞。所以在打开调度器的时候，需要做一次线程调度检查，
+             * 和系统从中断返回时类似 
+             */
             if (uKernelVariable.SchedLockTimes == 0U)
             {
                 uThreadSchedule();

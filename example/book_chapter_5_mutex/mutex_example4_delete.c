@@ -60,7 +60,7 @@ static void ThreadCtrlEntry(TArgument data)
     while (eTrue)
     {
         /* CTRL线程初始化互斥量，然后提前获得互斥量 */
-        state = TclCreateMutex(&LedMutex, 0, TCLP_IPC_DUMMY, &error);
+        state = TclCreateMutex(&LedMutex, 0, TCLP_IPC_DEFAULT, &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 

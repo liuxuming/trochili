@@ -50,6 +50,8 @@ static void ThreadLedEntry(TArgument data)
 static TBitMask EvbKeyISR(TArgument data)
 {
     TState state;
+    TError error;
+
     TLedMail* pMail = &LedMail;
     static int turn = 0;
     int keyid;
@@ -57,14 +59,26 @@ static TBitMask EvbKeyISR(TArgument data)
     keyid = EvbKeyScan();
     if (keyid)
     {
-        LedMail.Index = keyid;
-        /* 邮件内容交替ON和OFF*/
+        if (turn % 2)
+        {
+            /* Key ISR以非阻塞方式发送紧急邮件 */
+            LedMail.Index = LED1;
+            pMail->Value =  LED_ON;
+            state = TclIsrSendMail(&LedMailbox, (TMail*)(&pMail), TCLO_IPC_UARGENT, &error);
+            TCLM_ASSERT((state == eSuccess), "");
+            TCLM_ASSERT((error == TCLE_IPC_NONE), "");
+        }
+        else
+        {
+            /* Key ISR以非阻塞方式发送普通邮件 */
+            LedMail.Index = LED1;
+            pMail->Value = LED_OFF;
+            state = TclIsrSendMail(&LedMailbox, (TMail*)(&pMail), (TOption)0, &error);
+            TCLM_ASSERT((state == eSuccess), "");
+            TCLM_ASSERT((error == TCLE_IPC_NONE), "");
+        }
         turn++;
-        pMail->Value = (turn % 2) ? LED_ON : LED_OFF;
 
-        /* Key ISR以非阻塞方式发送邮件 */
-        state = TclIsrSendMail(&LedMailbox, (TMail*)(&pMail));
-        TCLM_ASSERT((state == eTrue), "");
     }
 
     return 0;
@@ -82,15 +96,15 @@ static void AppSetupEntry(void)
     TCLM_ASSERT((error == TCLE_IRQ_NONE), "");
 
     /* 初始化邮箱 */
-    state = TclCreateMailBox(&LedMailbox, TCLP_IPC_DUMMY, &error);
+    state = TclCreateMailBox(&LedMailbox, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
     /* 初始化Led设备控制线程 */
     state = TclCreateThread(&ThreadLed,
-                          &ThreadLedEntry, (TArgument)(&LedMailbox),
-                          ThreadLedStack, THREAD_LED_STACK_BYTES,
-                          THREAD_LED_PRIORITY, THREAD_LED_SLICE, &error);
+                            &ThreadLedEntry, (TArgument)(&LedMailbox),
+                            ThreadLedStack, THREAD_LED_STACK_BYTES,
+                            THREAD_LED_PRIORITY, THREAD_LED_SLICE, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 

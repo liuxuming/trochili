@@ -963,11 +963,6 @@
               <FileType>1</FileType>
               <FilePath>..\..\example\book_chapter_10_irq\irq_example3.c</FilePath>
             </File>
-            <File>
-              <FileName>irq_example4.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\example\book_chapter_10_irq\irq_example4.c</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>

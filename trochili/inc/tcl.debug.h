@@ -19,6 +19,7 @@ typedef struct DBGLogDef
 } TDBGLog;
 
 extern void uDebugPanic(const char* pNote, const char* pFile, const char* pFunc, int line);
+extern void uDebugAlarm(const char* pNote);
 
 /* ASSERT∫Í∂®“Â */
 #if (TCLC_ASSERT_ENABLE)

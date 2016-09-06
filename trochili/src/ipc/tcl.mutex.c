@@ -155,7 +155,7 @@ static TState LockMutex(TMutex* pMutex, TBool* pHiRP, TError* pError)
     }
     else
     {
-        error = IPC_ERR_FORBIDDEN;
+        error = IPC_ERR_NORMAL;
         state = eFailure;
     }
 
@@ -176,7 +176,7 @@ static TState LockMutex(TMutex* pMutex, TBool* pHiRP, TError* pError)
 static TState FreeMutex(TMutex* pMutex, TBool* pHiRP, TError* pError)
 {
     TState state = eFailure;
-    TError error = IPC_ERR_FORBIDDEN;
+    TError error = IPC_ERR_NORMAL;
     TIpcContext* pContext;
     TThread* pThread;
 
@@ -236,19 +236,23 @@ TState xMutexFree(TMutex* pMutex, TError* pError)
 
     CpuEnterCritical(&imask);
 
+    /* 只允许在线程代码里调用本函数 */
+    if (uKernelVariable.State != eThreadState)
+    {
+        uKernelVariable.Diagnosis |= KERNEL_DIAG_IRQ_ERROR;
+        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+    }
+
     if (pMutex->Property & IPC_PROP_READY)
     {
-        if (uKernelVariable.State == eThreadState)
+        state = FreeMutex(pMutex, &HiRP, &error);
+        if (uKernelVariable.SchedLockTimes == 0U)
         {
-            state = FreeMutex(pMutex, &HiRP, &error);
-            if (uKernelVariable.SchedLockTimes == 0U)
+            if (state == eSuccess)
             {
-                if (state == eSuccess)
+                if (HiRP == eTrue)
                 {
-                    if (HiRP == eTrue)
-                    {
-                        uThreadSchedule();
-                    }
+                    uThreadSchedule();
                 }
             }
         }
@@ -289,17 +293,25 @@ TState xMutexLock(TMutex* pMutex, TOption option, TTimeTick timeo, TError* pErro
     TReg32 imask;
 
     CpuEnterCritical(&imask);
+
+    /* 只允许在线程代码里调用本函数 */
+    if (uKernelVariable.State != eThreadState)
+    {
+        uKernelVariable.Diagnosis |= KERNEL_DIAG_IRQ_ERROR;
+        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+    }
+
     if (pMutex->Property & IPC_PROP_READY)
     {
-        if (uKernelVariable.State == eThreadState)
+        state = LockMutex(pMutex, &HiRP, &error);
+        if (uKernelVariable.SchedLockTimes == 0U)
         {
-            state = LockMutex(pMutex, &HiRP, &error);
-
-            if (uKernelVariable.SchedLockTimes == 0U)
+            if (state == eFailure)
             {
-                if (state == eFailure)
+                if (option & IPC_OPT_WAIT)
                 {
-                    if (option & IPC_OPT_WAIT)
+                    /* 如果当前线程不能被阻塞则函数直接返回 */
+                    if (uKernelVariable.CurrentThread->ACAPI & THREAD_ACAPI_BLOCK)
                     {
                         /* 得到当前线程的IPC上下文结构地址 */
                         pContext = &(uKernelVariable.CurrentThread->IpcContext);
@@ -322,6 +334,10 @@ TState xMutexLock(TMutex* pMutex, TOption option, TTimeTick timeo, TError* pErro
 
                         /* 清除线程挂起信息 */
                         uIpcCleanContext(pContext);
+                    }
+                    else
+                    {
+                        error = IPC_ERR_ACAPI;
                     }
                 }
             }
@@ -354,29 +370,32 @@ TState xMutexCreate(TMutex* pMutex, TPriority priority, TProperty property, TErr
     CpuEnterCritical(&imask);
 
     /* 只允许在线程代码里调用本函数 */
-    if (uKernelVariable.State == eThreadState)
+    if (uKernelVariable.State != eThreadState)
     {
-        if (!(pMutex->Property & IPC_PROP_READY))
-        {
-            property |= IPC_PROP_READY;
-            pMutex->Property = property;
-            pMutex->Nest = 0U;
-            pMutex->Owner = (TThread*)0;
-            pMutex->Priority = priority;
+        uKernelVariable.Diagnosis |= KERNEL_DIAG_IRQ_ERROR;
+        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+    }
 
-            pMutex->Queue.PrimaryHandle   = (TObjNode*)0;
-            pMutex->Queue.AuxiliaryHandle = (TObjNode*)0;
-            pMutex->Queue.Property        = &(pMutex->Property);
+    if (!(pMutex->Property & IPC_PROP_READY))
+    {
+        property |= IPC_PROP_READY;
+        pMutex->Property = property;
+        pMutex->Nest = 0U;
+        pMutex->Owner = (TThread*)0;
+        pMutex->Priority = priority;
 
-            pMutex->LockNode.Owner = (void*)pMutex;
-            pMutex->LockNode.Data = (TBase32*)(&(pMutex->Priority));
-            pMutex->LockNode.Next = 0;
-            pMutex->LockNode.Prev = 0;
-            pMutex->LockNode.Handle = (TObjNode**)0;
+        pMutex->Queue.PrimaryHandle   = (TObjNode*)0;
+        pMutex->Queue.AuxiliaryHandle = (TObjNode*)0;
+        pMutex->Queue.Property        = &(pMutex->Property);
 
-            error = IPC_ERR_NONE;
-            state = eSuccess;
-        }
+        pMutex->LockNode.Owner = (void*)pMutex;
+        pMutex->LockNode.Data = (TBase32*)(&(pMutex->Priority));
+        pMutex->LockNode.Next = 0;
+        pMutex->LockNode.Prev = 0;
+        pMutex->LockNode.Handle = (TObjNode**)0;
+
+        error = IPC_ERR_NONE;
+        state = eSuccess;
     }
 
     CpuLeaveCritical(imask);
@@ -404,45 +423,45 @@ TState xMutexDelete(TMutex* pMutex, TError* pError)
     CpuEnterCritical(&imask);
 
     /* 只允许在线程代码里调用本函数 */
-    if (uKernelVariable.State == eThreadState)
+    if (uKernelVariable.State != eThreadState)
     {
-        if (pMutex->Property & IPC_PROP_READY)
-        {
-            /* 只有当互斥量被线程占有的情况下，才有可能存在被互斥量阻塞的线程 */
-            if (pMutex->Owner != (TThread*)0)
-            {
-                /* 将互斥量从线程锁队列中移除 */
-                state = RemoveLock(pMutex->Owner, pMutex, &HiRP, &error);
-
-                /* 将阻塞队列上的所有等待线程都释放，所有线程的等待结果都是IPC_ERR_DELETE，
-                 * 而且这些线程的优先级一定不高于互斥量所有者的优先级
-                 */
-                uIpcUnblockAll(&(pMutex->Queue), eFailure, IPC_ERR_DELETE,
-                               (void**)0, &HiRP);
-            }
-
-            /* 清除互斥量对象的全部数据 */
-            memset(pMutex, 0U, sizeof(TMutex));
-
-            /*
-             * 在线程环境下，如果当前线程的优先级已经不再是线程就绪队列的最高优先级，
-             * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
-             */
-            if (//(uKernelVariable.State == eThreadState) &&
-                (uKernelVariable.SchedLockTimes == 0U) &&
-                (HiRP == eTrue))
-            {
-                uThreadSchedule();
-            }
-
-            state = eSuccess;
-            error = IPC_ERR_NONE;
-        }
-        else
-        {
-            error = IPC_ERR_UNREADY;
-        }
+        uKernelVariable.Diagnosis |= KERNEL_DIAG_IRQ_ERROR;
+        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
+
+    if (pMutex->Property & IPC_PROP_READY)
+    {
+        /* 只有当互斥量被线程占有的情况下，才有可能存在被互斥量阻塞的线程 */
+        if (pMutex->Owner != (TThread*)0)
+        {
+            /* 将互斥量从线程锁队列中移除 */
+            state = RemoveLock(pMutex->Owner, pMutex, &HiRP, &error);
+
+            /* 将阻塞队列上的所有等待线程都释放，所有线程的等待结果都是IPC_ERR_DELETE，
+             * 而且这些线程的优先级一定不高于互斥量所有者的优先级
+             */
+            uIpcUnblockAll(&(pMutex->Queue), eFailure, IPC_ERR_DELETE,
+                           (void**)0, &HiRP);
+        }
+
+        /* 清除互斥量对象的全部数据 */
+        memset(pMutex, 0U, sizeof(TMutex));
+
+        /*
+         * 在线程环境下，如果当前线程的优先级已经不再是线程就绪队列的最高优先级，
+         * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
+         */
+        if (/* (uKernelVariable.State == eThreadState) && */
+            (uKernelVariable.SchedLockTimes == 0U) &&
+            (HiRP == eTrue))
+        {
+            uThreadSchedule();
+        }
+
+        state = eSuccess;
+        error = IPC_ERR_NONE;
+    }
+
     CpuLeaveCritical(imask);
 
     *pError = error;
@@ -461,60 +480,61 @@ TState xMutexDelete(TMutex* pMutex, TError* pError)
 TState xMutexReset(TMutex* pMutex, TError* pError)
 {
     TState state = eFailure;
-    TError error = IPC_ERR_FAULT;
+    TError error = IPC_ERR_UNREADY;
     TReg32 imask;
     TBool HiRP = eFalse;
 
     CpuEnterCritical(&imask);
 
     /* 只允许在线程代码里调用本函数 */
-    if (uKernelVariable.State == eThreadState)
+    if (uKernelVariable.State != eThreadState)
     {
-        if (pMutex->Property & IPC_PROP_READY)
-        {
-            /* 只有当互斥量被线程占有的情况下，才有可能存在被互斥量阻塞的线程 */
-            if (pMutex->Owner != (TThread*)0)
-            {
-                /* 将互斥量从线程锁队列中移除 */
-                state = RemoveLock(pMutex->Owner, pMutex, &HiRP, &error);
-
-                /* 将阻塞队列上的所有等待线程都释放，所有线程的等待结果都是IPC_ERR_RESET，
-                   而且这些线程的优先级一定不高于互斥量所有者的优先级 */
-                uIpcUnblockAll(&(pMutex->Queue), eFailure, IPC_ERR_RESET,
-                               (void**)0, &HiRP);
-
-                /* 恢复互斥量属性 */
-                pMutex->Property &= IPC_RESET_MUTEX_PROP;
-            }
-
-            /* 占有该资源的进程为空 */
-            pMutex->Property &= IPC_RESET_MUTEX_PROP;
-            pMutex->Owner = (TThread*)0;
-            pMutex->Nest = 0U;
-            /* pMutex->Priority = keep recent value; */
-            pMutex->LockNode.Owner = (void*)0;
-            pMutex->LockNode.Data = (TBase32*)0;
-
-            /*
-             * 在线程环境下，如果当前线程的优先级已经不再是线程就绪队列的最高优先级，
-             * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
-             */
-            if (//(uKernelVariable.State == eThreadState) &&
-                (uKernelVariable.SchedLockTimes == 0U) &&
-                (HiRP == eTrue))
-            {
-                uThreadSchedule();
-            }
-
-            state = eSuccess;
-            error = IPC_ERR_NONE;
-
-        }
-        else
-        {
-            error = IPC_ERR_UNREADY;
-        }
+        uKernelVariable.Diagnosis |= KERNEL_DIAG_IRQ_ERROR;
+        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
+
+    if (pMutex->Property & IPC_PROP_READY)
+    {
+
+        /* 只有当互斥量被线程占有的情况下，才有可能存在被互斥量阻塞的线程 */
+        if (pMutex->Owner != (TThread*)0)
+        {
+            /* 将互斥量从线程锁队列中移除 */
+            state = RemoveLock(pMutex->Owner, pMutex, &HiRP, &error);
+
+            /* 将阻塞队列上的所有等待线程都释放，所有线程的等待结果都是IPC_ERR_RESET，
+               而且这些线程的优先级一定不高于互斥量所有者的优先级 */
+            uIpcUnblockAll(&(pMutex->Queue), eFailure, IPC_ERR_RESET,
+                           (void**)0, &HiRP);
+
+            /* 恢复互斥量属性 */
+            pMutex->Property &= IPC_RESET_MUTEX_PROP;
+        }
+
+        /* 占有该资源的进程为空 */
+        pMutex->Property &= IPC_RESET_MUTEX_PROP;
+        pMutex->Owner = (TThread*)0;
+        pMutex->Nest = 0U;
+        /* pMutex->Priority = keep recent value; */
+        pMutex->LockNode.Owner = (void*)0;
+        pMutex->LockNode.Data = (TBase32*)0;
+
+        /*
+         * 在线程环境下，如果当前线程的优先级已经不再是线程就绪队列的最高优先级，
+         * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
+         */
+        if (/* (uKernelVariable.State == eThreadState) && */
+            (uKernelVariable.SchedLockTimes == 0U) &&
+            (HiRP == eTrue))
+        {
+            uThreadSchedule();
+        }
+
+        state = eSuccess;
+        error = IPC_ERR_NONE;
+
+    }
+
     CpuLeaveCritical(imask);
 
     *pError = error;
@@ -535,42 +555,39 @@ TState xMutexReset(TMutex* pMutex, TError* pError)
 TState xMutexFlush(TMutex* pMutex, TError* pError)
 {
     TState state = eFailure;
-    TError error = IPC_ERR_FAULT;
+    TError error = IPC_ERR_UNREADY;
     TReg32 imask;
     TBool HiRP = eFalse;
 
     CpuEnterCritical(&imask);
 
     /* 只允许在线程代码里调用本函数 */
-    if (uKernelVariable.State == eThreadState)
+    if (uKernelVariable.State != eThreadState)
     {
-        if (pMutex->Property & IPC_PROP_READY)
-        {
-            if (pMutex->Property & IPC_PROP_READY)
-            {
-                /* 将互斥量阻塞队列上的所有等待线程都释放，所有线程的等待结果都是TCLE_IPC_FLUSH  */
-                uIpcUnblockAll(&(pMutex->Queue), eFailure, IPC_ERR_FLUSH, (void**)0, &HiRP);
+        uKernelVariable.Diagnosis |= KERNEL_DIAG_IRQ_ERROR;
+        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+    }
 
-                state = eSuccess;
-                error = IPC_ERR_NONE;
+    if (pMutex->Property & IPC_PROP_READY)
+    {
+        /* 将互斥量阻塞队列上的所有等待线程都释放，所有线程的等待结果都是TCLE_IPC_FLUSH  */
+        uIpcUnblockAll(&(pMutex->Queue), eFailure, IPC_ERR_FLUSH, (void**)0, &HiRP);
 
-                /*
-                 * 在线程环境下，如果当前线程的优先级已经不再是线程就绪队列的最高优先级，
-                 * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
-                 */
-                if (//(uKernelVariable.State == eThreadState) &&
-                    (uKernelVariable.SchedLockTimes == 0U) &&
-                    (HiRP == eTrue))
-                {
-                    uThreadSchedule();
-                }
-            }
-        }
-        else
+        state = eSuccess;
+        error = IPC_ERR_NONE;
+
+        /*
+         * 在线程环境下，如果当前线程的优先级已经不再是线程就绪队列的最高优先级，
+         * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
+         */
+        if (/* (uKernelVariable.State == eThreadState) && */
+            (uKernelVariable.SchedLockTimes == 0U) &&
+            (HiRP == eTrue))
         {
-            error = IPC_ERR_UNREADY;
+            uThreadSchedule();
         }
     }
+
     CpuLeaveCritical(imask);
 
     *pError = error;

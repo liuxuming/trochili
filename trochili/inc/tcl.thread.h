@@ -18,6 +18,7 @@
 #define THREAD_DIAG_STACK_ALARM       (TBitMask)(0x1<<1)  /* 线程栈告警                              */
 #define THREAD_DIAG_INVALID_EXIT      (TBitMask)(0x1<<2)  /* 线程非法退出                            */
 #define THREAD_DIAG_INVALID_STATE     (TBitMask)(0x1<<3)  /* 线程操作失败                            */
+#define THREAD_DIAG_IPC_FORBIDDEN     (TBitMask)(0x1<<4)  /* 线程操作禁止                            */
 
 /* 线程调用错误码定义                 */
 #define THREAD_ERR_NONE               (TError)(0x0)
@@ -29,19 +30,19 @@
 
 
 /* 线程属性定义                       */
-#define THREAD_PROP_NONE              (TProperty)(0x0)    /*                              */
+#define THREAD_PROP_NONE              (TProperty)(0x0)
 #define THREAD_PROP_READY             (TProperty)(0x1<<0) /* 线程初始化完毕标记位,
                                                              本成员在结构体中的位置跟汇编代码相关    */
-#define THREAD_PROP_PRIORITY_FIXED    (TProperty)(0x1<<1) /* 线程优先级安全标记                               */
-#define THREAD_PROP_PRIORITY_SAFE     (TProperty)(0x1<<2) /* 线程优先级安全标记                               */
-#define THREAD_PROP_CLEAN_STACK       (TProperty)(0x1<<3) /* 主动清空线程栈空间                               */
-#define THREAD_PROP_DAEMON            (TProperty)(0x1<<4) /* 守护线程标记位 */
-#define THREAD_PROP_ASR               (TProperty)(0x1<<5) /* 用户中断处理线程标记位 */
-#define THREAD_PROP_ROOT              (TProperty)(0x1<<6) /* ROOT线程标记位 */
+#define THREAD_PROP_PRIORITY_FIXED    (TProperty)(0x1<<1) /* 线程优先级锁定标记                      */
+#define THREAD_PROP_PRIORITY_SAFE     (TProperty)(0x1<<2) /* 线程优先级安全标记                      */
+#define THREAD_PROP_CLEAN_STACK       (TProperty)(0x1<<3) /* 主动清空线程栈空间                      */
+#define THREAD_PROP_DAEMON            (TProperty)(0x1<<4) /* 守护线程标记位                          */
+#define THREAD_PROP_ASR               (TProperty)(0x1<<5) /* 用户中断处理线程标记位                  */
+#define THREAD_PROP_ROOT              (TProperty)(0x1<<6) /* ROOT线程标记位                          */
 
 /* 线程权限控制，各种线程API操作时的许可位 */
 #define THREAD_ACAPI_NONE             (TBitMask)(0x0)
-#define THREAD_ACAPI_DEINIT           (TBitMask)(0x1<<0)
+#define THREAD_ACAPI_DELETE           (TBitMask)(0x1<<0)
 #define THREAD_ACAPI_ACTIVATE         (TBitMask)(0x1<<1)
 #define THREAD_ACAPI_DEACTIVATE       (TBitMask)(0x1<<2)
 #define THREAD_ACAPI_SUSPEND          (TBitMask)(0x1<<3)
@@ -52,8 +53,9 @@
 #define THREAD_ACAPI_SET_PRIORITY     (TBitMask)(0x1<<8)
 #define THREAD_ACAPI_SET_SLICE        (TBitMask)(0x1<<9)
 #define THREAD_ACAPI_UNBLOCK          (TBitMask)(0x1<<10)
+#define THREAD_ACAPI_BLOCK            (TBitMask)(0x1<<11) /* 和IPC阻塞有关 */
 #define THREAD_ACAPI_ALL \
-    (THREAD_ACAPI_DEINIT|\
+    (THREAD_ACAPI_DELETE|\
     THREAD_ACAPI_ACTIVATE|\
     THREAD_ACAPI_DEACTIVATE|\
     THREAD_ACAPI_SUSPEND|\
@@ -63,22 +65,19 @@
     THREAD_ACAPI_SET_PRIORITY|\
     THREAD_ACAPI_SET_SLICE|\
     THREAD_ACAPI_UNBLOCK|\
+    THREAD_ACAPI_BLOCK|\
     THREAD_ACAPI_YIELD)
-#define THREAD_ACAPI_ASR \
-    (THREAD_ACAPI_DEINIT | \
-    THREAD_ACAPI_DEACTIVATE |\
-    THREAD_ACAPI_SUSPEND |\
-    THREAD_ACAPI_RESUME)
+#define THREAD_ACAPI_ASR (THREAD_ACAPI_DELETE | THREAD_ACAPI_DEACTIVATE)
 
 /* 线程状态定义  */
 enum ThreadStausdef
 {
-    eThreadRunning   = (TBitMask)(0x1<<0),     /* 运行                                             */
-    eThreadReady     = (TBitMask)(0x1<<1),     /* 就绪                                             */
-    eThreadDormant   = (TBitMask)(0x1<<2),     /* 休眠                                             */
-    eThreadBlocked   = (TBitMask)(0x1<<3),     /* 阻塞                                             */
-    eThreadDelayed   = (TBitMask)(0x1<<4),     /* 延时挂起                                         */
-    eThreadSuspended = (TBitMask)(0x1<<5),     /* 就绪挂起                                         */
+    eThreadRunning   = (TBitMask)(0x1<<0),     /* 运行                                           */
+    eThreadReady     = (TBitMask)(0x1<<1),     /* 就绪                                           */
+    eThreadDormant   = (TBitMask)(0x1<<2),     /* 休眠                                           */
+    eThreadBlocked   = (TBitMask)(0x1<<3),     /* 阻塞                                           */
+    eThreadDelayed   = (TBitMask)(0x1<<4),     /* 延时挂起                                       */
+    eThreadSuspended = (TBitMask)(0x1<<5),     /* 就绪挂起                                       */
 };
 typedef enum ThreadStausdef TThreadStatus;
 
@@ -90,7 +89,6 @@ struct ThreadQueueDef
 {
     TBitMask   PriorityMask;                 /* 队列中就绪优先级掩码                             */
     TObjNode*  Handle[TCLC_PRIORITY_NUM];    /* 队列中线程分队列                                 */
-	//TBase32    Number[TCLC_PRIORITY_NUM];    /* 队列中线程分队列中的线程数目                     */
 };
 typedef struct ThreadQueueDef TThreadQueue;
 
@@ -142,7 +140,7 @@ typedef struct ThreadDef TThread;
 
 
 extern TThreadQueue uThreadAuxiliaryQueue;   /* 内核线程辅助队列                                 */
-extern TThreadQueue SetThreadReadyQueue;    /* 内核进就绪队列结                                 */
+extern TThreadQueue SetThreadReadyQueue;     /* 内核进就绪队列结                                 */
 
 extern void uThreadLeaveQueue(TThreadQueue* pQueue, TThread* pThread);
 extern void uThreadEnterQueue(TThreadQueue* pQueue, TThread* pThread, TQueuePos pos);
@@ -151,30 +149,30 @@ extern void uThreadTickISR(void);
 extern void uThreadModuleInit(void);
 extern void uThreadResumeFromISR(TThread* pThread);
 extern void uThreadSuspendSelf(void);
-extern void uThreadCreate(TThread* pThread,
+extern void uThreadCreate(TThread*    pThread,
                         TThreadStatus status,
-                        TProperty property,
-                        TBitMask acapi,
-                        TThreadEntry pEntry,
-                        TArgument argument,
-                        void* pStack,
-                        TBase32 bytes,
-                        TPriority priority,
-                        TTimeTick ticks);
+                        TProperty     property,
+                        TBitMask      acapi,
+                        TThreadEntry  pEntry,
+                        TArgument     argument,
+                        void*         pStack,
+                        TBase32       bytes,
+                        TPriority     priority,
+                        TTimeTick     ticks);
 extern TState uThreadDelete(TThread* pThread, TError* pError);
 extern TState uThreadSetPriority(TThread* pThread, TPriority priority,
                                  TBool flag, TBool* pHiRP, TError* pError);
 extern TState xThreadCreate(TThread* pThread,
-                          TThreadStatus status,
-                          TProperty     property,
-                          TBitMask      acapi,
-                          TThreadEntry  pEntry,
-                          TBase32         argument,
-                          void*         pStack,
-                          TBase32         bytes,
-                          TPriority     priority,
-                          TTimeTick     ticks,
-                          TError*       pError);
+                        TThreadStatus status,
+                        TProperty     property,
+                        TBitMask      acapi,
+                        TThreadEntry  pEntry,
+                        TBase32       argument,
+                        void*         pStack,
+                        TBase32       bytes,
+                        TPriority     priority,
+                        TTimeTick     ticks,
+                        TError*       pError);
 extern TState xThreadDelete(TThread* pThread, TError* pError);
 extern TState xThreadActivate(TThread* pThread, TError* pError);
 extern TState xThreadDeactivate(TThread* pThread, TError* pError);

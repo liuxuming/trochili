@@ -45,7 +45,7 @@ static void ThreadLed1Entry(TArgument arg)
         EvbLedControl(LED1, LED_OFF);
 
         /* Led线程1以非阻塞方式释放信号量2 */
-        state = TclReleaseSemaphore(&LedSemaphore2, TCLO_IPC_DUMMY,
+        state = TclReleaseSemaphore(&LedSemaphore2, TCLO_IPC_DEFAULT,
                                     0, &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
@@ -72,7 +72,7 @@ static void ThreadLed2Entry(TArgument arg)
         EvbLedControl(LED2, LED_OFF);
 
         /* Led线程2以非阻塞方式释放信号量1 */
-        state =TclReleaseSemaphore(&LedSemaphore1, TCLO_IPC_DUMMY,
+        state =TclReleaseSemaphore(&LedSemaphore1, TCLO_IPC_DEFAULT,
                                    0, &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
@@ -93,12 +93,12 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化信号量1 */
-    state = TclCreateSemaphore(&LedSemaphore1, 0, 1, TCLP_IPC_DUMMY, &error);
+    state = TclCreateSemaphore(&LedSemaphore1, 0, 1, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
     /* 初始化信号量2 */
-    state = TclCreateSemaphore(&LedSemaphore2, 0, 1, TCLP_IPC_DUMMY, &error);
+    state = TclCreateSemaphore(&LedSemaphore2, 0, 1, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 

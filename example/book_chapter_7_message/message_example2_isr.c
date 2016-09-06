@@ -54,6 +54,8 @@ static void ThreadLedEntry(TArgument data)
 static TBitMask EvbKeyISR(TArgument data)
 {
     TState state;
+	TError error;
+	
     TLedMsg* pMsg = &LedMsg;
     static TBase32 turn = 0;
 
@@ -64,7 +66,7 @@ static TBitMask EvbKeyISR(TArgument data)
             /* KeyISR发送Led点亮的消息 */
             pMsg->Index = LED1;
             pMsg->Value = LED_ON;
-            state = TclIsrSendMessage(&LedMQ, (TMessage*)(&pMsg));
+            state = TclIsrSendMessage(&LedMQ, (TMessage*)(&pMsg), TCLO_IPC_UARGENT, &error);
             TCLM_ASSERT((state == eSuccess), "");
         }
         else
@@ -72,7 +74,7 @@ static TBitMask EvbKeyISR(TArgument data)
             /* KeyISR发送Led熄灭的消息 */
             pMsg->Index = LED1;
             pMsg->Value = LED_OFF;
-            state = TclIsrSendMessage(&LedMQ, (TMessage*)(&pMsg));
+            state = TclIsrSendMessage(&LedMQ, (TMessage*)(&pMsg), (TOption)0, &error);
             TCLM_ASSERT((state == eSuccess), "");
         }
         turn++;
@@ -95,7 +97,7 @@ static void AppSetupEntry(void)
 
     /* 初始化消息队列 */
     state = TclCreateMsgQueue(&LedMQ, (void**)(&LedMsgPool),
-                            MQ_POOL_LEN, TCLP_IPC_DUMMY, &error);
+                            MQ_POOL_LEN, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 

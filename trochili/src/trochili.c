@@ -517,7 +517,7 @@ TState TclObtainSemaphore(TSemaphore* pSemaphore, TOption option, TTimeTick time
     KNL_ASSERT((pError != (TError*)0), "");
 
     /* 调整操作选项，屏蔽不需要支持的选项 */
-    option &= IPC_VALID_SEMAPHORE_OPT;
+    option &= IPC_VALID_SEMAPHORE_OPTION;
     state = xSemaphoreObtain(pSemaphore, option, timeo, pError);
 
     return state;
@@ -541,7 +541,7 @@ TState TclReleaseSemaphore(TSemaphore* pSemaphore, TOption option, TTimeTick tim
     KNL_ASSERT((pError != (TError*)0), "");
 
     /* 调整操作选项，屏蔽不需要支持的选项 */
-    option &= IPC_VALID_SEMAPHORE_OPT;
+    option &= IPC_VALID_SEMAPHORE_OPTION;
     state = xSemaphoreRelease(pSemaphore, option, timeo, pError);
     return state;
 }
@@ -550,17 +550,18 @@ TState TclReleaseSemaphore(TSemaphore* pSemaphore, TOption option, TTimeTick tim
 /*************************************************************************************************
  *  功能: ISR释放信号量                                                                          *
  *  参数: (1) pSemaphore 信号量结构地址                                                          *
+ *        (2) pError     详细调用结果                                                            *
  *  返回: (1) eSuccess   操作成功                                                                *
  *        (2) eFailure   操作失败                                                                *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState TclIsrReleaseSemaphore(TSemaphore* pSemaphore)
+TState TclIsrReleaseSemaphore(TSemaphore* pSemaphore, TError* pError)
 {
     TState state;
-    TError error;
     KNL_ASSERT((pSemaphore != (TSemaphore*)0), "");
+    KNL_ASSERT((pError != (TError*)0), "");
 
-    state = xSemaphoreRelease(pSemaphore, IPC_OPT_NO_SCHED, (TTimeTick)0, &error);
+    state = xSemaphoreRelease(pSemaphore, (TOption)0, (TTimeTick)0, pError);
     return state;
 }
 
@@ -683,7 +684,7 @@ TState TclLockMutex(TMutex* pMutex, TOption option, TTimeTick timeo, TError* pEr
     KNL_ASSERT((pError != (TError*)0), "");
 
     /* 调整操作选项，屏蔽不需要支持的选项 */
-    option &= IPC_VALID_MUTEX_OPT;
+    option &= IPC_VALID_MUTEX_OPTION;
     state = xMutexLock(pMutex, option, timeo, pError);
     return state;
 }
@@ -811,7 +812,7 @@ TState TclReceiveMail(TMailBox* pMailbox, TMail* pMail2, TOption option, TTimeTi
     KNL_ASSERT((pError != (TError*)0), "");
 
     /* 调整操作选项，屏蔽不需要支持的选项 */
-    option &= IPC_VALID_MBOX_OPT;
+    option &= IPC_VALID_MBOX_OPTION;
     state = xMailBoxReceive(pMailbox, pMail2, option, timeo, pError);
     return state;
 }
@@ -838,7 +839,7 @@ TState TclSendMail(TMailBox* pMailbox, TMail* pMail2, TOption option,
     KNL_ASSERT((pError != (TError*)0), "");
 
     /* 调整操作选项，屏蔽不需要支持的选项 */
-    option &= IPC_VALID_MBOX_OPT;
+    option &= IPC_VALID_MBOX_OPTION;
     state = xMailBoxSend(pMailbox, pMail2, option, timeo, pError);
 
     return state;
@@ -849,18 +850,22 @@ TState TclSendMail(TMailBox* pMailbox, TMail* pMail2, TOption option,
  *  功能：ISR向邮箱发送邮件                                                                      *
  *  参数: (1) pMailbox 邮箱结构地址                                                              *
  *        (2) pMail2   保存邮件结构地址的指针变量                                                *
+ *        (3) option   访问邮箱的模式                                                            *
+ *        (4) pError   详细调用结果                                                              *
  *  返回: (1) eFailure 操作失败                                                                  *
  *        (2) eSuccess 操作成功                                                                  *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState TclIsrSendMail(TMailBox* pMailbox, TMail* pMail2)
+TState TclIsrSendMail(TMailBox* pMailbox, TMail* pMail2, TOption option, TError* pError)
 {
     TState state;
-    TError error;
     KNL_ASSERT((pMailbox != (TMailBox*)0), "");
     KNL_ASSERT((pMail2 != (TMail*)0), "");
+    KNL_ASSERT((pError != (TError*)0), "");
 
-    state = xMailBoxSend(pMailbox, pMail2, IPC_OPT_NO_SCHED, (TTimeTick)0, &error);
+    /* 调整操作选项，屏蔽不需要支持的选项 */
+    option &= IPC_OPT_UARGENT;
+    state = xMailBoxSend(pMailbox, pMail2, option, (TTimeTick)0, pError);
     return state;
 }
 
@@ -974,7 +979,7 @@ TState TclReceiveMessage(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option, TT
     KNL_ASSERT((pError != (TError*)0), "");
 
     /* 调整操作选项，屏蔽不需要支持的选项 */
-    option &= IPC_VALID_MSGQ_OPT;
+    option &= IPC_VALID_MSGQ_OPTION;
     state = xMQReceive(pMsgQue, pMsg2, option, timeo, pError);
     return state;
 }
@@ -1000,7 +1005,7 @@ TState TclSendMessage(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option, TTime
     KNL_ASSERT((pError != (TError*)0), "");
 
     /* 调整操作选项，屏蔽不需要支持的选项 */
-    option &= IPC_VALID_MSGQ_OPT;
+    option &= IPC_VALID_MSGQ_OPTION;
     state = xMQSend(pMsgQue, pMsg2, option, timeo, pError);
     return state;
 }
@@ -1010,18 +1015,22 @@ TState TclSendMessage(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option, TTime
  *  功能: 用于ISR向消息队列中发送消息                                                            *
  *  参数: (1) pMsgQue  消息队列结构地址                                                          *
  *        (2) pMsg2    保存消息结构地址的指针变量                                                *
+ *        (3) option   访问邮箱的模式                                                            *
+ *        (4) pError   详细调用结果                                                              *
  *  返回: (1) eFailure 操作失败                                                                  *
  *        (2) eSuccess 操作成功                                                                  *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState TclIsrSendMessage(TMsgQueue* pMsgQue, TMessage* pMsg2)
+TState TclIsrSendMessage(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option, TError* pError)
 {
     TState state;
-    TError error;
     KNL_ASSERT((pMsgQue != (TMsgQueue*)0), "");
     KNL_ASSERT((pMsg2 != (TMessage*)0), "");
+    KNL_ASSERT((pError != (TError*)0), "");
 
-    state = xMQSend(pMsgQue, pMsg2, IPC_OPT_NO_SCHED, (TTimeTick)0, &error);
+    /* 调整操作选项，屏蔽不需要支持的选项 */
+    option &= IPC_OPT_UARGENT;
+    state = xMQSend(pMsgQue, pMsg2, option, (TTimeTick)0, pError);
     return state;
 }
 
@@ -1189,7 +1198,7 @@ TState TclReceiveFlags(TFlags* pFlags, TBitMask* pPattern, TOption option, TTime
     KNL_ASSERT((pError != (TError*)0), "");
 
     /* 调整操作选项，屏蔽不需要支持的选项 */
-    option &= IPC_VALID_FLAG_OPT;
+    option &= IPC_VALID_FLAG_OPTION;
     state = xFlagsReceive(pFlags, pPattern, option, timeo, pError);
     return state;
 }
@@ -1256,6 +1265,8 @@ TState TclCreateTimer(TTimer* pTimer, TProperty property, TTimeTick ticks,
     TState state;
     KNL_ASSERT((pTimer != (TTimer*)0), "");
     KNL_ASSERT((pRoutine != (TTimerRoutine)0), "");
+    KNL_ASSERT((ticks > 0U), "");
+    KNL_ASSERT((pError != (TError*)0), "");
 
     state = xTimerCreate(pTimer, property, ticks, pRoutine, data, pError);
     return state;
@@ -1294,6 +1305,7 @@ TState TclStartTimer(TTimer* pTimer, TTimeTick lagticks, TError* pError)
 {
     TState state;
     KNL_ASSERT((pTimer != (TTimer*)0), "");
+    KNL_ASSERT((pError != (TError*)0), "");
 
     state = xTimerStart(pTimer, lagticks, pError);
     return state;
@@ -1312,6 +1324,7 @@ TState TclStopTimer(TTimer* pTimer, TError* pError)
 {
     TState state;
     KNL_ASSERT((pTimer != (TTimer*)0), "");
+    KNL_ASSERT((pError != (TError*)0), "");
 
     state = xTimerStop(pTimer, pError);
     return state;
@@ -1330,6 +1343,7 @@ TState TclConfigTimer(TTimer* pTimer, TTimeTick ticks, TError* pError)
     TState state;
     KNL_ASSERT((pTimer != (TTimer*)0), "");
     KNL_ASSERT((ticks > 0U), "");
+    KNL_ASSERT((pError != (TError*)0), "");
 
     state = xTimerConfig(pTimer, ticks, pError);
     return state;
@@ -1478,7 +1492,7 @@ TState TclFreePoolMemory(TMemPool* pPool, void* pAddr, TError* pError)
  *        (2) eFailure  操作失败                                                                 *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState TclCreateMemBuddy(TMemBuddy* pBuddy, TChar* pAddr, TBase32 pages, TBase32 pagesize, TError* pError)
+TState TclCreateMemoryBuddy(TMemBuddy* pBuddy, TChar* pAddr, TBase32 pages, TBase32 pagesize, TError* pError)
 {
     TState state;
     KNL_ASSERT((pBuddy != (TMemBuddy*)0), "");
@@ -1501,7 +1515,7 @@ TState TclCreateMemBuddy(TMemBuddy* pBuddy, TChar* pAddr, TBase32 pages, TBase32
  *        (2) eFailure   操作失败                                                                *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState TclDeleteMemBuddy(TMemBuddy* pBuddy, TError* pError)
+TState TclDeleteMemoryBuddy(TMemBuddy* pBuddy, TError* pError)
 {
     TState state;
     KNL_ASSERT((pBuddy != (TMemBuddy*)0), "");
@@ -1522,7 +1536,7 @@ TState TclDeleteMemBuddy(TMemBuddy* pBuddy, TError* pError)
  *        (2) eFailure  操作失败                                                                 *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState TclMallocBuddyMem(TMemBuddy* pBuddy, int len, void** pAddr2, TError* pError)
+TState TclMallocBuddyMemory(TMemBuddy* pBuddy, int len, void** pAddr2, TError* pError)
 {
     TState state;
     KNL_ASSERT((pBuddy != (TMemBuddy*)0), "");
@@ -1544,7 +1558,7 @@ TState TclMallocBuddyMem(TMemBuddy* pBuddy, int len, void** pAddr2, TError* pErr
  *        (2) eFailure  操作失败                                                                 *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState TclFreeBuddyMem(TMemBuddy* pBuddy,  void* pAddr, TError* pError)
+TState TclFreeBuddyMemory(TMemBuddy* pBuddy,  void* pAddr, TError* pError)
 {
     TState state;
     KNL_ASSERT((pBuddy != (TMemBuddy*)0), "");

@@ -49,11 +49,14 @@ static void ThreadLedEntry(TArgument data)
 static TBitMask EvbKeyISR(TArgument data)
 {
     TState state;
+	TError error;
+	
     if (EvbKeyScan())
     {
         /* ISR以非阻塞方式(必须)释放信号量 */
-        state = TclIsrReleaseSemaphore(&LedSemaphore);
+        state = TclIsrReleaseSemaphore(&LedSemaphore, &error);
         TCLM_ASSERT((state == eSuccess), "");
+		TCLM_ASSERT((error == TCLE_IRQ_NONE), "");
     }
     return TCLR_IRQ_DONE;
 }
@@ -70,7 +73,7 @@ static void AppSetupEntry(void)
     TCLM_ASSERT((error == TCLE_IRQ_NONE), "");
 
     /* 初始化信号量 */
-    state = TclCreateSemaphore(&LedSemaphore, 0, 1, TCLP_IPC_DUMMY, &error);
+    state = TclCreateSemaphore(&LedSemaphore, 0, 1, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 

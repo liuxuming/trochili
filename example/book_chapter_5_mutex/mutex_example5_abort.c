@@ -144,7 +144,7 @@ static void AppSetupEntry(void)
     TError error;
 
     /* ≥ı ºªØª•≥‚¡ø */
-    state = TclCreateMutex(&LedMutex, LED_MUTEX_PRIORITY, TCLP_IPC_DUMMY, &error);
+    state = TclCreateMutex(&LedMutex, LED_MUTEX_PRIORITY, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 

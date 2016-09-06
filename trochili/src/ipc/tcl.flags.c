@@ -29,7 +29,7 @@
 static TState ReceiveFlags(TFlags* pFlags, TBitMask* pPattern, TOption option, TError* pError)
 {
     TState state = eFailure;
-	TError error = IPC_ERR_FLAGS;
+    TError error = IPC_ERR_NORMAL;
     TBitMask match;
     TBitMask pattern;
 
@@ -49,7 +49,7 @@ static TState ReceiveFlags(TFlags* pFlags, TBitMask* pPattern, TOption option, T
         state = eSuccess;
     }
 
-	*pError = error;
+    *pError = error;
     return state;
 }
 
@@ -67,7 +67,7 @@ static TState ReceiveFlags(TFlags* pFlags, TBitMask* pPattern, TOption option, T
 static TState SendFlags(TFlags* pFlags, TBitMask pattern, TBool* pHiRP, TError* pError)
 {
     TState state = eError;
-    TError error = IPC_ERR_FLAGS;
+    TError error = IPC_ERR_NORMAL;
     TObjNode* pHead;
     TObjNode* pTail;
     TObjNode* pCurrent;
@@ -87,7 +87,7 @@ static TState SendFlags(TFlags* pFlags, TBitMask pattern, TBool* pHiRP, TError* 
         pFlags->Value |= pattern;
 
         /* 事件标记是否有线程在等待事件的发生 */
-		if (pFlags->Property & IPC_PROP_PRIMQ_AVAIL)
+        if (pFlags->Property & IPC_PROP_PRIMQ_AVAIL)
         {
             /* 开始遍历事件组阻塞队列 */
             pHead = pFlags->Queue.PrimaryHandle;
@@ -161,23 +161,23 @@ TState xFlagsReceive(TFlags* pFlags, TBitMask* pPattern, TOption option, TTimeTi
          */
         state = ReceiveFlags(pFlags, pPattern, option, &error);
 
-        /* 如果没有声明不需要调度则进入线程调度处理流程 */
-        if (!(option & IPC_OPT_NO_SCHED))
+        /*
+         * 因为事件标记线程队列中不会存在事件发送队列，所以不需要判断是否有新线程要调度，
+         * 但是要处理是否需要将事件消耗的问题
+         */
+        if ((uKernelVariable.State == eThreadState) &&
+                (uKernelVariable.SchedLockTimes == 0U))
         {
             /*
-             * 因为事件标记线程队列中不会存在事件发送队列，所以不需要判断是否有新线程要调度，
-             * 但是要处理是否需要将事件消耗的问题
+             * 如果当前线程不能得到事件，并且采用的是等待方式，
+             * 那么当前线程必须阻塞在事件标记的等待队列中，并且强制线程调度
              */
-            if ((uKernelVariable.State == eThreadState) &&
-                    (uKernelVariable.SchedLockTimes == 0U))
+            if (state == eFailure)
             {
-                /*
-                 * 如果当前线程不能得到事件，并且采用的是等待方式，
-                 * 那么当前线程必须阻塞在事件标记的等待队列中，并且强制线程调度
-                 */
-                if (state == eFailure)
+                if (option & IPC_OPT_WAIT)
                 {
-                    if (option & IPC_OPT_WAIT)
+                    /* 如果当前线程不能被阻塞则函数直接返回 */
+                    if (uKernelVariable.CurrentThread->ACAPI & THREAD_ACAPI_BLOCK)
                     {
                         /* 得到当前线程的IPC上下文结构地址 */
                         pContext = &(uKernelVariable.CurrentThread->IpcContext);
@@ -201,6 +201,10 @@ TState xFlagsReceive(TFlags* pFlags, TBitMask* pPattern, TOption option, TTimeTi
 
                         /* 清除线程IPC阻塞信息 */
                         uIpcCleanContext(pContext);
+                    }
+                    else
+                    {
+                        error = IPC_ERR_ACAPI;
                     }
                 }
             }

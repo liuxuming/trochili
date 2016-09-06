@@ -69,7 +69,7 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化信号量 */
-    state = TclCreateSemaphore(&UartSemaphore, 1, 1, TCLP_IPC_DUMMY, &error);
+    state = TclCreateSemaphore(&UartSemaphore, 1, 1, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 

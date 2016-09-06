@@ -33,7 +33,7 @@
 #define TCLM_SEC2TICKS(sec)     ((sec)* TCLC_TIME_TICK_RATE)
 #define TCLM_MLS2TICKS(ms)      (((ms)* TCLC_TIME_TICK_RATE) / 1000)
 
-extern void TclStartKernel(TUserEntry       pUserEntry,
+extern void TclStartKernel(TUserEntry pUserEntry,
                            TCpuSetupEntry   pCpuEntry,
                            TBoardSetupEntry pBoardEntry,
                            TTraceEntry      pTraceEntry);
@@ -79,7 +79,7 @@ extern TState TclUnDelayThread(TThread* pThread, TError* pError);
 #if (TCLC_TIMER_ENABLE)
 
 /* 用户定时器属性定义，用户程序使用 */
-#define TCLP_TIMER_DUMMY           (TIMER_PROP_NONE)
+#define TCLP_TIMER_DEFAULT         (TIMER_PROP_DEAULT)
 #define TCLP_TIMER_PERIODIC        (TIMER_PROP_PERIODIC)
 #define TCLP_TIMER_URGENT          (TIMER_PROP_URGENT)
 
@@ -130,24 +130,22 @@ extern TState TclCancelIRQ(TIrq* pIRQ, TError* pError);
 #define TCLE_IPC_NONE            (IPC_ERR_NONE)
 #define TCLE_IPC_FAULT           (IPC_ERR_FAULT)
 #define TCLE_IPC_UNREADY         (IPC_ERR_UNREADY)
+#define TCLE_IPC_NORAML          (IPC_ERR_NORMAL)
 #define TCLE_IPC_TIMEO           (IPC_ERR_TIMEO)
 #define TCLE_IPC_DELETE          (IPC_ERR_DELETE)
 #define TCLE_IPC_RESET           (IPC_ERR_RESET)
 #define TCLE_IPC_FLUSH           (IPC_ERR_FLUSH)
 #define TCLE_IPC_ABORT           (IPC_ERR_ABORT)
-#define TCLE_IPC_FORBIDDEN       (IPC_ERR_FORBIDDEN)
-#define TCLE_IPC_INVALID_VALUE   (IPC_ERR_INVALID_VALUE)
-#define TCLE_IPC_INVALID_STATUS  (IPC_ERR_INVALID_STATUS)
-#define TCLE_IPC_FLAGS           (IPC_ERR_FLAGS)
+#define TCLE_IPC_ACAPI           (IPC_ERR_ACAPI)
 
 /* IPC对象属性，用户程序使用 */
-#define TCLP_IPC_DUMMY           (IPC_PROPERTY)
+#define TCLP_IPC_DEFAULT         (IPC_PROP_DEFAULT)
 #define TCLP_IPC_PREEMP_AUXIQ    (IPC_PROP_PREEMP_AUXIQ)
 #define TCLP_IPC_PREEMP_PRIMIQ   (IPC_PROP_PREEMP_PRIMIQ)
 #define TCLP_IPC_PREEMPTIVE      (IPC_PROP_PREEMP_PRIMIQ|IPC_PROP_PREEMP_AUXIQ)
 
 /* IPC选项，用户程序使用 */
-#define TCLO_IPC_DUMMY           (IPC_OPTION)
+#define TCLO_IPC_DEFAULT         (IPC_OPT_DEFAULT)
 #define TCLO_IPC_WAIT            (IPC_OPT_WAIT)
 #define TCLO_IPC_TIMED           (IPC_OPT_TIMED)
 #define TCLO_IPC_UARGENT         (IPC_OPT_UARGENT)
@@ -167,7 +165,7 @@ extern TState TclObtainSemaphore(TSemaphore* pSemaphore, TOption option, TTimeTi
                                  TError* pError);
 extern TState TclReleaseSemaphore(TSemaphore* pSemaphore, TOption option, TTimeTick timeo,
                                   TError* pError);
-extern TState TclIsrReleaseSemaphore(TSemaphore* pSemaphore);
+extern TState TclIsrReleaseSemaphore(TSemaphore* pSemaphore, TError* pError);
 #endif
 
 #if ((TCLC_IPC_ENABLE) && (TCLC_IPC_MUTEX_ENABLE))
@@ -196,7 +194,7 @@ extern TState TclReceiveMail(TMailBox* pMailbox, TMail* pMail2, TOption option,
                              TTimeTick timeo, TError* pError);
 extern TState TclSendMail(TMailBox* pMailbox, TMail* pMail2, TOption option, TTimeTick timeo,
                           TError* pError);
-extern TState TclIsrSendMail(TMailBox* pMailbox, TMail* pMail2);
+extern TState TclIsrSendMail(TMailBox* pMailbox, TMail* pMail2, TOption option, TError* pError);
 extern TState TclBroadcastMail(TMailBox* pMailbox, TMail* pMail2, TError* pError);
 extern TState TclResetMailBox(TMailBox* pMailbox, TError* pError);
 extern TState TclFlushMailBox(TMailBox* pMailbox, TError* pError);
@@ -210,7 +208,7 @@ extern TState TclReceiveMessage(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption opt
                                 TTimeTick timeo, TError* pError);
 extern TState TclSendMessage(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option,
                              TTimeTick timeo, TError* pError);
-extern TState TclIsrSendMessage(TMsgQueue* pMsgQue, TMessage* pMsg2);
+extern TState TclIsrSendMessage(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option, TError* pError);
 extern TState TclBroadcastMessage(TMsgQueue* pMsgQue, TMessage* pMsg2, TError* pError);
 extern TState TclFlushMsgQueue(TMsgQueue* pMsgQue, TError* pError);
 extern TState TclResetMsgQueue(TMsgQueue* pMsgQue, TError* pError);
@@ -235,10 +233,10 @@ extern TState TclFreePoolMemory (TMemPool* pPool, void* pAddr, TError* pError);
 #endif
 
 #if (TCLC_MEMORY_ENABLE && TCLC_MEMORY_BUDDY_ENABLE)
-extern TState TclCreateMemBuddy(TMemBuddy* pBuddy, TChar* pAddr, TBase32 pages, TBase32 pagesize, TError* pError);
-extern TState TclDeleteMemBuddy(TMemBuddy* pBuddy, TError* pError);
-extern TState TclMallocBuddyMem(TMemBuddy* pBuddy, int len, void** pAddr2, TError* pError);
-extern TState TclFreeBuddyMem(TMemBuddy* pBuddy,  void* pAddr, TError* pError);
+extern TState TclCreateMemoryBuddy(TMemBuddy* pBuddy, TChar* pAddr, TBase32 pages, TBase32 pagesize, TError* pError);
+extern TState TclDeleteMemoryBuddy(TMemBuddy* pBuddy, TError* pError);
+extern TState TclMallocBuddyMemory(TMemBuddy* pBuddy, int len, void** pAddr2, TError* pError);
+extern TState TclFreeBuddyMemory(TMemBuddy* pBuddy,  void* pAddr, TError* pError);
 #endif
 
 #endif /* _TROCHILI_H */

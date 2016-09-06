@@ -610,4 +610,3 @@ void uTimerModuleInit(void)
     uKernelVariable.TimerList = &TimerList;
 }
 #endif
-

@@ -94,7 +94,7 @@ static void AppSetupEntry(void)
     TState state;
     TError error;
 
-    state = TclCreateMailBox(&LedMailbox, TCLP_IPC_DUMMY, &error);
+    state = TclCreateMailBox(&LedMailbox, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 

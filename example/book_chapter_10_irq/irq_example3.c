@@ -34,7 +34,7 @@ static void IrqCallback(TArgument arg)
     TSemaphore* pSemaphore;
 
     pSemaphore = (TSemaphore*)arg;
-    state = TclReleaseSemaphore(pSemaphore, TCLO_IPC_DUMMY, 0U, &error);
+    state = TclReleaseSemaphore(pSemaphore, TCLO_IPC_DEFAULT, 0U, &error);
     TCLM_ASSERT((state == eSuccess), "");
 }
 
@@ -151,12 +151,12 @@ static void AppSetupEntry(void)
     TState state;
 
     /* 初始化信号量1 */
-    state = TclCreateSemaphore(&LedSemaphore1, 0, 1, TCLP_IPC_DUMMY, &error);
+    state = TclCreateSemaphore(&LedSemaphore1, 0, 1, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
     /* 初始化信号量2 */
-    state = TclCreateSemaphore(&LedSemaphore2, 0, 1, TCLP_IPC_DUMMY, &error);
+    state = TclCreateSemaphore(&LedSemaphore2, 0, 1, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 

@@ -113,11 +113,11 @@ static void AppSetupEntry(void)
 
     /* 初始化消息队列和信号量 */
     state = TclCreateMsgQueue(&LedMQ, (void**)(&LedMsgPool),
-                            MQ_POOL_LEN, TCLP_IPC_DUMMY, &error);
+                            MQ_POOL_LEN, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
-    state = TclCreateSemaphore(&LedSemaphore, 0, 1, TCLP_IPC_DUMMY, &error);
+    state = TclCreateSemaphore(&LedSemaphore, 0, 1, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 

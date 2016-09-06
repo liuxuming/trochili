@@ -130,12 +130,12 @@ static void AppSetupEntry(void)
 
     /* 初始化消息队列 */
     state = TclCreateMsgQueue(&LedMQ1, (void**)(&Led1MsgPool),
-                    MQ_POOL_LEN, TCLP_IPC_DUMMY, &error);
+                    MQ_POOL_LEN, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
     state = TclCreateMsgQueue(&LedMQ2, (void**)(&Led2MsgPool),
-                    MQ_POOL_LEN, TCLP_IPC_DUMMY, &error);
+                    MQ_POOL_LEN, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 

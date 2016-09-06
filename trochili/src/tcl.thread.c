@@ -114,13 +114,13 @@ static TState SetThreadUnready(TThread* pThread, TThreadStatus status, TTimeTick
     }
     else
     {
-        error = error;
+    	uDebugAlarm("");
     }
 
 #if (TCLC_TIMER_ENABLE)
     if ((state == eSuccess) && (status == eThreadDelayed))
     {
-        /* 重置并启动线程定时器 */
+        /* 重置并启动线程定时器，此时线程定时器一定为eTimerDormant */
         uTimerConfig(&(pThread->Timer), eThreadTimer, ticks);
         uTimerStart(&(pThread->Timer), 0U);
     }
@@ -229,10 +229,10 @@ static void xSuperviseThread(TThread* pThread)
  *  参数：无                                                                                     *
  *  返回：无                                                                                     *
  *  说明：内核中的线程队列主要有一下几种：                                                       *
- *        (1) 线程就绪队列,用于存储所有就绪线程(包括运行的线程)。内核中只有一个就绪队列          *
- *        (2) 线程辅助队列, 所有初始化状态、延时状态和休眠状态的线程都存储在这个队列中。         *
+ *        (1) 线程就绪队列,用于存储所有的就绪线和运行线程。内核中只有一个就绪队列。              *
+ *        (2) 线程辅助队列, 所有挂起状态、延时状态和休眠状态的线程都存储在这个队列中。           *
  *            同样内核中只有一个休眠队列                                                         *
- *        (3) IPC对象的线程阻塞队列                                                              *
+ *        (3) IPC对象的线程阻塞队列，数量不定。所有阻塞状态的线程都保存在相应的线程阻塞队列里。  *
  *************************************************************************************************/
 void uThreadModuleInit(void)
 {
@@ -333,7 +333,7 @@ void uThreadLeaveQueue(TThreadQueue* pQueue, TThread* pThread)
  * 当前线程可能处于3种位置
  * 1 就绪队列的头位置(任何优先级)
  * 2 就绪队列的其它位置(任何优先级)
- * 3 辅助队列里
+ * 3 辅助队列或者阻塞队列里
  * 只有情况1才需要进行时间片轮转的处理，但此时不涉及线程切换,因为本函数只在ISR中调用。
  */
 
@@ -592,6 +592,7 @@ TState uThreadDelete(TThread* pThread, TError* pError)
             state = eSuccess;
         }
     }
+	
     *pError = error;
     return state;
 }
@@ -717,7 +718,8 @@ void uThreadResumeFromISR(TThread* pThread)
             pThread->Status = eThreadReady;
         }
     }
-    else if (pThread->Status == eThreadRunning)
+    else if ((pThread->Status == eThreadRunning) ||
+             (pThread->Status == eThreadReady))
     {
 #if (TCLC_IRQ_ENABLE)
         if (pThread->Property &THREAD_PROP_ASR)
@@ -751,7 +753,6 @@ void uThreadSuspendSelf(void)
     else
     {
         uKernelVariable.Diagnosis |= KERNEL_DIAG_SCHED_ERROR;
-        pThread->Diagnosis |= THREAD_DIAG_NORMAL;
         uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 }
@@ -833,7 +834,7 @@ TState xThreadDelete(TThread* pThread, TError* pError)
         if (pThread->Property &THREAD_PROP_READY)
         {
             /* 检查线程是否接收相关API调用 */
-            if (pThread->ACAPI &THREAD_ACAPI_DEINIT)
+            if (pThread->ACAPI &THREAD_ACAPI_DELETE)
             {
                 state = uThreadDelete(pThread, &error);
             }
@@ -1367,7 +1368,7 @@ TState xThreadUndelay(TThread* pThread, TError* pError)
 
 
 /*************************************************************************************************
- *  功能：线程解挂函数                                                                           *
+ *  功能：解除线程阻塞函数                                                                       *
  *  参数：(1) pThread 线程结构地址                                                               *
  *        (2) pError  详细调用结果                                                               *
  *  返回：(1) eFailure                                                                           *

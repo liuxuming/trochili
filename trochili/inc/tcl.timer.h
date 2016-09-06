@@ -16,6 +16,7 @@
 #define TIMER_ERR_FAULT              (0x1<<0)           /* 一般性错误                          */
 #define TIMER_ERR_UNREADY            (0x1<<1)           /* 定时器管理结构未初始化              */
 #define TIMER_ERR_TYPE               (0x1<<2)           /* 定时器类型错误                      */
+#define TIMER_ERR_STATUS             (0x1<<3)           /* 定时器状态错误                      */ 
 
 
 /* 定时器类型枚举定义 */
@@ -39,7 +40,7 @@ enum TimerStatusDef
 typedef enum TimerStatusDef TTimerStatus;
 
 /* 定时器属性标记定义 */
-#define TIMER_PROP_NONE           (0x0)                 /* 定时器空属性标记                     */
+#define TIMER_PROP_DEAULT         (0x0)                 /* 定时器空属性标记                     */
 #define TIMER_PROP_READY          (0x1<<0)              /* 定时器就绪标记                       */
 #define TIMER_PROP_PERIODIC       (0x1<<1)              /* 用户周期回调定时器                   */
 #define TIMER_PROP_URGENT         (0x1<<2)              /* 用户紧急回调定时器                   */
@@ -80,9 +81,9 @@ extern void uTimerModuleInit(void);
 extern void uTimerCreate(TTimer* pTimer, TProperty property, TTimerType type, TTimeTick ticks,
                          TTimerRoutine pRoutine, TArgument data, void* pOwner);
 extern void uTimerDelete(TTimer* pTimer);
-extern void uTimerConfig(TTimer* pTimer, TTimerType type, TTimeTick ticks);
 extern void uTimerStart(TTimer* pTimer, TTimeTick lagticks);
 extern void uTimerStop(TTimer* pTimer);
+extern void uTimerConfig(TTimer* pTimer, TTimerType type, TTimeTick ticks);
 extern void uTimerTickISR(void);
 
 extern TState xTimerCreate(TTimer* pTimer, TProperty property, TTimeTick ticks,

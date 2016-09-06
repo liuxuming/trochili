@@ -116,6 +116,8 @@ void uIpcBlockThread(TIpcContext* pContext, TIpcQueue* pQueue, TTimeTick ticks)
     /* 只有处于就绪状态的线程才可以被阻塞 */
     if (pThread->Status != eThreadRunning)
     {
+        uKernelVariable.Diagnosis |= KERNEL_DIAG_THREAD_ERROR;
+        pThread->Diagnosis |= THREAD_DIAG_STACK_OVERFLOW;
         uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
@@ -130,7 +132,7 @@ void uIpcBlockThread(TIpcContext* pContext, TIpcQueue* pQueue, TTimeTick ticks)
 #if (TCLC_TIMER_ENABLE && TCLC_IPC_TIMER_ENABLE)
     if ((pContext->Option & IPC_OPT_TIMED) && (ticks > 0U))
     {
-        /* 重新配置并启动线程定时器 */
+        /* 重新配置并启动线程定时器，此时线程定时器一定为eTimerDormant */
         uTimerConfig(&(pThread->Timer), eIpcTimer, ticks);
         uTimerStart(&(pThread->Timer), 0U);
     }
@@ -324,7 +326,7 @@ void uIpcCleanContext(TIpcContext* pContext)
     pContext->Queue      = (TIpcQueue*)0;
     pContext->Data.Value = 0U;
     pContext->Length     = 0U;
-    pContext->Option     = IPC_OPTION;
+    pContext->Option     = IPC_OPT_DEFAULT;
     pContext->State      = (TState*)0;
     pContext->Error      = (TError*)0;
 }
@@ -347,7 +349,7 @@ void uIpcInitContext(TIpcContext* pContext, void* pOwner)
     pContext->Queue      = (TIpcQueue*)0;
     pContext->Data.Value = 0U;
     pContext->Length     = 0U;
-    pContext->Option     = IPC_OPTION;
+    pContext->Option     = IPC_OPT_DEFAULT;
     pContext->State      = (TState*)0;
     pContext->Error      = (TError*)0;
 

@@ -106,11 +106,11 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化信号量和邮箱 */
-    state = TclCreateMailBox(&LedMailbox, TCLP_IPC_DUMMY, &error);
+    state = TclCreateMailBox(&LedMailbox, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
-    state = TclCreateSemaphore(&LedSemaphore, 0, 1, TCLP_IPC_DUMMY, &error);
+    state = TclCreateSemaphore(&LedSemaphore, 0, 1, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 

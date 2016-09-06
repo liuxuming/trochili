@@ -37,6 +37,7 @@ typedef enum
     eError,                              /* 函数调用发生错误                                     */    
 } TState;
 
+
 /* 寄存器读写宏定义 */
 #define TCLM_GET_REG32(r)   (*((volatile unsigned int*)(r)))
 #define TCLM_SET_REG32(r,v) (*((volatile unsigned int*)(r)) = ((unsigned int)(v)))

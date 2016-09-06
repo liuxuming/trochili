@@ -41,9 +41,11 @@ typedef enum
 } TKernelState;
 
 #define KERNEL_DIAG_ERROR_NONE      (0U)       /* 线程栈溢出                                   */
-#define KERNEL_DIAG_THREAD_ERROR    (0x1<<0U)  /* 线程栈溢出                                   */
-#define KERNEL_DIAG_SCHED_ERROR     (0x1<<2U)  /* 线程栈溢出                                   */
-#define KERNEL_DIAG_TIMER_ERROR     (0x1<<3U)  /* 线程栈溢出                                   */
+#define KERNEL_DIAG_THREAD_ERROR    (0x1<<0U)  /* 线程错误                                    */
+#define KERNEL_DIAG_SCHED_ERROR     (0x1<<1U)  /* 未使用                                       */
+#define KERNEL_DIAG_TIMER_ERROR     (0x1<<2U)  /* 未使用                                       */
+#define KERNEL_DIAG_IRQ_ERROR       (0x1<<3U)  /* 在中断里操作了互斥量                         */
+
 
 /* 内核变量结构定义，记录了内核运行时的各种数据 */
 struct KernelVariableDef
@@ -56,7 +58,7 @@ struct KernelVariableDef
     TTimeTick        Jiffies;                         /* 系统运行总的节拍数                      */
     TBase32          ObjID;                           /* 内核对象编号生成计数                    */
     TBitMask         Diagnosis;                       /* 内核运行状况记录                        */
-    TDBGLog          DBGLog;
+    TDBGLog          DBGLog;                          /* 内核运行状况记录                        */
     TBoardSetupEntry BoardSetupEntry;                 /* 板级初始化程序入口                      */
     TCpuSetupEntry   CpuSetupEntry;                   /* 处理器初始化程序入口                    */
     TUserEntry       UserEntry;                       /* 记录用户程序入口                        */

@@ -25,12 +25,12 @@ static void ThreadMemEntry(TArgument arg)
     TError error;
 
 
-    state = TclCreateMemBuddy(&mem, memPool, MEMORY_PAGES, MEMORY_PAGE_SIZE, &error);
+    state = TclCreateMemoryBuddy(&mem, memPool, MEMORY_PAGES, MEMORY_PAGE_SIZE, &error);
 
     while (eTrue)
     {
 #if 0
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*0, &addr0, &error);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*0, &addr0, &error);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
@@ -39,7 +39,7 @@ static void ThreadMemEntry(TArgument arg)
 
 #endif
 #if 0
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE, &addr0, &error);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE, &addr0, &error);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
@@ -48,7 +48,7 @@ static void ThreadMemEntry(TArgument arg)
 #endif
 
 #if 0
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*2, &addr0, &error);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*2, &addr0, &error);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
@@ -58,7 +58,7 @@ static void ThreadMemEntry(TArgument arg)
 #endif
 
 #if 0
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*3, &addr0);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*3, &addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
@@ -69,14 +69,14 @@ static void ThreadMemEntry(TArgument arg)
 
 #if 0
         //  //3.2.3.0.2,2,2
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*4, &addr0, &error);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*4, &addr0, &error);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
         //  //4,3,3,2,2,2,2
-        state = TclFreeBuddyMem(&mem, addr0, &error);
+        state = TclFreeBuddyMemory(&mem, addr0, &error);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 free error\r\n");
@@ -85,14 +85,14 @@ static void ThreadMemEntry(TArgument arg)
 #endif
 #if 0
 // 3.0.3.2.2.2.2
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*5, &addr0);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*5, &addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
 
-        state = TclFreeBuddyMem(&mem, addr0);
+        state = TclFreeBuddyMemory(&mem, addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 free error\r\n");
@@ -101,14 +101,14 @@ static void ThreadMemEntry(TArgument arg)
 #endif
 #if 1
 // 3.0.3.2.2.2.2
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*6, &addr0, &error);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*6, &addr0, &error);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
 
-        state = TclFreeBuddyMem(&mem, addr0, &error);
+        state = TclFreeBuddyMemory(&mem, addr0, &error);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 free error\r\n");
@@ -118,14 +118,14 @@ static void ThreadMemEntry(TArgument arg)
 
 #if 0
 // 3.0.3.2.2.2.2
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*7, &addr0);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*7, &addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
 
-        state = TclFreeBuddyMem(&mem, addr0);
+        state = TclFreeBuddyMemory(&mem, addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 free error\r\n");
@@ -135,14 +135,14 @@ static void ThreadMemEntry(TArgument arg)
 
 #if 0
 // 3.0.3.2.2.2.2
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*8, &addr0);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*8, &addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
 
-        state = TclFreeBuddyMem(&mem, addr0);
+        state = TclFreeBuddyMemory(&mem, addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 free error\r\n");
@@ -152,14 +152,14 @@ static void ThreadMemEntry(TArgument arg)
 
 #if 0
 // 0.3.3.2.2.2.2
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*9, &addr0);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*9, &addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
 
-        state = TclFreeBuddyMem(&mem, addr0);
+        state = TclFreeBuddyMemory(&mem, addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 free error\r\n");
@@ -169,14 +169,14 @@ static void ThreadMemEntry(TArgument arg)
 
 #if 0
         // 0.3.3.2.2.2.2
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*15, &addr0);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*15, &addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
 
-        state = TclFreeBuddyMem(&mem, addr0);
+        state = TclFreeBuddyMemory(&mem, addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 free error\r\n");
@@ -186,14 +186,14 @@ static void ThreadMemEntry(TArgument arg)
 
 #if 0
 // 0.3.3.2.2.2.2
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*16, &addr0);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*16, &addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
 
-        state = TclFreeBuddyMem(&mem, addr0);
+        state = TclFreeBuddyMemory(&mem, addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 free error\r\n");
@@ -203,14 +203,14 @@ static void ThreadMemEntry(TArgument arg)
 
 #if 0
 // req len overflow
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*17, &addr0);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*17, &addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
 
-        state = TclFreeBuddyMem(&mem, addr0);
+        state = TclFreeBuddyMemory(&mem, addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 free error\r\n");
@@ -219,14 +219,14 @@ static void ThreadMemEntry(TArgument arg)
 #endif
 
 #if 0//34
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*3, &addr0);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*3, &addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
 
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*4, &addr1);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*4, &addr1);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr1 malloc error\r\n");
@@ -235,14 +235,14 @@ static void ThreadMemEntry(TArgument arg)
 #endif
 
 #if 0//78
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*7, &addr0);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*7, &addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
 
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*8, &addr1);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*8, &addr1);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr1 malloc error\r\n");
@@ -251,56 +251,56 @@ static void ThreadMemEntry(TArgument arg)
 #endif
 
 #if 0//12312311
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*1, &addr0);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*1, &addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
 
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*2, &addr1);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*2, &addr1);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr1 malloc error\r\n");
             while(1);
         }
 
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*3, &addr1);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*3, &addr1);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr1 malloc error\r\n");
             while(1);
         }
 
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*1, &addr0);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*1, &addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
 
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*2, &addr1);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*2, &addr1);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr1 malloc error\r\n");
             while(1);
         }
 
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*3, &addr1);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*3, &addr1);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr1 malloc error\r\n");
             while(1);
         }
 
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*1, &addr0);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*1, &addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
 
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*1, &addr0);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*1, &addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
@@ -309,114 +309,56 @@ static void ThreadMemEntry(TArgument arg)
 #endif
 
 #if 0// 1.1.1.1
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*1, &addr0);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*1, &addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
 
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*1, &addr1);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*1, &addr1);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
 
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*1, &addr2);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*1, &addr2);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
 
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*1, &addr3);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*1, &addr3);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
 
-        state = TclFreeBuddyMem(&mem, addr0);
+        state = TclFreeBuddyMemory(&mem, addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 free error\r\n");
             while(1);
         }
 
-        state = TclFreeBuddyMem(&mem, addr3);
+        state = TclFreeBuddyMemory(&mem, addr3);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 free error\r\n");
             while(1);
         }
 
-        state = TclFreeBuddyMem(&mem, addr1);
+        state = TclFreeBuddyMemory(&mem, addr1);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 free error\r\n");
             while(1);
         }
 
-        state = TclFreeBuddyMem(&mem, addr2);
-        if (state != eSuccess)
-        {
-            EVB_PRINTF("addr0 free error\r\n");
-            while(1);
-        }
-#endif
-
-#if 0//
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*1, &addr0);
-        if (state != eSuccess)
-        {
-            EVB_PRINTF("addr0 malloc error\r\n");
-            while(1);
-        }
-
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*1, &addr1);
-        if (state != eSuccess)
-        {
-            EVB_PRINTF("addr0 malloc error\r\n");
-            while(1);
-        }
-
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*1, &addr2);
-        if (state != eSuccess)
-        {
-            EVB_PRINTF("addr0 malloc error\r\n");
-            while(1);
-        }
-
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*1, &addr3);
-        if (state != eSuccess)
-        {
-            EVB_PRINTF("addr0 malloc error\r\n");
-            while(1);
-        }
-
-        state = TclFreeBuddyMem(&mem, addr0);
-        if (state != eSuccess)
-        {
-            EVB_PRINTF("addr0 free error\r\n");
-            while(1);
-        }
-
-        state = TclFreeBuddyMem(&mem, addr3);
-        if (state != eSuccess)
-        {
-            EVB_PRINTF("addr0 free error\r\n");
-            while(1);
-        }
-
-        state = TclFreeBuddyMem(&mem, addr2);
-        if (state != eSuccess)
-        {
-            EVB_PRINTF("addr0 free error\r\n");
-            while(1);
-        }
-
-        state = TclFreeBuddyMem(&mem, addr1);
+        state = TclFreeBuddyMemory(&mem, addr2);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 free error\r\n");
@@ -425,56 +367,56 @@ static void ThreadMemEntry(TArgument arg)
 #endif
 
 #if 0//
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*1, &addr0, &error);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*1, &addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
 
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*1, &addr1, &error);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*1, &addr1);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
 
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*1, &addr2, &error);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*1, &addr2);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
 
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*1, &addr3, &error);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*1, &addr3);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
 
-        state = TclFreeBuddyMem(&mem, addr0, &error);
+        state = TclFreeBuddyMemory(&mem, addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 free error\r\n");
             while(1);
         }
 
-        state = TclFreeBuddyMem(&mem, addr1, &error);
+        state = TclFreeBuddyMemory(&mem, addr3);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 free error\r\n");
             while(1);
         }
 
-        state = TclFreeBuddyMem(&mem, addr2, &error);
+        state = TclFreeBuddyMemory(&mem, addr2);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 free error\r\n");
             while(1);
         }
 
-        state = TclFreeBuddyMem(&mem, addr3, &error);
+        state = TclFreeBuddyMemory(&mem, addr1);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 free error\r\n");
@@ -483,56 +425,114 @@ static void ThreadMemEntry(TArgument arg)
 #endif
 
 #if 0//
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*1, &addr0);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*1, &addr0, &error);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
 
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*1, &addr1);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*1, &addr1, &error);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
 
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*1, &addr2);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*1, &addr2, &error);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
 
-        state = TclMallocBuddyMem(&mem, MEMORY_PAGE_SIZE*1, &addr3);
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*1, &addr3, &error);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 malloc error\r\n");
             while(1);
         }
 
-        state = TclFreeBuddyMem(&mem, addr3);
+        state = TclFreeBuddyMemory(&mem, addr0, &error);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 free error\r\n");
             while(1);
         }
 
-        state = TclFreeBuddyMem(&mem, addr2);
+        state = TclFreeBuddyMemory(&mem, addr1, &error);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 free error\r\n");
             while(1);
         }
 
-        state = TclFreeBuddyMem(&mem, addr1);
+        state = TclFreeBuddyMemory(&mem, addr2, &error);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 free error\r\n");
             while(1);
         }
 
-        state = TclFreeBuddyMem(&mem, addr0);
+        state = TclFreeBuddyMemory(&mem, addr3, &error);
+        if (state != eSuccess)
+        {
+            EVB_PRINTF("addr0 free error\r\n");
+            while(1);
+        }
+#endif
+
+#if 0//
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*1, &addr0);
+        if (state != eSuccess)
+        {
+            EVB_PRINTF("addr0 malloc error\r\n");
+            while(1);
+        }
+
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*1, &addr1);
+        if (state != eSuccess)
+        {
+            EVB_PRINTF("addr0 malloc error\r\n");
+            while(1);
+        }
+
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*1, &addr2);
+        if (state != eSuccess)
+        {
+            EVB_PRINTF("addr0 malloc error\r\n");
+            while(1);
+        }
+
+        state = TclMallocBuddyMemory(&mem, MEMORY_PAGE_SIZE*1, &addr3);
+        if (state != eSuccess)
+        {
+            EVB_PRINTF("addr0 malloc error\r\n");
+            while(1);
+        }
+
+        state = TclFreeBuddyMemory(&mem, addr3);
+        if (state != eSuccess)
+        {
+            EVB_PRINTF("addr0 free error\r\n");
+            while(1);
+        }
+
+        state = TclFreeBuddyMemory(&mem, addr2);
+        if (state != eSuccess)
+        {
+            EVB_PRINTF("addr0 free error\r\n");
+            while(1);
+        }
+
+        state = TclFreeBuddyMemory(&mem, addr1);
+        if (state != eSuccess)
+        {
+            EVB_PRINTF("addr0 free error\r\n");
+            while(1);
+        }
+
+        state = TclFreeBuddyMemory(&mem, addr0);
         if (state != eSuccess)
         {
             EVB_PRINTF("addr0 free error\r\n");

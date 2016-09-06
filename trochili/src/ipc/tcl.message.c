@@ -109,7 +109,7 @@ static TState ReceiveMessage(TMsgQueue* pMsgQue, void** pMsg2, TBool* pHiRP, TEr
     /* 检查消息队列状态 */
     if (pMsgQue->Status == eMQEmpty)
     {
-        error = IPC_ERR_INVALID_STATUS;
+        error = IPC_ERR_NORMAL;
         state = eFailure;
     }
     else if (pMsgQue->Status == eMQFull)
@@ -117,11 +117,11 @@ static TState ReceiveMessage(TMsgQueue* pMsgQue, void** pMsg2, TBool* pHiRP, TEr
         /* 从消息队列中读取一个消息给当前线程 */
         ConsumeMessage(pMsgQue, pMsg2);
 
-        /* 
-			   * 在消息队列满并且有线程阻塞在写队列中的情况下，
+        /*
+        	   * 在消息队列满并且有线程阻塞在写队列中的情况下，
          * 需要将合适的线程接触阻塞并且将该线程携带的消息写入队列，
-         * 所以保持消息队列状态不变 
-			   */
+         * 所以保持消息队列状态不变
+        	   */
         if (pMsgQue->Property & IPC_PROP_AUXIQ_AVAIL)
         {
             pContext = (TIpcContext*)(pMsgQue->Queue.AuxiliaryHandle->Owner);
@@ -155,7 +155,7 @@ static TState ReceiveMessage(TMsgQueue* pMsgQue, void** pMsg2, TBool* pHiRP, TEr
         pMsgQue->Status = (pMsgQue->Tail == pMsgQue->Head) ? eMQEmpty : eMQPartial;
     }
 
-	*pError = error;
+    *pError = error;
     return state;
 }
 
@@ -181,7 +181,7 @@ static TState SendMessage(TMsgQueue* pMsgQue, void** pMsg2, TMsgType type, TBool
     /* 检查消息队列状态，如果消息队列满则返回失败 */
     if (pMsgQue->Status == eMQFull)
     {
-        error = IPC_ERR_INVALID_STATUS;
+        error = IPC_ERR_NORMAL;
         state = eFailure;
     }
     else if (pMsgQue->Status == eMQEmpty)
@@ -219,7 +219,7 @@ static TState SendMessage(TMsgQueue* pMsgQue, void** pMsg2, TMsgType type, TBool
         pMsgQue->Status = (pMsgQue->Tail == pMsgQue->Head) ? eMQFull : eMQPartial;
     }
 
-	  *pError = error;
+    *pError = error;
     return state;
 }
 
@@ -239,9 +239,9 @@ extern TState xMQReceive(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option,
 {
     TState state = eFailure;
     TError error = IPC_ERR_UNREADY;
+    TBool  HiRP = eFalse;
     TIpcContext* pContext = (TIpcContext*)0;
     TReg32 imask;
-    TBool  HiRP = eFalse;
 
     CpuEnterCritical(&imask);
 
@@ -255,9 +255,6 @@ extern TState xMQReceive(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option,
          */
         state = ReceiveMessage(pMsgQue, (void**)pMsg2, &HiRP, &error);
 
-        /* 如果没有声明不需要调度则进入线程调度处理流程 */
-        if(! (option & IPC_OPT_NO_SCHED))
-        {
             if ((uKernelVariable.State == eThreadState) &&
                     (uKernelVariable.SchedLockTimes == 0U))
             {
@@ -269,39 +266,47 @@ extern TState xMQReceive(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option,
                         uThreadSchedule();
                     }
                 }
-                /*
-                 * 如果当前线程不能接收消息，并且采用的是等待方式，
-                 * 那么当前线程必须阻塞在消息队列中
-                 */
                 else
                 {
+                    /*
+                    * 如果当前线程不能接收消息，并且采用的是等待方式，
+                    * 那么当前线程必须阻塞在消息队列中
+                    */
                     if (option & IPC_OPT_WAIT)
                     {
-                        /* 得到当前线程的IPC上下文结构地址 */
-                        pContext = &(uKernelVariable.CurrentThread->IpcContext);
+                        /* 如果当前线程不能被阻塞则函数直接返回 */
+                        if (uKernelVariable.CurrentThread->ACAPI & THREAD_ACAPI_BLOCK)
+                        {
+                            /* 得到当前线程的IPC上下文结构地址 */
+                            pContext = &(uKernelVariable.CurrentThread->IpcContext);
 
-                        /* 保存线程挂起信息 */
-                        option |= IPC_OPT_MSGQUEUE | IPC_OPT_READ_DATA;
-                        uIpcSaveContext(pContext, (void*)pMsgQue, (TBase32)pMsg2, sizeof(TBase32), option, &state, &error);
+                            /* 保存线程挂起信息 */
+                            option |= IPC_OPT_MSGQUEUE | IPC_OPT_READ_DATA;
+                            uIpcSaveContext(pContext, (void*)pMsgQue, (TBase32)pMsg2, sizeof(TBase32), option,
+                                            &state, &error);
 
-                        /* 当前线程阻塞在该消息队列的阻塞队列，时限或者无限等待，由IPC_OPT_TIMED参数决定 */
-                        uIpcBlockThread(pContext, &(pMsgQue->Queue), timeo);
+                            /* 当前线程阻塞在该消息队列的阻塞队列，时限或者无限等待，由IPC_OPT_TIMED参数决定 */
+                            uIpcBlockThread(pContext, &(pMsgQue->Queue), timeo);
 
-                        /* 当前线程被阻塞，其它线程得以执行 */
-                        uThreadSchedule();
+                            /* 当前线程被阻塞，其它线程得以执行 */
+                            uThreadSchedule();
 
-                        CpuLeaveCritical(imask);
-                        /*
-                            * 因为当前线程已经阻塞在IPC对象的线程阻塞队列，所以处理器需要执行别的线程。
-                            * 当处理器再次处理本线程时，从本处继续运行。
-                            */
-                        CpuEnterCritical(&imask);
+                            CpuLeaveCritical(imask);
+                            /*
+                                * 因为当前线程已经阻塞在IPC对象的线程阻塞队列，所以处理器需要执行别的线程。
+                                * 当处理器再次处理本线程时，从本处继续运行。
+                                */
+                            CpuEnterCritical(&imask);
 
-                        /* 清除线程挂起信息 */
-                        uIpcCleanContext(pContext);
+                            /* 清除线程挂起信息 */
+                            uIpcCleanContext(pContext);
+                        }
+                        else
+                        {
+                            error = IPC_ERR_ACAPI;
+                        }
                     }
                 }
-            }
         }
     }
 
@@ -345,27 +350,27 @@ TState xMQSend(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option, TTimeTick ti
         type = (option & IPC_OPT_UARGENT) ? eUrgentMessage : eNormalMessage;
         state = SendMessage(pMsgQue, (void**)pMsg2, type, &HiRP, &error);
 
-        /* 如果没有声明不需要调度则进入线程调度处理流程 */
-        if (option & IPC_OPT_NO_SCHED)
+        if ((uKernelVariable.State == eThreadState) &&
+                (uKernelVariable.SchedLockTimes == 0U))
         {
-            if ((uKernelVariable.State == eThreadState) &&
-                    (uKernelVariable.SchedLockTimes == 0U))
+            /* 如果当前线程解除了更高优先级线程的阻塞则进行调度。*/
+            if (state == eSuccess)
             {
-                /* 如果当前线程解除了更高优先级线程的阻塞则进行调度。*/
-                if (state == eSuccess)
+                if (HiRP == eTrue)
                 {
-                    if (HiRP == eTrue)
-                    {
-                        uThreadSchedule();
-                    }
+                    uThreadSchedule();
                 }
-                else
+            }
+            else
+            {
+                /*
+                * 如果当前线程不能发送消息，并且采用的是等待方式，
+                * 那么当前线程必须阻塞在消息队列中
+                */
+                if (option & IPC_OPT_WAIT)
                 {
-                    /*
-                     * 如果当前线程不能发送消息，并且采用的是等待方式，
-                     * 那么当前线程必须阻塞在消息队列中
-                     */
-                    if (option & IPC_OPT_WAIT)
+                    /* 如果当前线程不能被阻塞则函数直接返回 */
+                    if (uKernelVariable.CurrentThread->ACAPI & THREAD_ACAPI_BLOCK)
                     {
                         if (option & IPC_OPT_UARGENT)
                         {
@@ -377,7 +382,8 @@ TState xMQSend(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option, TTimeTick ti
 
                         /* 保存线程挂起信息 */
                         option |= IPC_OPT_MSGQUEUE | IPC_OPT_WRITE_DATA;
-                        uIpcSaveContext(pContext, (void*)pMsgQue, (TBase32)pMsg2,  sizeof(TBase32), option, &state, &error);
+                        uIpcSaveContext(pContext, (void*)pMsgQue, (TBase32)pMsg2,  sizeof(TBase32), option,
+                                        &state, &error);
 
                         /* 当前线程阻塞在该消息队列的阻塞队列，时限或者无限等待，由IPC_OPT_TIMED参数决定 */
                         uIpcBlockThread(pContext, &(pMsgQue->Queue), timeo);
@@ -394,6 +400,10 @@ TState xMQSend(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option, TTimeTick ti
 
                         /* 清除线程挂起信息 */
                         uIpcCleanContext(pContext);
+                    }
+                    else
+                    {
+                        error = IPC_ERR_ACAPI;
                     }
                 }
             }
@@ -634,7 +644,7 @@ TState xMQBroadcast(TMsgQueue* pMsgQue, TMessage* pMsg2, TError* pError)
         }
         else
         {
-            error = IPC_ERR_INVALID_STATUS;
+            error = IPC_ERR_NORMAL;
         }
     }
 

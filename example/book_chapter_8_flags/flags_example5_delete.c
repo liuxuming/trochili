@@ -71,7 +71,7 @@ static void ThreadCtrlEntry(TArgument data)
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
-        state =TclCreateFlags(&LedFlags, TCLP_IPC_DUMMY, &error);
+        state =TclCreateFlags(&LedFlags, TCLP_IPC_DEFAULT, &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
     }
@@ -85,7 +85,7 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化Led事件标记 */
-    state = TclCreateFlags(&LedFlags, TCLP_IPC_DUMMY, &error);
+    state = TclCreateFlags(&LedFlags, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
