@@ -215,13 +215,6 @@ static void DispatchTimer(TTimer* pTimer)
             uThreadEnterQueue(uKernelVariable.ThreadReadyQueue, pThread, eQuePosTail);
             pThread->Status = eThreadReady;
         }
-        /*
-         * 当线程离开就绪队列时，已经放弃它的本轮执行，哪怕时间片并未耗尽。
-         * 当线程再次进入就绪队列时，需要恢复线程的时钟节拍数，
-         * 重新计算其分享处理器时间的能力
-         */
-        pThread->Ticks = pThread->BaseTicks;
-        pThread->Status = eThreadReady;
     }
 
     /* 如果定时器是用户定时器类型 */
