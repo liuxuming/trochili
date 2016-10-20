@@ -50,8 +50,8 @@
 #define THREAD_ACAPI_DELAY            (TBitMask)(0x1<<5)
 #define THREAD_ACAPI_UNDELAY          (TBitMask)(0x1<<6)
 #define THREAD_ACAPI_YIELD            (TBitMask)(0x1<<7)
-#define THREAD_ACAPI_SET_PRIORITY     (TBitMask)(0x1<<8)
-#define THREAD_ACAPI_SET_SLICE        (TBitMask)(0x1<<9)
+#define THREAD_ACAPI_PRIORITY         (TBitMask)(0x1<<8)
+#define THREAD_ACAPI_SLICE            (TBitMask)(0x1<<9)
 #define THREAD_ACAPI_UNBLOCK          (TBitMask)(0x1<<10)
 #define THREAD_ACAPI_BLOCK            (TBitMask)(0x1<<11) /* ºÍIPC×èÈûÓÐ¹Ø */
 #define THREAD_ACAPI_ALL \
@@ -62,8 +62,8 @@
     THREAD_ACAPI_RESUME|\
     THREAD_ACAPI_DELAY|\
     THREAD_ACAPI_UNDELAY|\
-    THREAD_ACAPI_SET_PRIORITY|\
-    THREAD_ACAPI_SET_SLICE|\
+    THREAD_ACAPI_PRIORITY|\
+    THREAD_ACAPI_SLICE|\
     THREAD_ACAPI_UNBLOCK|\
     THREAD_ACAPI_BLOCK|\
     THREAD_ACAPI_YIELD)

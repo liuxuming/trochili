@@ -100,7 +100,7 @@ struct IpcContextDef
     void*        Object;                          /* 指向IPC对象地址的指针                      */
     TIpcQueue*   Queue;                           /* 线程所属IPC线程队列指针                    */
     TIpcData     Data;                            /* 和IPC对象操作相关的数据指针                */
-	TBase32      Length;                          /* 和IPC对象操作相关的数据长度                */
+    TBase32      Length;                          /* 和IPC对象操作相关的数据长度                */
     TOption      Option;                          /* 访问IPC对象的操作参数                      */
     TState*      State;                           /* IPC对象操作的返回值                        */
     TError*      Error;                           /* IPC对象操作的错误代码                      */

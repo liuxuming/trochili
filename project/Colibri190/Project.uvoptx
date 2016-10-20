@@ -100,7 +100,7 @@
         <tRSysVw>1</tRSysVw>
         <sRunDeb>0</sRunDeb>
         <sLrtime>0</sLrtime>
-        <nTsel>12</nTsel>
+        <nTsel>2</nTsel>
         <sDll></sDll>
         <sDllPa></sDllPa>
         <sDlgDll></sDlgDll>
@@ -397,6 +397,10 @@
       </DebugFlag>
       <LintExecutable></LintExecutable>
       <LintConfigFile></LintConfigFile>
+      <bLintAuto>0</bLintAuto>
+      <Lin2Executable></Lin2Executable>
+      <Lin2ConfigFile></Lin2ConfigFile>
+      <bLin2Auto>0</bLin2Auto>
     </TargetOption>
   </Target>
 
@@ -411,7 +415,6 @@
       <FileNumber>1</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\CMSIS\GD\GD32F1x0\Source\system_gd32f1x0.c</PathWithFileName>
@@ -424,7 +427,6 @@
       <FileNumber>2</FileNumber>
       <FileType>2</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\CMSIS\GD\GD32F1x0\Source\ARM\startup_gd32f1x0.s</PathWithFileName>
@@ -445,7 +447,6 @@
       <FileNumber>3</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_adc.c</PathWithFileName>
@@ -458,7 +459,6 @@
       <FileNumber>4</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_can.c</PathWithFileName>
@@ -471,7 +471,6 @@
       <FileNumber>5</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_cec.c</PathWithFileName>
@@ -484,7 +483,6 @@
       <FileNumber>6</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_cmp.c</PathWithFileName>
@@ -497,7 +495,6 @@
       <FileNumber>7</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_crc.c</PathWithFileName>
@@ -510,7 +507,6 @@
       <FileNumber>8</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_dac.c</PathWithFileName>
@@ -523,7 +519,6 @@
       <FileNumber>9</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_dbg.c</PathWithFileName>
@@ -536,7 +531,6 @@
       <FileNumber>10</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_dma.c</PathWithFileName>
@@ -549,7 +543,6 @@
       <FileNumber>11</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_exti.c</PathWithFileName>
@@ -562,7 +555,6 @@
       <FileNumber>12</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_fmc.c</PathWithFileName>
@@ -575,7 +567,6 @@
       <FileNumber>13</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_fwdgt.c</PathWithFileName>
@@ -588,7 +579,6 @@
       <FileNumber>14</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_gpio.c</PathWithFileName>
@@ -601,7 +591,6 @@
       <FileNumber>15</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_i2c.c</PathWithFileName>
@@ -614,7 +603,6 @@
       <FileNumber>16</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_ivref.c</PathWithFileName>
@@ -627,7 +615,6 @@
       <FileNumber>17</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_misc.c</PathWithFileName>
@@ -640,7 +627,6 @@
       <FileNumber>18</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_opa.c</PathWithFileName>
@@ -653,7 +639,6 @@
       <FileNumber>19</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_pmu.c</PathWithFileName>
@@ -666,7 +651,6 @@
       <FileNumber>20</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_rcu.c</PathWithFileName>
@@ -679,7 +663,6 @@
       <FileNumber>21</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_rtc.c</PathWithFileName>
@@ -692,7 +675,6 @@
       <FileNumber>22</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_slcd.c</PathWithFileName>
@@ -705,7 +687,6 @@
       <FileNumber>23</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_spi.c</PathWithFileName>
@@ -718,7 +699,6 @@
       <FileNumber>24</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_syscfg.c</PathWithFileName>
@@ -731,7 +711,6 @@
       <FileNumber>25</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_timer.c</PathWithFileName>
@@ -744,7 +723,6 @@
       <FileNumber>26</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_tsi.c</PathWithFileName>
@@ -757,7 +735,6 @@
       <FileNumber>27</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_usart.c</PathWithFileName>
@@ -770,7 +747,6 @@
       <FileNumber>28</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\firmware\GD32F1x0_Firmware_Library_V3.0.0\Firmware\GD32F1x0_standard_peripheral\Source\gd32f1x0_wwdgt.c</PathWithFileName>
@@ -791,7 +767,6 @@
       <FileNumber>29</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\board\Colibri190\colibri_bsp.c</PathWithFileName>
@@ -804,7 +779,6 @@
       <FileNumber>30</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\board\Colibri190\colibri_bsp_key.c</PathWithFileName>
@@ -817,7 +791,6 @@
       <FileNumber>31</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\board\Colibri190\colibri_bsp_led.c</PathWithFileName>
@@ -830,7 +803,6 @@
       <FileNumber>32</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\board\Colibri190\colibri_bsp_uart.c</PathWithFileName>
@@ -851,7 +823,6 @@
       <FileNumber>33</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\trochili\src\tcl.debug.c</PathWithFileName>
@@ -864,7 +835,6 @@
       <FileNumber>34</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\trochili\src\tcl.irq.c</PathWithFileName>
@@ -877,7 +847,6 @@
       <FileNumber>35</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\trochili\src\tcl.timer.c</PathWithFileName>
@@ -890,7 +859,6 @@
       <FileNumber>36</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\trochili\src\trochili.c</PathWithFileName>
@@ -903,7 +871,6 @@
       <FileNumber>37</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\trochili\src\mem\tcl.mem.buddy.c</PathWithFileName>
@@ -916,7 +883,6 @@
       <FileNumber>38</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\trochili\src\mem\tcl.mem.pool.c</PathWithFileName>
@@ -929,7 +895,6 @@
       <FileNumber>39</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\trochili\src\ipc\tcl.flags.c</PathWithFileName>
@@ -942,7 +907,6 @@
       <FileNumber>40</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\trochili\src\ipc\tcl.ipc.c</PathWithFileName>
@@ -955,7 +919,6 @@
       <FileNumber>41</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\trochili\src\ipc\tcl.mailbox.c</PathWithFileName>
@@ -968,7 +931,6 @@
       <FileNumber>42</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\trochili\src\ipc\tcl.message.c</PathWithFileName>
@@ -981,7 +943,6 @@
       <FileNumber>43</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\trochili\src\ipc\tcl.mutex.c</PathWithFileName>
@@ -994,7 +955,6 @@
       <FileNumber>44</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\trochili\src\ipc\tcl.semaphore.c</PathWithFileName>
@@ -1007,7 +967,6 @@
       <FileNumber>45</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\trochili\src\cpu\tcl.gd32f190.c</PathWithFileName>
@@ -1020,7 +979,6 @@
       <FileNumber>46</FileNumber>
       <FileType>2</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\trochili\src\cpu\tcl.gd32f190.keil.asm</PathWithFileName>
@@ -1033,7 +991,6 @@
       <FileNumber>47</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\trochili\src\tcl.object.c</PathWithFileName>
@@ -1046,7 +1003,6 @@
       <FileNumber>48</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\trochili\src\tcl.thread.c</PathWithFileName>
@@ -1059,7 +1015,6 @@
       <FileNumber>49</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\trochili\src\tcl.kernel.c</PathWithFileName>
@@ -1080,7 +1035,6 @@
       <FileNumber>50</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_2_thread\thread_activate_deactivate.c</PathWithFileName>
@@ -1093,7 +1047,6 @@
       <FileNumber>51</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_2_thread\thread_change_priority.c</PathWithFileName>
@@ -1106,7 +1059,6 @@
       <FileNumber>52</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_2_thread\thread_change_slice.c</PathWithFileName>
@@ -1119,7 +1071,6 @@
       <FileNumber>53</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_2_thread\thread_delay_undelay.c</PathWithFileName>
@@ -1132,7 +1083,6 @@
       <FileNumber>54</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_2_thread\thread_init.c</PathWithFileName>
@@ -1145,7 +1095,6 @@
       <FileNumber>55</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_2_thread\thread_suspend_resume.c</PathWithFileName>
@@ -1158,7 +1107,6 @@
       <FileNumber>56</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_2_thread\thread_yield.c</PathWithFileName>
@@ -1179,7 +1127,6 @@
       <FileNumber>57</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_4_semaphore\semaphore_example1.c</PathWithFileName>
@@ -1192,7 +1139,6 @@
       <FileNumber>58</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_4_semaphore\semaphore_example2.c</PathWithFileName>
@@ -1205,7 +1151,6 @@
       <FileNumber>59</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_4_semaphore\semaphore_example3_isr.c</PathWithFileName>
@@ -1218,7 +1163,6 @@
       <FileNumber>60</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_4_semaphore\semaphore_example4.c</PathWithFileName>
@@ -1231,7 +1175,6 @@
       <FileNumber>61</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_4_semaphore\semaphore_example5_reset.c</PathWithFileName>
@@ -1244,7 +1187,6 @@
       <FileNumber>62</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_4_semaphore\semaphore_example6_flush.c</PathWithFileName>
@@ -1257,7 +1199,6 @@
       <FileNumber>63</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_4_semaphore\semaphore_example7_delete.c</PathWithFileName>
@@ -1270,7 +1211,6 @@
       <FileNumber>64</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_4_semaphore\semaphore_example8_abort.c</PathWithFileName>
@@ -1291,7 +1231,6 @@
       <FileNumber>65</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_5_mutex\mutex_example1.c</PathWithFileName>
@@ -1304,7 +1243,6 @@
       <FileNumber>66</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_5_mutex\mutex_example2_reset.c</PathWithFileName>
@@ -1317,7 +1255,6 @@
       <FileNumber>67</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_5_mutex\mutex_example3_flush.c</PathWithFileName>
@@ -1330,7 +1267,6 @@
       <FileNumber>68</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_5_mutex\mutex_example4_delete.c</PathWithFileName>
@@ -1343,7 +1279,6 @@
       <FileNumber>69</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_5_mutex\mutex_example5_abort.c</PathWithFileName>
@@ -1364,7 +1299,6 @@
       <FileNumber>70</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_6_mailbox\mailbox_example1.c</PathWithFileName>
@@ -1377,7 +1311,6 @@
       <FileNumber>71</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_6_mailbox\mailbox_example2_isr.c</PathWithFileName>
@@ -1390,7 +1323,6 @@
       <FileNumber>72</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_6_mailbox\mailbox_example3.c</PathWithFileName>
@@ -1403,7 +1335,6 @@
       <FileNumber>73</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_6_mailbox\mailbox_example4.c</PathWithFileName>
@@ -1416,7 +1347,6 @@
       <FileNumber>74</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_6_mailbox\mailbox_example5_reset.c</PathWithFileName>
@@ -1429,7 +1359,6 @@
       <FileNumber>75</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_6_mailbox\mailbox_example6_broadcast.c</PathWithFileName>
@@ -1442,7 +1371,6 @@
       <FileNumber>76</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_6_mailbox\mailbox_example7_flush.c</PathWithFileName>
@@ -1455,7 +1383,6 @@
       <FileNumber>77</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_6_mailbox\mailbox_example8_delete.c</PathWithFileName>
@@ -1468,7 +1395,6 @@
       <FileNumber>78</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_6_mailbox\mailbox_example9_abort.c</PathWithFileName>
@@ -1489,7 +1415,6 @@
       <FileNumber>79</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_7_message\message_example1.c</PathWithFileName>
@@ -1502,7 +1427,6 @@
       <FileNumber>80</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_7_message\message_example2_isr.c</PathWithFileName>
@@ -1515,7 +1439,6 @@
       <FileNumber>81</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_7_message\message_example3.c</PathWithFileName>
@@ -1528,7 +1451,6 @@
       <FileNumber>82</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_7_message\message_example4.c</PathWithFileName>
@@ -1541,7 +1463,6 @@
       <FileNumber>83</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_7_message\message_example5_reset.c</PathWithFileName>
@@ -1554,7 +1475,6 @@
       <FileNumber>84</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_7_message\message_example6_broadcast.c</PathWithFileName>
@@ -1567,7 +1487,6 @@
       <FileNumber>85</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_7_message\message_example7_flush.c</PathWithFileName>
@@ -1580,7 +1499,6 @@
       <FileNumber>86</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_7_message\message_example8_delete.c</PathWithFileName>
@@ -1593,7 +1511,6 @@
       <FileNumber>87</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_7_message\message_example9_abort.c</PathWithFileName>
@@ -1614,7 +1531,6 @@
       <FileNumber>88</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_8_flags\flags_example1.c</PathWithFileName>
@@ -1627,7 +1543,6 @@
       <FileNumber>89</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_8_flags\flags_example2_isr.c</PathWithFileName>
@@ -1640,7 +1555,6 @@
       <FileNumber>90</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_8_flags\flags_example3_reset.c</PathWithFileName>
@@ -1653,7 +1567,6 @@
       <FileNumber>91</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_8_flags\flags_example4_flush.c</PathWithFileName>
@@ -1666,7 +1579,6 @@
       <FileNumber>92</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_8_flags\flags_example5_delete.c</PathWithFileName>
@@ -1679,7 +1591,6 @@
       <FileNumber>93</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_8_flags\flags_example6_abort.c</PathWithFileName>
@@ -1700,7 +1611,6 @@
       <FileNumber>94</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_9_timer\user_timer_basic_example.c</PathWithFileName>
@@ -1713,7 +1623,6 @@
       <FileNumber>95</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_9_timer\user_timer_config_example.c</PathWithFileName>
@@ -1726,7 +1635,6 @@
       <FileNumber>96</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_9_timer\user_timer_lagticks_example.c</PathWithFileName>
@@ -1739,7 +1647,6 @@
       <FileNumber>97</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_9_timer\user_timer_urgent_example.c</PathWithFileName>
@@ -1760,7 +1667,6 @@
       <FileNumber>98</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_10_irq\irq_example1.c</PathWithFileName>
@@ -1773,7 +1679,6 @@
       <FileNumber>99</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_10_irq\irq_example2.c</PathWithFileName>
@@ -1786,7 +1691,6 @@
       <FileNumber>100</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_10_irq\irq_example3.c</PathWithFileName>
@@ -1807,7 +1711,6 @@
       <FileNumber>101</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_11_memory\memory_buddy_example.c</PathWithFileName>
@@ -1820,7 +1723,6 @@
       <FileNumber>102</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_11_memory\memory_pool_example.c</PathWithFileName>
@@ -1841,7 +1743,6 @@
       <FileNumber>103</FileNumber>
       <FileType>1</FileType>
       <tvExp>0</tvExp>
-      <Focus>0</Focus>
       <tvExpOptDlg>0</tvExpOptDlg>
       <bDave2>0</bDave2>
       <PathWithFileName>..\..\example\book_chapter_13_board\board_example.c</PathWithFileName>

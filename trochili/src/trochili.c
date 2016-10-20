@@ -427,6 +427,7 @@ TState TclSetThreadSlice(TThread* pThread, TTimeTick ticks, TError* pError)
 TState TclUnblockThread(TThread* pThread, TError* pError)
 {
     TState state;
+    KNL_ASSERT((pThread != (TThread*)0), "");
     KNL_ASSERT((pError != (TError*)0), "");
 
     state = xThreadUnblock(pThread, pError);

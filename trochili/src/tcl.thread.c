@@ -114,7 +114,7 @@ static TState SetThreadUnready(TThread* pThread, TThreadStatus status, TTimeTick
     }
     else
     {
-    	uDebugAlarm("");
+        uDebugAlarm("");
     }
 
 #if (TCLC_TIMER_ENABLE)
@@ -342,7 +342,6 @@ void uThreadTickISR(void)
 {
     TThread* pThread;
     TObjNode* pHandle;
-    TPriority priority;
 
     /* 将当前线程时间片减去1个节拍数,线程运行总节拍数加1 */
     pThread = uKernelVariable.CurrentThread;
@@ -355,19 +354,19 @@ void uThreadTickISR(void)
         /* 恢复线程的时钟节拍数 */
         pThread->Ticks = pThread->BaseTicks;
 
-        /* 如果内核此时允许线程调度 */
-        if (uKernelVariable.SchedLockTimes == 0U)
+        /* 判断线程是不是处于内核就绪线程队列的某个优先级的队列头 */
+        pHandle = ThreadReadyQueue.Handle[pThread->Priority];
+        if ((TThread*)(pHandle->Owner) == pThread)
         {
-            /* 判断线程是不是处于内核就绪线程队列的某个优先级的队列头 */
-            pHandle = ThreadReadyQueue.Handle[pThread->Priority];
-            if ((TThread*)(pHandle->Owner) == pThread)
+            /* 如果内核此时允许线程调度 */
+            if (uKernelVariable.SchedLockTimes == 0U)
             {
-                priority = pThread->Priority;
                 /*
                  * 发起时间片调度，之后pThread处于线程队列尾部,
                  * 当前线程所在线程队列也可能只有当前线程唯一1个线程
                  */
-                ThreadReadyQueue.Handle[priority] = (ThreadReadyQueue.Handle[priority])->Next;
+                ThreadReadyQueue.Handle[pThread->Priority] =
+                    (ThreadReadyQueue.Handle[pThread->Priority])->Next;
 
                 /* 将线程状态置为就绪,准备线程切换 */
                 pThread->Status = eThreadReady;
@@ -592,7 +591,7 @@ TState uThreadDelete(TThread* pThread, TError* pError)
             state = eSuccess;
         }
     }
-	
+
     *pError = error;
     return state;
 }
@@ -888,7 +887,7 @@ TState xThreadSetPriority(TThread* pThread, TPriority priority, TError* pError)
         if (pThread->Property &THREAD_PROP_READY)
         {
             /* 检查线程是否接收相关API调用 */
-            if (pThread->ACAPI &THREAD_ACAPI_SET_PRIORITY)
+            if (pThread->ACAPI &THREAD_ACAPI_PRIORITY)
             {
                 if ((!(pThread->Property & THREAD_PROP_PRIORITY_FIXED)) &&
                         (pThread->Property & THREAD_PROP_PRIORITY_SAFE))
@@ -898,25 +897,24 @@ TState xThreadSetPriority(TThread* pThread, TPriority priority, TError* pError)
                     {
                         uThreadSchedule();
                     }
-                    else
-                    {
-                        error = THREAD_ERR_FAULT;
-                        state = eFailure;
-                    }
                 }
                 else
                 {
-                    error = THREAD_ERR_ACAPI;
+                    error = THREAD_ERR_PRIORITY;
                 }
             }
             else
             {
-                error = THREAD_ERR_UNREADY;
+                error = THREAD_ERR_ACAPI;
             }
         }
+        else
+        {
+            error = THREAD_ERR_UNREADY;
+        }
     }
+	
     CpuLeaveCritical(imask);
-
     *pError = error;
     return state;
 
@@ -953,7 +951,7 @@ TState xThreadSetTimeSlice(TThread* pThread, TTimeTick ticks, TError* pError)
         if (pThread->Property &THREAD_PROP_READY)
         {
             /* 检查线程是否接收相关API调用 */
-            if (pThread->ACAPI &THREAD_ACAPI_SET_SLICE)
+            if (pThread->ACAPI &THREAD_ACAPI_SLICE)
             {
                 /* 调整线程时间片长度 */
                 if (pThread->BaseTicks > ticks)
@@ -1001,18 +999,15 @@ TState xThreadYield(TError* pError)
     TState state = eFailure;
     TError error = THREAD_ERR_FAULT;
     TReg32 imask;
-    TPriority priority;
     TThread* pThread;
 
     CpuEnterCritical(&imask);
 
-    /* 只能在线程环境下同时内核允许线程调度的条件下才能调用本函数 */
-    if ((uKernelVariable.State == eThreadState) &&
-            (uKernelVariable.SchedLockTimes == 0U))
+    /* 只能在线程环境下才能调用本函数 */
+    if (uKernelVariable.State == eThreadState)
     {
         /* 操作目标是当前线程 */
         pThread = uKernelVariable.CurrentThread;
-        priority = pThread->Priority;
 
         /* 检查线程是否已经被初始化 */
         if (pThread->Property &THREAD_PROP_READY)
@@ -1020,16 +1015,20 @@ TState xThreadYield(TError* pError)
             /* 检查线程是否接收相关API调用 */
             if (pThread->ACAPI &THREAD_ACAPI_YIELD)
             {
-                /*
-                 * 调整当前线程所在队列的头指针
-                 * 当前线程所在线程队列也可能只有当前线程唯一1个线程
-                 */
-                ThreadReadyQueue.Handle[priority] = (ThreadReadyQueue.Handle[priority])->Next;
-                pThread->Status = eThreadReady;
-
-                uThreadSchedule();
-                error = THREAD_ERR_NONE;
-                state = eSuccess;
+                /* 只能在内核允许线程调度的条件下才能调用本函数 */
+                if (uKernelVariable.SchedLockTimes == 0U)
+                {
+                    /*
+                     * 调整当前线程所在队列的头指针
+                     * 当前线程所在线程队列也可能只有当前线程唯一1个线程
+                     */
+                    ThreadReadyQueue.Handle[pThread->Priority] =
+                        (ThreadReadyQueue.Handle[pThread->Priority])->Next;
+                    pThread->Status = eThreadReady;
+                    uThreadSchedule();
+                    error = THREAD_ERR_NONE;
+                    state = eSuccess;
+                }
             }
             else
             {
@@ -1378,46 +1377,47 @@ TState xThreadUndelay(TThread* pThread, TError* pError)
 TState xThreadUnblock(TThread* pThread, TError* pError)
 {
     TState state = eFailure;
-    TError error = THREAD_ERR_UNREADY;
+    TError error = THREAD_ERR_FAULT;
     TBool HiRP = eFalse;
     TReg32 imask;
 
     CpuEnterCritical(&imask);
 
-    /* 检查线程是否已经被初始化 */
-    if (pThread->Property &THREAD_PROP_READY)
+    /* 只允许在线程代码里调用本函数 */
+    if (uKernelVariable.State == eThreadState)
     {
-        /* 检查线程是否接收相关API调用 */
-        if (pThread->ACAPI &THREAD_ACAPI_UNBLOCK)
+        /* 检查线程是否已经被初始化 */
+        if (pThread->Property &THREAD_PROP_READY)
         {
-            if (pThread->Status == eThreadBlocked)
+            /* 检查线程是否接收相关API调用 */
+            if (pThread->ACAPI &THREAD_ACAPI_UNBLOCK)
             {
-                /*
-                 * 将阻塞队列上的指定阻塞线程释放
-                 * 在线程环境下，如果当前线程的优先级已经不再是线程就绪队列的最高优先级，
-                 * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
-                 */
-                uIpcUnblockThread(&(pThread->IpcContext), eFailure, IPC_ERR_ABORT, &HiRP);
-                if ((uKernelVariable.State == eThreadState) &&
-                        (uKernelVariable.SchedLockTimes == 0U) &&
-                        (HiRP == eTrue))
+                if (pThread->Status == eThreadBlocked)
                 {
-                    uThreadSchedule();
+                    /*
+                     * 将阻塞队列上的指定阻塞线程释放
+                     * 在线程环境下，如果当前线程的优先级已经不再是线程就绪队列的最高优先级，
+                     * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
+                     */
+                    uIpcUnblockThread(&(pThread->IpcContext), eFailure, IPC_ERR_ABORT, &HiRP);
+                    if ((uKernelVariable.SchedLockTimes == 0U) && (HiRP == eTrue))
+                    {
+                        uThreadSchedule();
+                    }
+                    error = THREAD_ERR_NONE;
+                    state = eSuccess;
                 }
-                error = THREAD_ERR_NONE;
-                state = eSuccess;
+                else
+                {
+                    error = THREAD_ERR_STATUS;
+                }
             }
             else
             {
-                error = THREAD_ERR_STATUS;
+                error = THREAD_ERR_ACAPI;
             }
         }
-        else
-        {
-            error = THREAD_ERR_ACAPI;
-        }
     }
-
     CpuLeaveCritical(imask);
 
     *pError = error;
