@@ -40,7 +40,7 @@ typedef struct IpcBlockedQueueDef TIpcQueue;
 #define IPC_ERR_ACAPI            (TError)(0x1<<9)       /* 线程不能以阻塞方式访问IPC对象             */
 
 /* IPC对象属性，内核代码使用 */
-#define IPC_PROP_DEFAULT             (TProperty)(0x0)
+#define IPC_PROP_DEFAULT         (TProperty)(0x0)
 #define IPC_PROP_READY           (TProperty)(0x1<<0)    /* IPC对象已经被初始化                       */
 #define IPC_PROP_PREEMP_AUXIQ    (TProperty)(0x1<<1)    /* 辅助线程阻塞队列采用优先级调度方案        */
 #define IPC_PROP_PREEMP_PRIMIQ   (TProperty)(0x1<<2)    /* 基本线程阻塞队列采用优先级调度方案        */

@@ -617,6 +617,11 @@ TState uThreadSetPriority(TThread* pThread, TPriority priority, TBool flag, TBoo
     {
         if (pThread->Status == eThreadBlocked)
         {
+            /* 阻塞状态的线程都在辅助队列里，修改其优先级 */
+            uThreadLeaveQueue(&ThreadAuxiliaryQueue, pThread);
+            pThread->Priority = priority;
+            uThreadEnterQueue(&ThreadAuxiliaryQueue, pThread, eQuePosTail);
+
             uIpcSetPriority(&(pThread->IpcContext), priority);
             state = eSuccess;
             error = THREAD_ERR_NONE;
@@ -670,8 +675,10 @@ TState uThreadSetPriority(TThread* pThread, TPriority priority, TBool flag, TBoo
         }
         else
         {
-            /*其它状态的线程都在辅助队列里，可以直接修改优先级*/
+            /*其它状态的线程都在辅助队列里，修改其优先级 */
+            uThreadLeaveQueue(&ThreadAuxiliaryQueue, pThread);
             pThread->Priority = priority;
+            uThreadEnterQueue(&ThreadAuxiliaryQueue, pThread, eQuePosTail);
             state = eSuccess;
             error = THREAD_ERR_NONE;
         }
@@ -913,7 +920,7 @@ TState xThreadSetPriority(TThread* pThread, TPriority priority, TError* pError)
             error = THREAD_ERR_UNREADY;
         }
     }
-	
+
     CpuLeaveCritical(imask);
     *pError = error;
     return state;

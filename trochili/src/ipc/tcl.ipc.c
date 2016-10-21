@@ -258,14 +258,9 @@ void uIpcSetPriority(TIpcContext* pContext, TPriority priority)
 {
     TProperty property;
     TIpcQueue* pQueue;
-    TThread* pThread;
 
     pQueue = pContext->Queue;
-    pThread = (TThread*)(pContext->Owner);
-
-    /* 因为线程现在为阻塞状态，所以可以直接在内核线程辅助队列中修改线程的优先级 */
-    pThread->Priority = priority;
-
+   
     /* 根据实际情况来重新安排线程在IPC阻塞队列里的位置 */
     property = *(pContext->Queue->Property);
     if (pContext->Option & IPC_OPT_USE_AUXIQ)

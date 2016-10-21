@@ -1269,6 +1269,7 @@ TState TclCreateTimer(TTimer* pTimer, TProperty property, TTimeTick ticks,
     KNL_ASSERT((ticks > 0U), "");
     KNL_ASSERT((pError != (TError*)0), "");
 
+	property &= TIMER_VALID_PROP;
     state = xTimerCreate(pTimer, property, ticks, pRoutine, data, pError);
     return state;
 }

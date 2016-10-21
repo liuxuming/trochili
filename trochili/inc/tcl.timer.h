@@ -45,6 +45,8 @@ typedef enum TimerStatusDef TTimerStatus;
 #define TIMER_PROP_PERIODIC       (0x1<<1)              /* 用户周期回调定时器                   */
 #define TIMER_PROP_URGENT         (0x1<<2)              /* 用户紧急回调定时器                   */
 
+#define TIMER_VALID_PROP    (TIMER_PROP_PERIODIC| TIMER_PROP_URGENT)
+
 /* 用户定时器回调函数类型定义 */
 typedef void(*TTimerRoutine)(TArgument data);
 
@@ -53,13 +55,13 @@ struct TimerDef
 {
     TProperty     Property;                              /* 定时器属性                           */
     TBase32       ID;                                    /* 定时器编号                           */
-    void*         Owner;                                 /* 定时器所属线程                       */
     TTimerStatus  Status;                                /* 定时器状态                           */
     TTimerType    Type;                                  /* 定时器类型                           */
     TTimeTick     MatchTicks;                            /* 定时器到时时刻                       */
     TTimeTick     PeriodTicks;                           /* 定时器延时计数                       */
     TTimerRoutine Routine;                               /* 用户定时器回调函数                   */
     TArgument     Argument;                              /* 定时器延时回调参数                   */
+    void*         Owner;                                 /* 定时器所属线程                       */	
     TObjNode      ObjNode;                               /* 定时器所在队列的链表指针             */
 };
 typedef struct TimerDef TTimer;
