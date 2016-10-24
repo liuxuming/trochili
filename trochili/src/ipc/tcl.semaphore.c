@@ -41,9 +41,9 @@ static TState ReleaseSemaphore(TSemaphore* pSemaphore, TBool* pHiRP, TError* pEr
     else if (pSemaphore->Value == 0U)
     {
         /*
-        * 尝试从信号量的阻塞队列中找到一个合适的线程并唤醒,保持信号量计数不变，
-        * 如果被唤醒的线程的优先级高于当前线程优先级则设置线程调度请求标记
-        */
+         * 尝试从信号量的阻塞队列中找到一个合适的线程并唤醒,保持信号量计数不变，
+         * 如果被唤醒的线程的优先级高于当前线程优先级则设置线程调度请求标记
+         */
         if (pSemaphore->Property & IPC_PROP_PRIMQ_AVAIL)
         {
             pContext = (TIpcContext*)(pSemaphore->Queue.PrimaryHandle->Owner);
@@ -84,8 +84,8 @@ static TState ObtainSemaphore(TSemaphore* pSemaphore, TBool* pHiRP, TError* pErr
 
     if (pSemaphore->Value == 0U)
     {
-        error = IPC_ERR_NORMAL;
         state = eFailure;
+        error = IPC_ERR_NORMAL;
     }
     else if (pSemaphore->Value == pSemaphore->LimitedValue)
     {

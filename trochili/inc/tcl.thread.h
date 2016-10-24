@@ -18,7 +18,7 @@
 #define THREAD_DIAG_STACK_ALARM       (TBitMask)(0x1<<1)  /* 线程栈告警                              */
 #define THREAD_DIAG_INVALID_EXIT      (TBitMask)(0x1<<2)  /* 线程非法退出                            */
 #define THREAD_DIAG_INVALID_STATE     (TBitMask)(0x1<<3)  /* 线程操作失败                            */
-#define THREAD_DIAG_IPC_FORBIDDEN     (TBitMask)(0x1<<4)  /* 线程操作禁止                            */
+#define THREAD_DIAG_INVALID_TIMEO     (TBitMask)(0x1<<4)  /* 线程时限阻塞禁止                        */
 
 /* 线程调用错误码定义                 */
 #define THREAD_ERR_NONE               (TError)(0x0)

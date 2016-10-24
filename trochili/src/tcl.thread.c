@@ -118,9 +118,9 @@ static TState SetThreadUnready(TThread* pThread, TThreadStatus status, TTimeTick
     }
 
 #if (TCLC_TIMER_ENABLE)
+    /* 重置并启动线程定时器 */
     if ((state == eSuccess) && (status == eThreadDelayed))
     {
-        /* 重置并启动线程定时器，此时线程定时器一定为eTimerDormant */
         uTimerConfig(&(pThread->Timer), eThreadTimer, ticks);
         uTimerStart(&(pThread->Timer), 0U);
     }

@@ -117,7 +117,7 @@ void uIpcBlockThread(TIpcContext* pContext, TIpcQueue* pQueue, TTimeTick ticks)
     if (pThread->Status != eThreadRunning)
     {
         uKernelVariable.Diagnosis |= KERNEL_DIAG_THREAD_ERROR;
-        pThread->Diagnosis |= THREAD_DIAG_STACK_OVERFLOW;
+        pThread->Diagnosis |= THREAD_DIAG_INVALID_STATE;
         uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
@@ -128,16 +128,19 @@ void uIpcBlockThread(TIpcContext* pContext, TIpcQueue* pQueue, TTimeTick ticks)
     /* 将线程放入阻塞队列 */
     EnterBlockedQueue(pQueue, pContext);
 
-    /* 如果需要就初始化并且打开线程用于访问资源的时限定时器 */
 #if (TCLC_TIMER_ENABLE && TCLC_IPC_TIMER_ENABLE)
+    /* 如果需要就初始化并且打开线程用于访问资源的时限定时器 */
     if ((pContext->Option & IPC_OPT_TIMED) && (ticks > 0U))
     {
-        /* 重新配置并启动线程定时器，此时线程定时器一定为eTimerDormant */
         uTimerConfig(&(pThread->Timer), eIpcTimer, ticks);
         uTimerStart(&(pThread->Timer), 0U);
     }
 #else
-    ticks = ticks;
+    /* 访问资源时不支持时限阻塞方式 */
+    if (pContext->Option & IPC_OPT_TIMED)
+    {
+        pThread->Diagnosis |= THREAD_DIAG_INVALID_TIMEO;
+    }
 #endif
 }
 
