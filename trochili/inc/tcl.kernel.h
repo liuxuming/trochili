@@ -41,11 +41,10 @@ typedef enum
 } TKernelState;
 
 #define KERNEL_DIAG_ERROR_NONE      (0U)       /* 线程栈溢出                                   */
-#define KERNEL_DIAG_THREAD_ERROR    (0x1<<0U)  /* 线程错误                                    */
-#define KERNEL_DIAG_SCHED_ERROR     (0x1<<1U)  /* 未使用                                       */
-#define KERNEL_DIAG_TIMER_ERROR     (0x1<<2U)  /* 未使用                                       */
+#define KERNEL_DIAG_THREAD_ERROR    (0x1<<0U)  /* 线程错误                                     */
+#define KERNEL_DIAG_SCHED_ERROR     (0x1<<1U)  /*                                              */
+#define KERNEL_DIAG_TIMER_ERROR     (0x1<<2U)  /* 定时器错误                                   */
 #define KERNEL_DIAG_IRQ_ERROR       (0x1<<3U)  /* 在中断里操作了互斥量                         */
-
 
 /* 内核变量结构定义，记录了内核运行时的各种数据 */
 struct KernelVariableDef

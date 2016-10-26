@@ -45,7 +45,7 @@ typedef enum TimerStatusDef TTimerStatus;
 #define TIMER_PROP_PERIODIC       (0x1<<1)              /* 用户周期回调定时器                   */
 #define TIMER_PROP_URGENT         (0x1<<2)              /* 用户紧急回调定时器                   */
 
-#define TIMER_VALID_PROP    (TIMER_PROP_PERIODIC| TIMER_PROP_URGENT)
+#define TIMER_USER_PROPERTY    (TIMER_PROP_PERIODIC| TIMER_PROP_URGENT)
 
 /* 用户定时器回调函数类型定义 */
 typedef void(*TTimerRoutine)(TArgument data);

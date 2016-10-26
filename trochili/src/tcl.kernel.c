@@ -86,11 +86,11 @@ void xKernelLeaveIntrState(void)
     uKernelVariable.IntrNestTimes--;
     if (uKernelVariable.IntrNestTimes == 0U)
     {
-        /* 
+        /*
          * 如果还有其它中断标记在挂起或激活，说明当前中断是最高优先级中断，虽然没有发生嵌套，
          * 但是返回后将进入低级别的中断，所以这种情况不必要进行任务切换，理应留给最后一个并且是
          * 最低级别的那个中断在退出中断时来完成。
-         * 此处的线程调度体现的是"抢占" 
+         * 此处的线程调度体现的是"抢占"
          */
         if (uKernelVariable.SchedLockTimes == 0U)
         {
@@ -166,10 +166,10 @@ TState xKernelUnlockSched(void)
         if (uKernelVariable.SchedLockTimes > 0U)
         {
             uKernelVariable.SchedLockTimes--;
-            /* 
+            /*
              * 在关闭调度器的阶段，当前线程有可能使得其他更高优先级的线程就绪，ISR也可能将
              * 一些高优先级的线程解除阻塞。所以在打开调度器的时候，需要做一次线程调度检查，
-             * 和系统从中断返回时类似 
+             * 和系统从中断返回时类似
              */
             if (uKernelVariable.SchedLockTimes == 0U)
             {
@@ -282,7 +282,7 @@ void xKernelStart(TUserEntry pUserEntry,
     /* 打开处理器中断 */
     CpuEnableInt();
 
-    /* 
+    /*
      * 本段代码应该永远不会被执行，若运行到此，说明移植时出现问题。
      * 这里的循环代码起到兜底作用，避免处理器进入非正常状态
      */
@@ -311,29 +311,29 @@ static void xRootThreadEntry(TBase32 argument)
 {
     /* 关闭处理器中断 */
     CpuDisableInt();
-
-    /* 标记内核进入多线程模式 */
-    uKernelVariable.State = eThreadState;
-
-    /* 临时关闭线程调度功能 */
-    uKernelVariable.SchedLockTimes = 1U;
-
-    /* 
-     * 调用用户入口函数，初始化用户程序。
-     * 该函数运行在eThreadState,但是禁止Schedulable的状态下
-     */
-    if(uKernelVariable.UserEntry == (TUserEntry)0)
     {
-        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+        /* 标记内核进入多线程模式 */
+        uKernelVariable.State = eThreadState;
+		
+        /* 临时关闭线程调度功能 */
+        uKernelVariable.SchedLockTimes = 1U;
+        {
+            /*
+             * 调用用户入口函数，初始化用户程序。
+             * 该函数运行在eThreadState,但是禁止Schedulable的状态下
+             */
+            if(uKernelVariable.UserEntry == (TUserEntry)0)
+            {
+                uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+            }
+            uKernelVariable.UserEntry();
+        }
+        /* 开启线程调度功能 */
+        uKernelVariable.SchedLockTimes = 0U;
+
+        /* 打开系统时钟节拍 */
+        CpuStartTickClock();
     }
-    uKernelVariable.UserEntry();
-
-    /* 开启线程调度功能 */
-    uKernelVariable.SchedLockTimes = 0U;
-
-    /* 打开系统时钟节拍 */
-    CpuStartTickClock();
-
     /* 打开处理器中断 */
     CpuEnableInt();
 

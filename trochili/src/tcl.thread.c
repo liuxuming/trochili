@@ -517,7 +517,7 @@ void uThreadCreate(TThread* pThread, TThreadStatus status, TProperty property, T
 
     /* 设置线程定时器信息 */
 #if (TCLC_TIMER_ENABLE)
-    uTimerCreate(&(pThread->Timer), (TProperty)0, eThreadTimer, TCLM_MAX_VALUE64,
+    uTimerCreate(&(pThread->Timer), (TProperty)0, eThreadTimer, (TTimeTick)0,
                  (TTimerRoutine)0, (TArgument)0, (void*)pThread);
 #endif
 
@@ -1293,7 +1293,7 @@ TState xThreadDelay(TThread* pThread, TTimeTick ticks, TError* pError)
         {
             pThread = uKernelVariable.CurrentThread;
         }
-
+		
         /* 检查线程是否已经被初始化 */
         if (pThread->Property &THREAD_PROP_READY)
         {

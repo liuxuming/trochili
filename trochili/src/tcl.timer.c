@@ -45,7 +45,7 @@ void uTimerCreate(TTimer* pTimer, TProperty property, TTimerType type, TTimeTick
     /* uTimerConfig函数会动态调整Type\PeriodTicks这2个参数 */
     pTimer->Type           = type;
     pTimer->PeriodTicks    = ticks;
-    pTimer->MatchTicks     = TCLM_MAX_VALUE64;
+    pTimer->MatchTicks     = (TTimeTick)0;
     pTimer->Routine        = pRoutine;
     pTimer->Argument       = data;
     pTimer->Owner          = pOwner;
@@ -279,26 +279,39 @@ void uTimerTickISR(void)
     TObjNode* pNode;
     TObjNode* pNext;
 
-    /* 获得当前活动定时器队列 */
+    /* 根据当前系统时钟节拍计数计算出当前活动定时器队列 */
     spoke = (TIndex)(uKernelVariable.Jiffies % TCLC_TIMER_WHEEL_SIZE);
     pNode = TimerList.ActiveHandle[spoke];
 
-    /* 检查当前活动定时器队列里的每个定时器 */
+    /* 
+	   * 检查当前活动定时器队列里的定时器。队列里的定时器按照期满节拍值由小到大排列。
+     * 如果某个队列队首定时器计数小于当前系统时钟节拍计数，这说明有定时器计数发生溢出，
+     * 在本系统中，系统时钟节拍计数为64Bits,同时强制要求定时器延时计数必须小于32Bits，
+     * 这样即使定时器计数发生溢出，也不会丢失计数。
+	   */
     while (pNode != (TObjNode*)0)
     {
         pNext = pNode->Next;
         pTimer = (TTimer*)(pNode->Owner);
 
-        /* 如果当前定时器的定时时钟节拍数和此时的系统内核时钟节拍计数不相等则退出循环 */
-        if (pTimer->MatchTicks != uKernelVariable.Jiffies)
+        /*
+         * 如果定时器的延时节拍数小于此时系统时钟节拍数则跳过该定时器;
+         * 如果定时器的延时节拍数等于此时系统时钟节拍数则处理该定时器;
+         * 如果定时器的延时节拍数大于此时系统时钟节拍数则退出整个流程;
+         */
+        if (pTimer->MatchTicks < uKernelVariable.Jiffies)
+        {
+            pNode = pNext;
+        }
+        else if (pTimer->MatchTicks == uKernelVariable.Jiffies)
+        {
+            DispatchTimer(pTimer);
+            pNode = pNext;
+        }
+        else
         {
             break;
         }
-
-        /* 否则分析处理该定时器 */
-        DispatchTimer(pTimer);
-
-        pNode = pNext;
     }
 
     /* 如果需要则唤醒内核内置的用户定时器守护线程 */

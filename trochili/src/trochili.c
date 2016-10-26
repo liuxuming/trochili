@@ -447,9 +447,10 @@ TState TclUnblockThread(TThread* pThread, TError* pError)
 TState TclDelayThread(TThread* pThread, TTimeTick ticks, TError* pError)
 {
     TState state;
-    KNL_ASSERT((ticks > 0), "");
+    KNL_ASSERT((ticks > 0U), "");
+    KNL_ASSERT((ticks < TCLM_MAX_VALUE32), "");
     KNL_ASSERT((pError != (TError*)0), "");
-
+	
     state = xThreadDelay(pThread, ticks, pError);
     return state;
 }
@@ -494,7 +495,7 @@ TState TclCreateSemaphore(TSemaphore* pSemaphore, TBase32 value, TBase32 mvalue,
     KNL_ASSERT((mvalue >= value), "");
     KNL_ASSERT((pError != (TError*)0), "");
 
-    property &= IPC_VALID_SEMAPHORE_PROP;
+    property &= IPC_USER_SEMAPHORE_PROP;
     state = xSemaphoreCreate(pSemaphore, value, mvalue, property, pError);
     return state;
 }
@@ -516,9 +517,10 @@ TState TclObtainSemaphore(TSemaphore* pSemaphore, TOption option, TTimeTick time
     TState state;
     KNL_ASSERT((pSemaphore != (TSemaphore*)0), "");
     KNL_ASSERT((pError != (TError*)0), "");
-
+    KNL_ASSERT((timeo < TCLM_MAX_VALUE32), "");
+	
     /* 调整操作选项，屏蔽不需要支持的选项 */
-    option &= IPC_VALID_SEMAPHORE_OPTION;
+    option &= IPC_USER_SEMAPHORE_OPTION;
     state = xSemaphoreObtain(pSemaphore, option, timeo, pError);
 
     return state;
@@ -540,9 +542,10 @@ TState TclReleaseSemaphore(TSemaphore* pSemaphore, TOption option, TTimeTick tim
     TState state;
     KNL_ASSERT((pSemaphore != (TSemaphore*)0), "");
     KNL_ASSERT((pError != (TError*)0), "");
-
+    KNL_ASSERT((timeo < TCLM_MAX_VALUE32), "");
+	
     /* 调整操作选项，屏蔽不需要支持的选项 */
-    option &= IPC_VALID_SEMAPHORE_OPTION;
+    option &= IPC_USER_SEMAPHORE_OPTION;
     state = xSemaphoreRelease(pSemaphore, option, timeo, pError);
     return state;
 }
@@ -643,7 +646,7 @@ TState TclCreateMutex(TMutex* pMutex, TPriority priority, TProperty property, TE
     KNL_ASSERT((priority < TCLC_LOWEST_PRIORITY), "");
     KNL_ASSERT((pError != (TError*)0), "");
 
-    property &= IPC_VALID_MUTEX_PROP;
+    property &= IPC_USER_MUTEX_PROP;
     state = xMutexCreate(pMutex, priority, property, pError);
     return state;
 }
@@ -683,9 +686,10 @@ TState TclLockMutex(TMutex* pMutex, TOption option, TTimeTick timeo, TError* pEr
     TState state;
     KNL_ASSERT((pMutex != (TMutex*)0), "");
     KNL_ASSERT((pError != (TError*)0), "");
-
+    KNL_ASSERT((timeo < TCLM_MAX_VALUE32), "");
+	
     /* 调整操作选项，屏蔽不需要支持的选项 */
-    option &= IPC_VALID_MUTEX_OPTION;
+    option &= IPC_USER_MUTEX_OPTION;
     state = xMutexLock(pMutex, option, timeo, pError);
     return state;
 }
@@ -768,7 +772,7 @@ TState TclCreateMailBox(TMailBox* pMailbox, TProperty property, TError* pError)
     KNL_ASSERT((pMailbox != (TMailBox*)0), "");
     KNL_ASSERT((pError != (TError*)0), "");
 
-    property &= IPC_VALID_MBOX_PROP;
+    property &= IPC_USER_MBOX_PROP;
     state = xMailBoxCreate(pMailbox, property, pError);
     return state;
 }
@@ -811,9 +815,10 @@ TState TclReceiveMail(TMailBox* pMailbox, TMail* pMail2, TOption option, TTimeTi
     KNL_ASSERT((pMailbox != (TMailBox*)0), "");
     KNL_ASSERT((pMail2 != (TMail*)0), "");
     KNL_ASSERT((pError != (TError*)0), "");
-
+    KNL_ASSERT((timeo < TCLM_MAX_VALUE32), "");
+	
     /* 调整操作选项，屏蔽不需要支持的选项 */
-    option &= IPC_VALID_MBOX_OPTION;
+    option &= IPC_USER_MBOX_OPTION;
     state = xMailBoxReceive(pMailbox, pMail2, option, timeo, pError);
     return state;
 }
@@ -838,9 +843,10 @@ TState TclSendMail(TMailBox* pMailbox, TMail* pMail2, TOption option,
     KNL_ASSERT((pMailbox != (TMailBox*)0), "");
     KNL_ASSERT((pMail2 != (TMail*)0), "");
     KNL_ASSERT((pError != (TError*)0), "");
-
+    KNL_ASSERT((timeo < TCLM_MAX_VALUE32), "");
+	
     /* 调整操作选项，屏蔽不需要支持的选项 */
-    option &= IPC_VALID_MBOX_OPTION;
+    option &= IPC_USER_MBOX_OPTION;
     state = xMailBoxSend(pMailbox, pMail2, option, timeo, pError);
 
     return state;
@@ -954,7 +960,7 @@ TState TclCreateMsgQueue(TMsgQueue* pMsgQue, void** pPool2, TBase32 capacity, TP
     KNL_ASSERT((capacity != 0U), "");
     KNL_ASSERT((pError != (TError*)0), "");
 
-    property &= IPC_VALID_MQUE_PROP;
+    property &= IPC_USER_MQUE_PROP;
     state = xMQCreate(pMsgQue, pPool2, capacity, property, pError);
     return state;
 }
@@ -978,9 +984,10 @@ TState TclReceiveMessage(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option, TT
     KNL_ASSERT((pMsgQue != (TMsgQueue*)0), "");
     KNL_ASSERT((pMsg2 != (TMessage*)0), "");
     KNL_ASSERT((pError != (TError*)0), "");
+    KNL_ASSERT((timeo < TCLM_MAX_VALUE32), "");
 
     /* 调整操作选项，屏蔽不需要支持的选项 */
-    option &= IPC_VALID_MSGQ_OPTION;
+    option &= IPC_USER_MSGQ_OPTION;
     state = xMQReceive(pMsgQue, pMsg2, option, timeo, pError);
     return state;
 }
@@ -1004,9 +1011,10 @@ TState TclSendMessage(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option, TTime
     KNL_ASSERT((pMsgQue != (TMsgQueue*)0), "");
     KNL_ASSERT((pMsg2 != (TMessage*)0), "");
     KNL_ASSERT((pError != (TError*)0), "");
-
+    KNL_ASSERT((timeo < TCLM_MAX_VALUE32), "");
+	
     /* 调整操作选项，屏蔽不需要支持的选项 */
-    option &= IPC_VALID_MSGQ_OPTION;
+    option &= IPC_USER_MSGQ_OPTION;
     state = xMQSend(pMsgQue, pMsg2, option, timeo, pError);
     return state;
 }
@@ -1133,7 +1141,7 @@ TState TclCreateFlags(TFlags* pFlags, TProperty property, TError* pError)
     KNL_ASSERT((pFlags != (TFlags*)0), "");
     KNL_ASSERT((pError != (TError*)0), "");
 
-    property &= IPC_VALID_FLAG_PROP;
+    property &= IPC_USER_FLAG_PROP;
     state = xFlagsCreate(pFlags, property, pError);
     return state;
 }
@@ -1197,9 +1205,10 @@ TState TclReceiveFlags(TFlags* pFlags, TBitMask* pPattern, TOption option, TTime
     KNL_ASSERT((pFlags != (TFlags*)0), "");
     KNL_ASSERT((option & (IPC_OPT_AND | IPC_OPT_OR)) != 0U, "");
     KNL_ASSERT((pError != (TError*)0), "");
-
+    KNL_ASSERT((timeo < TCLM_MAX_VALUE32), "");
+	
     /* 调整操作选项，屏蔽不需要支持的选项 */
-    option &= IPC_VALID_FLAG_OPTION;
+    option &= IPC_USER_FLAG_OPTION;
     state = xFlagsReceive(pFlags, pPattern, option, timeo, pError);
     return state;
 }
@@ -1267,9 +1276,10 @@ TState TclCreateTimer(TTimer* pTimer, TProperty property, TTimeTick ticks,
     KNL_ASSERT((pTimer != (TTimer*)0), "");
     KNL_ASSERT((pRoutine != (TTimerRoutine)0), "");
     KNL_ASSERT((ticks > 0U), "");
+	KNL_ASSERT((ticks < TCLM_MAX_VALUE32), "");
     KNL_ASSERT((pError != (TError*)0), "");
 
-	property &= TIMER_VALID_PROP;
+    property &= TIMER_USER_PROPERTY;
     state = xTimerCreate(pTimer, property, ticks, pRoutine, data, pError);
     return state;
 }
@@ -1308,6 +1318,7 @@ TState TclStartTimer(TTimer* pTimer, TTimeTick lagticks, TError* pError)
     TState state;
     KNL_ASSERT((pTimer != (TTimer*)0), "");
     KNL_ASSERT((pError != (TError*)0), "");
+	KNL_ASSERT((lagticks < TCLM_MAX_VALUE32), "");
 
     state = xTimerStart(pTimer, lagticks, pError);
     return state;
@@ -1345,8 +1356,9 @@ TState TclConfigTimer(TTimer* pTimer, TTimeTick ticks, TError* pError)
     TState state;
     KNL_ASSERT((pTimer != (TTimer*)0), "");
     KNL_ASSERT((ticks > 0U), "");
+    KNL_ASSERT((ticks < TCLM_MAX_VALUE32), "");
     KNL_ASSERT((pError != (TError*)0), "");
-
+	
     state = xTimerConfig(pTimer, ticks, pError);
     return state;
 }
