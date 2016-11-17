@@ -75,7 +75,7 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化CTRL线程 */
-    state = TclCreateThread(&ThreadCTRL,
+    state = TclCreateThread(&ThreadCTRL, "thread ctrl",
                           &ThreadCtrlEntry, (TArgument)0,
                           ThreadCTRLStack, THREAD_CTRL_STACK_BYTES,
                           THREAD_CTRL_PRIORITY, THREAD_CTRL_SLICE,
@@ -84,7 +84,7 @@ static void AppSetupEntry(void)
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化Led设备控制线程 */
-    state = TclCreateThread(&ThreadLedOn,
+    state = TclCreateThread(&ThreadLedOn, "thread led on",
                           &ThreadLedOnEntry, (TArgument)0,
                           ThreadLedOnStack, THREAD_LED_STACK_BYTES,
                           THREAD_LED_PRIORITY, THREAD_LED_SLICE,
@@ -93,7 +93,7 @@ static void AppSetupEntry(void)
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化Led设备控制线程 */
-    state = TclCreateThread(&ThreadLedOff,
+    state = TclCreateThread(&ThreadLedOff, "thread led off",
                           &ThreadLedOffEntry, (TArgument)0,
                           ThreadLedOffStack, THREAD_LED_STACK_BYTES,
                           THREAD_LED_PRIORITY, THREAD_LED_SLICE,

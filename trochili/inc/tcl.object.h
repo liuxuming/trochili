@@ -6,33 +6,58 @@
 #ifndef _TCL_OBJECT_H
 #define _TCL_OBJECT_H
 #include "tcl.types.h"
+#include "tcl.config.h"
+
+/* 对象类型枚举定义 */
+enum ObjectTypeDef
+{
+    eThread = 0,
+    eTimer,
+    eSemaphore,
+    eMutex,
+    eMailbox,
+    eMessage,
+    eFlag
+};
+typedef enum ObjectTypeDef TObjectType;
 
 /* 内核对象节点结构定义 */
-struct ObjNodeDef
+struct LinkNodeDef
 {
-    struct ObjNodeDef*  Prev;
-    struct ObjNodeDef*  Next;
-    struct ObjNodeDef** Handle;
-    void*  Owner;
+    struct LinkNodeDef*  Prev;
+    struct LinkNodeDef*  Next;
+    struct LinkNodeDef** Handle;
+    void*    Owner;
     TBase32* Data;
 };
-typedef struct ObjNodeDef TObjNode;
+typedef struct LinkNodeDef TLinkNode;
 
-#define OFF_SET_OF(TYPE, MEMBER) ((TBase32)(&(((TYPE *)0)->MEMBER)))
-
-typedef enum QueuePosDef
+/* 内核对象进入各个链表时的节点位置 */
+typedef enum LinkPosDef
 {
-    eQuePosHead,
-    eQuePosTail
-} TQueuePos;
+    eLinkPosHead,
+    eLinkPosTail
+} TLinkPos;
 
+/* 内核对象结构定义 */
+struct ObjectDef
+{
+    TBase32       ID;                                    /* 内核对象编号     */
+    TObjectType   Type;                                  /* 内核对象类型     */
+    TChar         Name[TCL_OBJ_NAME_LEN];                /* 内核对象名称     */
+	void*         Owner;                                 /* 内核对象宿主     */
+    TLinkNode     LinkNode;                              /* 内核对象链接节点 */
+};
+typedef struct ObjectDef TObject;
 
-void uObjQueueAddFifoNode(TObjNode** pHandle2, TObjNode* pNode, TQueuePos pos);
-void uObjQueueAddPriorityNode(TObjNode** pHandle2, TObjNode* pNode);
-void uObjQueueRemoveNode(TObjNode** pHandle2, TObjNode* pNode);
-void uObjListAddNode(TObjNode** pHandle2, TObjNode* pNode, TQueuePos pos);
-void uObjListRemoveNode(TObjNode** pHandle2, TObjNode* pNode);
-void uObjListAddPriorityNode(TObjNode** pHandle2, TObjNode* pNode);
+extern void uObjQueueAddFifoNode(TLinkNode** pHandle2, TLinkNode* pNode, TLinkPos pos);
+extern void uObjQueueAddPriorityNode(TLinkNode** pHandle2, TLinkNode* pNode);
+extern void uObjQueueRemoveNode(TLinkNode** pHandle2, TLinkNode* pNode);
+extern void uObjListAddNode(TLinkNode** pHandle2, TLinkNode* pNode, TLinkPos pos);
+extern void uObjListRemoveNode(TLinkNode** pHandle2, TLinkNode* pNode);
+extern void uObjListAddPriorityNode(TLinkNode** pHandle2, TLinkNode* pNode);
+extern void uObjListAddDiffNode(TLinkNode** pHandle2, TLinkNode* pNode);
+extern void uObjListRemoveDiffNode(TLinkNode** pHandle2, TLinkNode* pNode);
 
 #endif /* _TCL_OBJECT_H */
 

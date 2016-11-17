@@ -68,9 +68,9 @@ static TState SendFlags(TFlags* pFlags, TBitMask pattern, TBool* pHiRP, TError* 
 {
     TState state = eError;
     TError error = IPC_ERR_NORMAL;
-    TObjNode* pHead;
-    TObjNode* pTail;
-    TObjNode* pCurrent;
+    TLinkNode* pHead;
+    TLinkNode* pTail;
+    TLinkNode* pCurrent;
     TOption   option;
     TBitMask  mask;
     TBitMask* pTemp;
@@ -146,7 +146,7 @@ TState xFlagsReceive(TFlags* pFlags, TBitMask* pPattern, TOption option, TTimeTi
 {
     TState state = eFailure;
     TError error = IPC_ERR_UNREADY;
-    TIpcContext* pContext;
+    TIpcContext context;
     TReg32 imask;
 
     CpuEnterCritical(&imask);
@@ -179,15 +179,12 @@ TState xFlagsReceive(TFlags* pFlags, TBitMask* pPattern, TOption option, TTimeTi
                     /* 如果当前线程不能被阻塞则函数直接返回 */
                     if (uKernelVariable.CurrentThread->ACAPI & THREAD_ACAPI_BLOCK)
                     {
-                        /* 得到当前线程的IPC上下文结构地址 */
-                        pContext = &(uKernelVariable.CurrentThread->IpcContext);
-
                         /* 保存线程挂起信息 */
-                        uIpcSaveContext(pContext, (void*)pFlags, (TBase32)pPattern, sizeof(TBase32),
+                        uIpcInitContext(&context, (void*)pFlags, (TBase32)pPattern, sizeof(TBase32),
                                         option | IPC_OPT_FLAGS, &state, &error);
 
-                        /* 当前线程阻塞在该事件标记的阻塞队列，时限或者无限等待，由IPC_OPT_TIMED参数决定 */
-                        uIpcBlockThread(pContext, &(pFlags->Queue), timeo);
+                        /* 当前线程阻塞在该事件标记的阻塞队列，时限或者无限等待，由IPC_OPT_TIMEO参数决定 */
+                        uIpcBlockThread(&context, &(pFlags->Queue), timeo);
 
                         /* 当前线程被阻塞，其它线程得以执行 */
                         uThreadSchedule();
@@ -200,7 +197,7 @@ TState xFlagsReceive(TFlags* pFlags, TBitMask* pPattern, TOption option, TTimeTi
                         CpuEnterCritical(&imask);
 
                         /* 清除线程IPC阻塞信息 */
-                        uIpcCleanContext(pContext);
+                        uIpcCleanContext(&context);
                     }
                     else
                     {
@@ -273,13 +270,14 @@ TState xFlagsSend(TFlags* pFlags, TBitMask pattern, TError* pError)
 /*************************************************************************************************
  *  功能：初始化事件标记                                                                         *
  *  参数：(1) pFlags     事件标记的地址                                                          *
- *        (2) property   事件标记的初始属性                                                      *
- *        (3) pError     函数调用详细返回值                                                      *
+ *        (2) pName      事件标记的名称                                                          *
+ *        (3) property   事件标记的初始属性                                                      *
+ *        (4) pError     函数调用详细返回值                                                      *
  *  返回: (1) eFailure   操作失败                                                                *
  *        (2) eSuccess   操作成功                                                                *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState xFlagsCreate(TFlags* pFlags, TProperty property, TError* pError)
+TState xFlagsCreate(TFlags* pFlags, TChar* pName, TProperty property, TError* pError)
 {
     TState state = eFailure;
     TError error = IPC_ERR_FAULT;
@@ -289,12 +287,16 @@ TState xFlagsCreate(TFlags* pFlags, TProperty property, TError* pError)
 
     if (!(pFlags->Property & IPC_PROP_READY))
     {
+        /* 初始化事件标记对象信息 */
+        uKernelAddObject(&(pFlags->Object), pName, eFlag, (void*)pFlags);
+
+        /* 初始化事件标记基本信息 */
         property |= IPC_PROP_READY;
         pFlags->Property = property;
         pFlags->Value = 0U;
 
-        pFlags->Queue.PrimaryHandle   = (TObjNode*)0;
-        pFlags->Queue.AuxiliaryHandle = (TObjNode*)0;
+        pFlags->Queue.PrimaryHandle   = (TLinkNode*)0;
+        pFlags->Queue.AuxiliaryHandle = (TLinkNode*)0;
         pFlags->Queue.Property        = &(pFlags->Property);
 
         state = eSuccess;
@@ -330,6 +332,9 @@ TState xFlagsDelete(TFlags* pFlags, TError* pError)
         /* 将阻塞队列上的所有等待线程都释放，所有线程的等待结果都是IPC_ERR_DELETE  */
         uIpcUnblockAll(&(pFlags->Queue), eFailure, IPC_ERR_DELETE, (void**)0, &HiRP);
 
+    	/* 从内核中移除事件标记对象 */
+        uKernelRemoveObject(&(pFlags->Object));
+		
         /* 清除事件标记对象的全部数据 */
         memset(pFlags, 0U, sizeof(TFlags));
 

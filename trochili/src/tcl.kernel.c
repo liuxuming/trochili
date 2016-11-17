@@ -4,7 +4,6 @@
  *                                       www.trochili.com                                        *
  *************************************************************************************************/
 #include "string.h"
-
 #include "tcl.types.h"
 #include "tcl.config.h"
 #include "tcl.cpu.h"
@@ -30,6 +29,44 @@ void uKernelTrace(const char* pStr)
     {
         uKernelVariable.TraceEntry(pStr);
     }
+}
+
+
+/*************************************************************************************************
+ *  功能：将内核对象加入系统中                                                                   *
+ *  参数：(1) pObject 内核对象地址                                                               *
+ *        (2) pName   内核对象名称                                                               *
+ *        (3) type    内核对象类型                                                               *
+
+ *        (4) pOwner  内核对象宿主地址                                                           *
+ *  返回：无                                                                                     *
+ *  说明：                                                                                       *
+ *************************************************************************************************/
+void uKernelAddObject(TObject* pObject, TChar* pName, TObjectType type, void* pOwner)
+{
+    TBase32 len;
+
+    len = strlen(pName);
+    len = (len > TCL_OBJ_NAME_LEN)?TCL_OBJ_NAME_LEN:len;
+    strncpy(pObject->Name, pName, len);
+    pObject->Type  = type;
+    pObject->Owner = pOwner;
+    pObject->ID = uKernelVariable.ObjectID;
+    uKernelVariable.ObjectID++;
+    uObjListAddNode(&(uKernelVariable.ObjectList), &(pObject->LinkNode), eLinkPosHead);
+}
+
+
+/*************************************************************************************************
+ *  功能：将内核对象从系统中移除                                                                 *
+ *  参数：(1) pObject 内核对象地址                                                               *
+ *  返回：无                                                                                     *
+ *  说明：                                                                                       *
+ *************************************************************************************************/
+void uKernelRemoveObject(TObject* pObject)
+{
+    uObjListRemoveNode(&(uKernelVariable.ObjectList), &(pObject->LinkNode));
+    memset(pObject, 0u, sizeof(TObject));
 }
 
 
@@ -115,13 +152,19 @@ void xKernelTickISR(void)
 
     CpuEnterCritical(&imask);
 
+    /* 内核总运行时间节拍数增加1次 */
     uKernelVariable.Jiffies++;
 
-#if (TCLC_TIMER_ENABLE)
-    uTimerTickISR();
-#endif
+    /* 处理线程时钟节拍 */
+    uThreadTickUpdate();
 
-    uThreadTickISR();
+    /* 处理线程定时器时钟节拍 */
+    uThreadTimerUpdate();
+
+    /* 处理用户定时器时钟节拍 */
+#if (TCLC_TIMER_ENABLE)
+    uTimerTickUpdate();
+#endif
 
     CpuLeaveCritical(imask);
 }
@@ -200,6 +243,22 @@ void xKernelSetIdleEntry(TSysIdleEntry pEntry)
 
 
 /*************************************************************************************************
+ *  功能：设置系统Fault函数                                                                      *
+ *  参数：(1) pEntry 系统Fault函数                                                               *
+ *  返回：无                                                                                     *
+ *  说明：                                                                                       *
+ *************************************************************************************************/
+void xKernelSetFaultEntry(TSysFaultEntry pEntry)
+{
+    TReg32 imask;
+
+    CpuEnterCritical(&imask);
+    uKernelVariable.SysFaultEntry = pEntry;
+    CpuLeaveCritical(imask);
+}
+
+
+/*************************************************************************************************
  *  功能：获得系统当前线程指针                                                                   *
  *  参数：(1) pThread2 返回当前线程指针                                                          *
  *  返回：无                                                                                     *
@@ -267,7 +326,7 @@ void xKernelStart(TUserEntry pUserEntry,
 #endif
 
     CreateRootThread();                     /* 初始化内核ROOT线程并且激活   */
-#if ((TCLC_TIMER_ENABLE) && (TCLC_TIMER_DAEMON_ENABLE))
+#if (TCLC_TIMER_ENABLE)
     uTimerCreateDaemon();                   /* 初始化内核定时器线程并且激活 */
 #endif
 #if ((TCLC_IRQ_ENABLE) && (TCLC_IRQ_DAEMON_ENABLE))
@@ -314,7 +373,7 @@ static void xRootThreadEntry(TBase32 argument)
     {
         /* 标记内核进入多线程模式 */
         uKernelVariable.State = eThreadState;
-		
+
         /* 临时关闭线程调度功能 */
         uKernelVariable.SchedLockTimes = 1U;
         {
@@ -364,10 +423,11 @@ static void CreateRootThread(void)
 
     /* 初始化内核ROOT线程 */
     uThreadCreate(&RootThread,
+                  "kernel root thread",
                   eThreadReady,
                   THREAD_PROP_PRIORITY_FIXED|\
                   THREAD_PROP_CLEAN_STACK|\
-                  THREAD_PROP_ROOT,
+                  THREAD_PROP_KERNEL_ROOT,
                   THREAD_ACAPI_ROOT,
                   xRootThreadEntry,
                   (TArgument)0,

@@ -551,7 +551,7 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化MEM设备控制线程 */
-    state = TclCreateThread(&ThreadMem,
+    state = TclCreateThread(&ThreadMem, "thread",
                           &ThreadMemEntry, (TArgument)0,
                           ThreadMemStack, THREAD_MEMORY_STACK_BYTES,
                           THREAD_MEMORY_PRIORITY,

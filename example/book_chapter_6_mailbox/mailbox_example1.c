@@ -69,7 +69,7 @@ static void ThreadCtrlEntry(TArgument arg)
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");;
 
         /* 控制线程延时1秒 */
-        state = TclDelayThread(0, TCLM_MLS2TICKS(1000), &error);
+        state = TclDelayThread(TCLM_MLS2TICKS(1000), &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
@@ -81,7 +81,7 @@ static void ThreadCtrlEntry(TArgument arg)
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
         /* 控制线程延时1秒 */
-        state = TclDelayThread(0, TCLM_MLS2TICKS(1000), &error);
+        state = TclDelayThread(TCLM_MLS2TICKS(1000), &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
     }
@@ -94,12 +94,12 @@ static void AppSetupEntry(void)
     TState state;
     TError error;
 
-    state = TclCreateMailBox(&LedMailbox, TCLP_IPC_DEFAULT, &error);
+    state = TclCreateMailBox(&LedMailbox, "mbox", TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
     /* 初始化Led设备控制线程 */
-    state = TclCreateThread(&ThreadLed,
+    state = TclCreateThread(&ThreadLed, "thread led",
                           &ThreadLedEntry, (TBase32)0U,
                           ThreadLedStack, THREAD_LED_STACK_BYTES,
                           THREAD_LED_PRIORITY, THREAD_LED_SLICE,
@@ -108,7 +108,7 @@ static void AppSetupEntry(void)
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化CTRL线程 */
-    state = TclCreateThread(&ThreadCTRL,
+    state = TclCreateThread(&ThreadCTRL, "thread ctrl",
                           &ThreadCtrlEntry, (TBase32)0U,
                           ThreadCTRLStack, THREAD_CTRL_STACK_BYTES,
                           THREAD_CTRL_PRIORITY, THREAD_CTRL_SLICE,

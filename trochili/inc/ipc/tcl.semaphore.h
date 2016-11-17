@@ -22,12 +22,14 @@ struct SemaphoreDef
     TBase32   LimitedValue;     /* 计数信号量的最大数值               */
     TBase32   InitialValue;     /* 计数信号量的初始数值               */
     TIpcQueue Queue;            /* 信号量的线程阻塞队列               */
+    TObject   Object;
 };
 typedef struct SemaphoreDef TSemaphore;
 
 extern TState xSemaphoreRelease(TSemaphore* pSemaphore, TOption option, TTimeTick timeo, TError* pError);
 extern TState xSemaphoreObtain(TSemaphore* pSemaphore, TOption option, TTimeTick timeo, TError* pError);
-extern TState xSemaphoreCreate(TSemaphore* pSemaphore, TBase32 value, TBase32 mvalue, TProperty property, TError* pError);
+extern TState xSemaphoreCreate(TSemaphore* pSemaphore, TChar* pName, TBase32 value, TBase32 mvalue,
+	                                   TProperty property, TError* pError);
 extern TState xSemaphoreDelete(TSemaphore* pSemaphore, TError* pError);
 extern TState xSemaphoreReset(TSemaphore* pSemaphore, TError* pError);
 extern TState xSemaphoreFlush(TSemaphore* pSemaphore, TError* pError);

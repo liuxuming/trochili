@@ -91,17 +91,17 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 设置和KEY相关的外部中断向量 */
-    state = TclSetIrqVector(KEY_IRQ_ID, &EvbKeyISR, (TThread*)0, (TArgument)0, &error);
+    state = TclSetIrqVector(KEY_IRQ_ID, &EvbKeyISR, (TArgument)0, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IRQ_NONE), "");
 
     /* 初始化邮箱 */
-    state = TclCreateMailBox(&LedMailbox, TCLP_IPC_DEFAULT, &error);
+    state = TclCreateMailBox(&LedMailbox, "mbox", TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
     /* 初始化Led设备控制线程 */
-    state = TclCreateThread(&ThreadLed,
+    state = TclCreateThread(&ThreadLed, "thread led",
                             &ThreadLedEntry, (TArgument)(&LedMailbox),
                             ThreadLedStack, THREAD_LED_STACK_BYTES,
                             THREAD_LED_PRIORITY, THREAD_LED_SLICE, &error);

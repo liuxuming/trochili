@@ -240,7 +240,7 @@ extern TState xMQReceive(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option,
     TState state = eFailure;
     TError error = IPC_ERR_UNREADY;
     TBool  HiRP = eFalse;
-    TIpcContext* pContext = (TIpcContext*)0;
+    TIpcContext context;
     TReg32 imask;
 
     CpuEnterCritical(&imask);
@@ -277,16 +277,13 @@ extern TState xMQReceive(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option,
                         /* 如果当前线程不能被阻塞则函数直接返回 */
                         if (uKernelVariable.CurrentThread->ACAPI & THREAD_ACAPI_BLOCK)
                         {
-                            /* 得到当前线程的IPC上下文结构地址 */
-                            pContext = &(uKernelVariable.CurrentThread->IpcContext);
-
                             /* 保存线程挂起信息 */
                             option |= IPC_OPT_MSGQUEUE | IPC_OPT_READ_DATA;
-                            uIpcSaveContext(pContext, (void*)pMsgQue, (TBase32)pMsg2, sizeof(TBase32), option,
+                            uIpcInitContext(&context, (void*)pMsgQue, (TBase32)pMsg2, sizeof(TBase32), option,
                                             &state, &error);
 
-                            /* 当前线程阻塞在该消息队列的阻塞队列，时限或者无限等待，由IPC_OPT_TIMED参数决定 */
-                            uIpcBlockThread(pContext, &(pMsgQue->Queue), timeo);
+                            /* 当前线程阻塞在该消息队列的阻塞队列，时限或者无限等待，由IPC_OPT_TIMEO参数决定 */
+                            uIpcBlockThread(&context, &(pMsgQue->Queue), timeo);
 
                             /* 当前线程被阻塞，其它线程得以执行 */
                             uThreadSchedule();
@@ -299,7 +296,7 @@ extern TState xMQReceive(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option,
                             CpuEnterCritical(&imask);
 
                             /* 清除线程挂起信息 */
-                            uIpcCleanContext(pContext);
+                            uIpcCleanContext(&context);
                         }
                         else
                         {
@@ -334,7 +331,7 @@ TState xMQSend(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option, TTimeTick ti
     TState state = eFailure;
     TError error = IPC_ERR_UNREADY;
     TBool HiRP = eFalse;
-    TIpcContext* pContext;
+    TIpcContext context;
     TMsgType type;
     TReg32 imask;
 
@@ -377,16 +374,13 @@ TState xMQSend(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option, TTimeTick ti
                             option |= IPC_OPT_USE_AUXIQ;
                         }
 
-                        /* 得到当前线程的IPC上下文结构地址 */
-                        pContext = &(uKernelVariable.CurrentThread->IpcContext);
-
                         /* 保存线程挂起信息 */
                         option |= IPC_OPT_MSGQUEUE | IPC_OPT_WRITE_DATA;
-                        uIpcSaveContext(pContext, (void*)pMsgQue, (TBase32)pMsg2,  sizeof(TBase32), option,
+                        uIpcInitContext(&context, (void*)pMsgQue, (TBase32)pMsg2,  sizeof(TBase32), option,
                                         &state, &error);
 
-                        /* 当前线程阻塞在该消息队列的阻塞队列，时限或者无限等待，由IPC_OPT_TIMED参数决定 */
-                        uIpcBlockThread(pContext, &(pMsgQue->Queue), timeo);
+                        /* 当前线程阻塞在该消息队列的阻塞队列，时限或者无限等待，由IPC_OPT_TIMEO参数决定 */
+                        uIpcBlockThread(&context, &(pMsgQue->Queue), timeo);
 
                         /* 当前线程被阻塞，其它线程得以执行 */
                         uThreadSchedule();
@@ -399,7 +393,7 @@ TState xMQSend(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option, TTimeTick ti
                         CpuEnterCritical(&imask);
 
                         /* 清除线程挂起信息 */
-                        uIpcCleanContext(pContext);
+                        uIpcCleanContext(&context);
                     }
                     else
                     {
@@ -419,15 +413,16 @@ TState xMQSend(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option, TTimeTick ti
 /*************************************************************************************************
  *  功能：消息队列初始化函数                                                                     *
  *  输入：(1) pMsgQue   消息队列结构地址                                                         *
- *        (2) pPool2    消息数组地址                                                             *
- *        (3) capacity  消息队列容量，即消息数组大小                                             *
- *        (4) policy    消息队列线程调度策略                                                     *
- *        (5) pError    详细调用结果                                                             *
+ *        (2) pName     消息队列名称                                                             *
+ *        (3) pPool2    消息数组地址                                                             * 
+ *        (4) capacity  消息队列容量，即消息数组大小                                             *
+ *        (5) policy    消息队列线程调度策略                                                     *
+ *        (6) pError    详细调用结果                                                             *
  *  返回：(1) eSuccess  操作成功                                                                 *
  *        (2) eFailure  操作失败                                                                 *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState xMQCreate(TMsgQueue* pMsgQue, void** pPool2, TBase32 capacity, TProperty property,
+TState xMQCreate(TMsgQueue* pMsgQue, TChar* pName, void** pPool2, TBase32 capacity, TProperty property,
                  TError* pError)
 {
     TState state = eFailure;
@@ -438,6 +433,10 @@ TState xMQCreate(TMsgQueue* pMsgQue, void** pPool2, TBase32 capacity, TProperty 
 
     if (!(pMsgQue->Property & IPC_PROP_READY))
     {
+        /* 初始化消息队列对象信息 */
+        uKernelAddObject(&(pMsgQue->Object), pName, eMessage, (void*)pMsgQue);
+
+        /* 初始化消息队列基本信息 */
         property |= IPC_PROP_READY;
         pMsgQue->Property = property;
         pMsgQue->Capacity = capacity;
@@ -447,8 +446,8 @@ TState xMQCreate(TMsgQueue* pMsgQue, void** pPool2, TBase32 capacity, TProperty 
         pMsgQue->Tail = 0U;
         pMsgQue->Status = eMQEmpty;
 
-        pMsgQue->Queue.PrimaryHandle   = (TObjNode*)0;
-        pMsgQue->Queue.AuxiliaryHandle = (TObjNode*)0;
+        pMsgQue->Queue.PrimaryHandle   = (TLinkNode*)0;
+        pMsgQue->Queue.AuxiliaryHandle = (TLinkNode*)0;
         pMsgQue->Queue.Property        = &(pMsgQue->Property);
 
         error = IPC_ERR_NONE;
@@ -484,6 +483,9 @@ TState xMQDelete(TMsgQueue* pMsgQue, TError* pError)
         /* 向阻塞队列中的线程分发消息 */
         uIpcUnblockAll(&(pMsgQue->Queue), eFailure, IPC_ERR_DELETE, (void**)0, &HiRP);
 
+    	/* 从内核中移除消息队列对象 */
+        uKernelRemoveObject(&(pMsgQue->Object));
+		
         /* 清除消息队列对象的全部数据 */
         memset(pMsgQue, 0U, sizeof(TMsgQueue));
 

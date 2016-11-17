@@ -16,11 +16,11 @@ static TBase32 ThreadLedStack[THREAD_LED_STACK_BYTES/4];
 static TTimer Led1Timer;
 static TTimer Led2Timer;
 
-static TTimeTick ticks1 = 500;
-static TTimeTick ticks2 = 500;
+static TBase32 mls1 = 1000;
+static TBase32 mls2 = 1000;
 
 /* 用户定时器1的回调函数，间隔1秒，点亮或熄灭Led1 */
-static void BlinkLed1(TArgument data)
+static void BlinkLed1(TArgument data, TTimeTick ticks)
 {
     static TIndex index = 0;
     if (index % 2)
@@ -35,7 +35,7 @@ static void BlinkLed1(TArgument data)
 }
 
 /* 用户定时器2的回调函数，间隔1秒，点亮或熄灭Led2 */
-static void BlinkLed2(TArgument data)
+static void BlinkLed2(TArgument data, TTimeTick ticks)
 {
     static TIndex index = 0;
     if (index % 2)
@@ -58,7 +58,7 @@ static TBitMask EvbKeyISR(TArgument data)
 
     TBase32 keyid;
 
-  	keyid = EvbKeyScan();
+    keyid = EvbKeyScan();
     if (keyid == 1)
     {
         /* 关闭用户定时器 */
@@ -66,19 +66,34 @@ static TBitMask EvbKeyISR(TArgument data)
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_TIMER_NONE), "");
 
-        ticks1 *= 2;
-        ticks1 = (ticks1 > 2000)? 2000:ticks1;
-
-        /* 配置用户定时器 */
-        state = TclConfigTimer(&Led1Timer, TCLM_MLS2TICKS(ticks1), &error);
+        state = TclStopTimer(&Led2Timer, &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_TIMER_NONE), "");
+
+        mls1 *= 2;
+        mls1 = (mls1 > 2000)? 2000:mls1;
+
+        mls2 *= 2;
+        mls2 = (mls2 > 2000)? 2000:mls2;
+
+        /* 配置用户定时器 */
+        state = TclConfigTimer(&Led1Timer, TCLM_MLS2TICKS(mls1), (TPriority)5, &error);
+        TCLM_ASSERT((state == eSuccess), "");
+        TCLM_ASSERT((error == TCLE_TIMER_NONE), "");
+
+        state = TclConfigTimer(&Led2Timer, TCLM_MLS2TICKS(mls2), (TPriority)5, &error);
+        TCLM_ASSERT((state == eSuccess), "");
+        TCLM_ASSERT((error == TCLE_TIMER_NONE), "");
+
 
         /* 启动用户定时器 */
         state = TclStartTimer(&Led1Timer, 0U, &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_TIMER_NONE), "");
 
+        state = TclStartTimer(&Led2Timer, 0U, &error);
+        TCLM_ASSERT((state == eSuccess), "");
+        TCLM_ASSERT((error == TCLE_TIMER_NONE), "");
     }
     else
     {
@@ -87,16 +102,31 @@ static TBitMask EvbKeyISR(TArgument data)
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_TIMER_NONE), "");
 
-        ticks1 /= 2;
-        ticks1 = (ticks1 < 500)? 500:ticks1;
+        state = TclStopTimer(&Led2Timer, &error);
+        TCLM_ASSERT((state == eSuccess), "");
+        TCLM_ASSERT((error == TCLE_TIMER_NONE), "");
+
+        mls1 /= 2;
+        mls1 = (mls1 < 100)? 100:mls1;
+
+        mls2 /= 2;
+        mls2 = (mls2 < 100)? 100:mls2;
 
         /* 配置用户定时器 */
-        state = TclConfigTimer(&Led1Timer, TCLM_MLS2TICKS(ticks1), &error);
+        state = TclConfigTimer(&Led1Timer, TCLM_MLS2TICKS(mls1), (TPriority)5, &error);
+        TCLM_ASSERT((state == eSuccess), "");
+        TCLM_ASSERT((error == TCLE_TIMER_NONE), "");
+
+        state = TclConfigTimer(&Led2Timer, TCLM_MLS2TICKS(mls2), (TPriority)5, &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_TIMER_NONE), "");
 
         /* 启动用户定时器 */
         state = TclStartTimer(&Led1Timer, 0U, &error);
+        TCLM_ASSERT((state == eSuccess), "");
+        TCLM_ASSERT((error == TCLE_TIMER_NONE), "");
+
+        state = TclStartTimer(&Led2Timer, 0U, &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_TIMER_NONE), "");
     }
@@ -113,20 +143,24 @@ static void ThreadLedEntry(TArgument data)
 
     /* 初始化用户定时器1 */
     state = TclCreateTimer(&Led1Timer,
+                           "timer1",
                            TCLP_TIMER_PERIODIC,
-                           TCLM_MLS2TICKS(ticks1),
+                           TCLM_MLS2TICKS(mls1),
                            &BlinkLed1,
                            (TArgument)0,
+                           (TPriority)5,
                            &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_TIMER_NONE), "");
 
     /* 初始化用户定时器2 */
     state = TclCreateTimer(&Led2Timer,
+                           "timer2",
                            TCLP_TIMER_PERIODIC,
-                           TCLM_MLS2TICKS(ticks2),
+                           TCLM_MLS2TICKS(mls2),
                            &BlinkLed2,
                            (TArgument)0,
+                           (TPriority)5,
                            &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_TIMER_NONE), "");
@@ -144,7 +178,7 @@ static void ThreadLedEntry(TArgument data)
 
 
     /* 设置和KEY相关的外部中断向量 */
-    state = TclSetIrqVector(KEY_IRQ_ID, &EvbKeyISR, (TThread*)0, (TArgument)0, &error);
+    state = TclSetIrqVector(KEY_IRQ_ID, &EvbKeyISR, (TArgument)0, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IRQ_NONE), "");
 
@@ -162,6 +196,7 @@ static void AppSetupEntry(void)
 
     /* 初始化Led设备控制线程 */
     state = TclCreateThread(&ThreadLed,
+                            "thread led",
                             &ThreadLedEntry,
                             (TArgument)0,
                             ThreadLedStack,

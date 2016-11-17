@@ -18,7 +18,7 @@ static TTimer Led2Timer;
 static TTimer Led3Timer;
 
 /* 用户定时器1的回调函数，间隔1秒，点亮或熄灭Led1 */
-static void BlinkLed1(TArgument data)
+static void BlinkLed1(TArgument data, TTimeTick ticks)
 {
     static TIndex index = 0;
     if (index % 2)
@@ -33,7 +33,7 @@ static void BlinkLed1(TArgument data)
 }
 
 /* 用户定时器2的回调函数，间隔1秒，点亮或熄灭Led2 */
-static void BlinkLed2(TArgument data)
+static void BlinkLed2(TArgument data, TTimeTick ticks)
 {
     static TIndex index = 0;
     if (index % 2)
@@ -48,7 +48,7 @@ static void BlinkLed2(TArgument data)
 }
 
 /* 用户定时器3的回调函数，间隔1秒，点亮或熄灭Led3 */
-static void BlinkLed3(TArgument data)
+static void BlinkLed3(TArgument data, TTimeTick ticks)
 {
     static TIndex index = 0;
     if (index % 2)
@@ -70,19 +70,23 @@ static void ThreadLedEntry(TArgument data)
 
     /* 初始化用户定时器1 */
     state = TclCreateTimer(&Led1Timer,
+                           "timer1",
                            TCLP_TIMER_PERIODIC,
                            TCLM_MLS2TICKS(1000),
                            &BlinkLed1,
                            (TArgument)0,
+                           (TPriority)5,
                            &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_TIMER_NONE), "");
 
     /* 初始化用户定时器2 */
     state = TclCreateTimer(&Led2Timer,
+                           "timer2",
                            TCLP_TIMER_PERIODIC,
                            TCLM_MLS2TICKS(1000),
                            &BlinkLed2,
+                           (TPriority)5,
                            (TArgument)0,
                            &error);
     TCLM_ASSERT((state == eSuccess), "");
@@ -90,10 +94,12 @@ static void ThreadLedEntry(TArgument data)
 
     /* 初始化用户定时器3 */
     state = TclCreateTimer(&Led3Timer,
+                           "timer3",
                            TCLP_TIMER_PERIODIC,
                            TCLM_MLS2TICKS(1000),
                            &BlinkLed3,
                            (TArgument)0,
+                           (TPriority)5,
                            &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_TIMER_NONE), "");
@@ -127,6 +133,7 @@ static void AppSetupEntry(void)
 
     /* 初始化Led设备控制线程 */
     state = TclCreateThread(&ThreadLed,
+                            "thread led",
                             &ThreadLedEntry,
                             (TArgument)0,
                             ThreadLedStack,

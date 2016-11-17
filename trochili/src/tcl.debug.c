@@ -20,12 +20,18 @@
  *************************************************************************************************/
 void uDebugPanic(const char* pNote, const char* pFile, const char* pFunc, int line)
 {
-    CpuDisableInt();		
+    CpuDisableInt();
     uKernelTrace(pNote);
     uKernelVariable.DBGLog.File = pFile;
     uKernelVariable.DBGLog.Func = pFunc;
     uKernelVariable.DBGLog.Line = line;
     uKernelVariable.DBGLog.Note = pNote;
+
+    if (uKernelVariable.SysFaultEntry != (TSysFaultEntry)0)
+    {
+        uKernelVariable.SysFaultEntry(&uKernelVariable);
+    }
+	
     while (eTrue)
     {
         ;

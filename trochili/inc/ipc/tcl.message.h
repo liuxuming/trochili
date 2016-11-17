@@ -39,18 +39,19 @@ struct MessageQueueCB
 {
     TProperty Property;      /* 消息队列属性配置       */
     void**    MsgPool;       /* 消息缓冲池             */
-    TBase32     Capacity;      /* 消息队列容量           */
-    TBase32     MsgEntries;    /* 消息队列中消息的数目   */
+    TBase32   Capacity;      /* 消息队列容量           */
+    TBase32   MsgEntries;    /* 消息队列中消息的数目   */
     TIndex    Head;          /* 消息队列写指针位置     */
     TIndex    Tail;          /* 消息队列读指针位置     */
     TMQStatus Status;        /* 消息队列状态           */
     TIpcQueue Queue;         /* 消息队列的线程阻塞队列 */
+    TObject   Object;		
 };
 typedef struct MessageQueueCB TMsgQueue;
 
 
 /* 消息队列操作函数 */
-extern TState xMQCreate(TMsgQueue* pMsgQue, void** pPool2, TBase32 capacity,
+extern TState xMQCreate(TMsgQueue* pMsgQue, TChar* pName, void** pPool2, TBase32 capacity,
                             TProperty property, TError* pError);
 extern TState xMQReceive(TMsgQueue* pMsgQue, TMessage* pMsg2,
                                 TOption option, TTimeTick timeo, TError* pError);

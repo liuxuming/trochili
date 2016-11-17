@@ -38,7 +38,7 @@ static void ThreadLed1Entry(TArgument arg)
         EvbLedControl(LED1, LED_ON);
 
         /* Led线程1延时1秒后关闭Led1 */
-        state = TclDelayThread((TThread*)0, TCLM_MLS2TICKS(1000), &error);
+        state = TclDelayThread(TCLM_MLS2TICKS(1000), &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
@@ -65,7 +65,7 @@ static void ThreadLed2Entry(TArgument arg)
         EvbLedControl(LED2, LED_ON);
 
         /* Led线程2延时1秒后关闭Led2 */
-        state =TclDelayThread((TThread*)0, TCLM_MLS2TICKS(1000), &error);
+        state =TclDelayThread(TCLM_MLS2TICKS(1000), &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
@@ -93,17 +93,17 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化信号量1 */
-    state = TclCreateSemaphore(&LedSemaphore1, 0, 1, TCLP_IPC_DEFAULT, &error);
+    state = TclCreateSemaphore(&LedSemaphore1, "semaphore1", 0, 1, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
     /* 初始化信号量2 */
-    state = TclCreateSemaphore(&LedSemaphore2, 0, 1, TCLP_IPC_DEFAULT, &error);
+    state = TclCreateSemaphore(&LedSemaphore2, "semaphore2", 0, 1, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
     /* 初始化Led线程1 */
-    state = TclCreateThread(&ThreadLed1,
+    state = TclCreateThread(&ThreadLed1, "thread led1",
                           &ThreadLed1Entry, (TArgument)0,
                           ThreadLed1Stack, THREAD_LED_STACK_BYTES,
                           THREAD_LED_PRIORITY, THREAD_LED_SLICE,
@@ -112,7 +112,7 @@ static void AppSetupEntry(void)
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化Led线程2 */
-    state = TclCreateThread(&ThreadLed2,
+    state = TclCreateThread(&ThreadLed2, "thread led2",
                           &ThreadLed2Entry, (TArgument)0,
                           ThreadLed2Stack, THREAD_LED_STACK_BYTES,
                           THREAD_LED_PRIORITY + 1, THREAD_LED_SLICE,

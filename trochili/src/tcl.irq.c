@@ -25,7 +25,7 @@
 /* IRQ请求队列类型定义 */
 typedef struct IrqListDef
 {
-    TObjNode* Handle;
+    TLinkNode* Handle;
 } TIrqList;
 #endif
 
@@ -62,7 +62,7 @@ void xIrqEnterISR(TIndex irqn)
         /* 在处理中断对应的向量时，禁止其他代码修改向量 */
         pVector->Property |= IRQ_VECTOR_PROP_LOCKED;
 
-        /* 在线程环境下调用低级中断处理函数 */
+        /* 在中断环境下调用低级中断处理函数 */
         if (pVector->ISR != (TISR)0)
         {
             pISR = pVector->ISR;
@@ -72,14 +72,15 @@ void xIrqEnterISR(TIndex irqn)
             CpuEnterCritical(&imask);
         }
 
-        /* 如果需要则调用中断处理线程ASR(用户中断处理线程或者内核中断守护线程),
-           注意此时ASR可能处于eThreadReady状态 */
-        if ((retv & IRQ_CALL_ASR) &&
-                (pVector->ASR != (TThread*)0))
+        /* 如果需要则调用中断处理线程DAEMON(用户中断处理线程或者内核中断守护线程),
+           注意此时DAEMON可能处于eThreadReady状态 */
+#if (TCLC_IRQ_DAEMON_ENABLE)
+        if (retv & IRQ_CALL_DAEMON)
         {
-            uThreadResumeFromISR(pVector->ASR);
-        }
+            uThreadResumeFromISR(uKernelVariable.IrqDaemon);
 
+        }
+#endif
         pVector->Property &= (~IRQ_VECTOR_PROP_LOCKED);
     }
 
@@ -91,14 +92,13 @@ void xIrqEnterISR(TIndex irqn)
  *  功能：设置中断向量函数                                                                       *
  *  参数：(1) irqn     中断号                                                                    *
  *        (2) pISR     ISR处理函数                                                               *
- *        (3) pASR     中断处理线程                                                              *
- *        (4) data     应用提供的回调数据                                                        *
- *        (5) pError   详细调用结果                                                              *
+ *        (3) data     应用提供的回调数据                                                        *
+ *        (4) pError   详细调用结果                                                              *
  *  返回: (1) eFailure 操作失败                                                                  *
  *        (2) eSuccess 操作成功                                                                  *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState xIrqSetVector(TIndex irqn, TISR pISR, TThread* pASR, TArgument data, TError* pError)
+TState xIrqSetVector(TIndex irqn, TISR pISR, TArgument data, TError* pError)
 {
     TState state = eFailure;
     TError error = IRQ_ERR_FAULT;
@@ -147,14 +147,7 @@ TState xIrqSetVector(TIndex irqn, TISR pISR, TThread* pASR, TArgument data, TErr
     /* 设置中断向量对应的中断服务程序，中断服务线程(如果没有则默认为IrqDaemon线程) */
     if (state == eSuccess)
     {
-#if (TCLC_IRQ_DAEMON_ENABLE)
-        if (pASR == (TThread*)0)
-        {
-            pASR = uKernelVariable.IrqDaemon;
-        }
-#endif
         pVector->ISR      = pISR;
-        pVector->ASR      = pASR;
         pVector->Argument = data;
     }
 
@@ -244,12 +237,12 @@ TState xIrqPostRequest(TIrq* pIRQ, TPriority priority, TIrqEntry pEntry, TArgume
         pIRQ->Entry          = pEntry;
         pIRQ->Argument       = data;
         pIRQ->Priority       = priority;
-        pIRQ->ObjNode.Next   = (TObjNode*)0;
-        pIRQ->ObjNode.Prev   = (TObjNode*)0;
-        pIRQ->ObjNode.Handle = (TObjNode**)0;
-        pIRQ->ObjNode.Data   = (TBase32*)(&(pIRQ->Priority));
-        pIRQ->ObjNode.Owner  = (void*)pIRQ;
-        uObjListAddPriorityNode(&(IrqReqList.Handle), &(pIRQ->ObjNode));
+        pIRQ->LinkNode.Next   = (TLinkNode*)0;
+        pIRQ->LinkNode.Prev   = (TLinkNode*)0;
+        pIRQ->LinkNode.Handle = (TLinkNode**)0;
+        pIRQ->LinkNode.Data   = (TBase32*)(&(pIRQ->Priority));
+        pIRQ->LinkNode.Owner  = (void*)pIRQ;
+        uObjListAddPriorityNode(&(IrqReqList.Handle), &(pIRQ->LinkNode));
 
         error = IRQ_ERR_NONE;
         state = eSuccess;
@@ -278,7 +271,7 @@ TState xIrqCancelRequest(TIrq* pIRQ, TError* pError)
     CpuEnterCritical(&imask);
     if (pIRQ->Property & IRQ_PROP_READY)
     {
-        uObjListRemoveNode( pIRQ->ObjNode.Handle, &(pIRQ->ObjNode));
+        uObjListRemoveNode( pIRQ->LinkNode.Handle, &(pIRQ->LinkNode));
         memset(pIRQ, 0, sizeof(TIrq));
 
         error = IRQ_ERR_NONE;
@@ -311,8 +304,7 @@ static void xIrqDaemonEntry(TArgument argument)
     while(eTrue)
     {
         CpuEnterCritical(&imask);
-
-        if (IrqReqList.Handle == (TObjNode*)0)
+        if (IrqReqList.Handle == (TLinkNode*)0)
         {
             uThreadSuspendSelf();
             CpuLeaveCritical(imask);
@@ -322,7 +314,7 @@ static void xIrqDaemonEntry(TArgument argument)
             pIRQ   = (TIrq*)(IrqReqList.Handle->Owner);
             pEntry = pIRQ->Entry;
             data   = pIRQ->Argument;
-            uObjListRemoveNode(pIRQ->ObjNode.Handle, &(pIRQ->ObjNode));
+            uObjListRemoveNode(pIRQ->LinkNode.Handle, &(pIRQ->LinkNode));
             memset(pIRQ, 0, sizeof(TIrq));
             CpuLeaveCritical(imask);
 
@@ -348,10 +340,11 @@ void uIrqCreateDaemon(void)
 
     /* 初始化内核中断服务线程 */
     uThreadCreate(&IrqDaemonThread,
+                  "irq daemon",
                   eThreadSuspended,
                   THREAD_PROP_PRIORITY_FIXED | \
                   THREAD_PROP_CLEAN_STACK | \
-                  THREAD_PROP_DAEMON,
+                  THREAD_PROP_KERNEL_DAEMON,
                   IRQ_DAEMON_ACAPI,
                   xIrqDaemonEntry,
                   (TArgument)0,

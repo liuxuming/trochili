@@ -20,6 +20,9 @@
 #define TCLC_USER_PRIORITY_LOW          (29U)
 #define TCLC_USER_PRIORITY_HIGH         (3U)
 
+/* 内核对象名称长度 */
+#define TCL_OBJ_NAME_LEN                (16U)
+
 /* 内核断言功能配置 */
 #define TCLC_ASSERT_ENABLE              (1)
 
@@ -35,12 +38,9 @@
 #define TCLC_IPC_MAILBOX_ENABLE         (1)
 #define TCLC_IPC_MQUE_ENABLE            (1)
 #define TCLC_IPC_FLAGS_ENABLE           (1)
-#define TCLC_IPC_FIFO_ENABLE            (1)
-#define TCLC_IPC_TIMER_ENABLE           (1)
 
 /* 定时器功能配置 */
 #define TCLC_TIMER_ENABLE               (1)
-#define TCLC_TIMER_DAEMON_ENABLE        (1)
 #define TCLC_TIMER_WHEEL_SIZE           (32U)
 
 /* 中断管理配置 */
@@ -55,25 +55,20 @@
 #define TCLC_MEMORY_BUDDY_ENABLE        (1)
 #define TCLC_MEMORY_BUDDY_PAGES         (64)         /* 伙伴内存算法能管理的最大内存页数         */
 
-/* 用户异步中断服务线程优先级、时间片 */
-#define TCLC_IRQ_ASR_PRIORITY           (2U)
-#define TCLC_IRQ_ASR_SLICE              (10U)
+/* 内核定时器守护线程优先级、时间片和栈大小 */
+#define TCLC_TIMER_DAEMON_PRIORITY      (2U)
+#define TCLC_TIMER_DAEMON_SLICE         (10U)
+#define TCLC_TIMER_DAEMON_STACK_BYTES   (512U)
 
 /* 内核中断守护线程优先级和时间片 */
 #define TCLC_IRQ_DAEMON_PRIORITY        (1U)
 #define TCLC_IRQ_DAEMON_SLICE           (10U)
 #define TCLC_IRQ_DAEMON_STACK_BYTES     (512U)
 
-/* 内核定时器守护线程优先级、时间片和栈大小 */
-#define TCLC_TIMER_DAEMON_PRIORITY      (2U)
-#define TCLC_TIMER_DAEMON_SLICE         (10U)
-#define TCLC_TIMER_DAEMON_STACK_BYTES   (512U)
-
 /* 内核ROOT线程优先级、时间片和栈大小 */
 #define TCLC_ROOT_THREAD_PRIORITY       (TCLC_LOWEST_PRIORITY)
 #define TCLC_ROOT_THREAD_SLICE          (0xFFFFFFFF)
 #define TCLC_ROOT_THREAD_STACK_BYTES    (512U)
-
 
 /* 处理器参数配置 */
 #define TCLC_CPU_MINIMAL_STACK          (256U)

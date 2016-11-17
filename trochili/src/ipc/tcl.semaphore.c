@@ -68,7 +68,7 @@ static TState ReleaseSemaphore(TSemaphore* pSemaphore, TBool* pHiRP, TError* pEr
 /*************************************************************************************************
  *  功能: 尝试获得计数信号量                                                                     *
  *  参数: (1) pSemaphore 计数信号量结构地址                                                      *
- *        (2) pHiRP     是否因唤醒更高优先级而导致需要进行线程调度的标记                        *
+ *        (2) pHiRP     是否因唤醒更高优先级而导致需要进行线程调度的标记                         *
  *        (3) pError     详细调用结果                                                            *
  *  返回: (1) eSuccess   操作成功                                                                *
  *        (2) eFailure   操作失败                                                                *
@@ -130,7 +130,7 @@ TState xSemaphoreObtain(TSemaphore* pSemaphore, TOption option, TTimeTick timeo,
     TState state = eFailure;
     TError error = IPC_ERR_UNREADY;
     TBool HiRP = eFalse;
-    TIpcContext* pContext;
+    TIpcContext context;
     TReg32 imask;
 
     CpuEnterCritical(&imask);
@@ -161,16 +161,12 @@ TState xSemaphoreObtain(TSemaphore* pSemaphore, TOption option, TTimeTick timeo,
                     /* 如果当前线程不能被阻塞则函数直接返回 */
                     if (uKernelVariable.CurrentThread->ACAPI & THREAD_ACAPI_BLOCK)
                     {
-                        /* 得到当前线程的IPC上下文结构地址 */
-                        pContext = &(uKernelVariable.CurrentThread->IpcContext);
-
-
                         /* 设定线程正在等待的资源的信息 */
-                        uIpcSaveContext(pContext, (void*)pSemaphore, 0U, 0U,
+                        uIpcInitContext(&context, (void*)pSemaphore, 0U, 0U,
                                         option | IPC_OPT_SEMAPHORE, &state, &error);
 
-                        /* 当前线程阻塞在该信号量的阻塞队列，时限或者无限等待，由IPC_OPT_TIMED参数决定 */
-                        uIpcBlockThread(pContext, &(pSemaphore->Queue), timeo);
+                        /* 当前线程阻塞在该信号量的阻塞队列，时限或者无限等待，由IPC_OPT_TIMEO参数决定 */
+                        uIpcBlockThread(&context, &(pSemaphore->Queue), timeo);
 
                         /* 当前线程被阻塞，其它线程得以执行 */
                         uThreadSchedule();
@@ -183,7 +179,7 @@ TState xSemaphoreObtain(TSemaphore* pSemaphore, TOption option, TTimeTick timeo,
                         CpuEnterCritical(&imask);
 
                         /* 清除线程挂起信息 */
-                        uIpcCleanContext(pContext);
+                        uIpcCleanContext(&context);
                     }
                     else
                     {
@@ -215,7 +211,7 @@ TState xSemaphoreRelease(TSemaphore* pSemaphore, TOption option, TTimeTick timeo
     TState state = eFailure;
     TError error = IPC_ERR_UNREADY;
     TBool HiRP = eFalse;
-    TIpcContext* pContext;
+    TIpcContext context;
     TReg32 imask;
 
     CpuEnterCritical(&imask);
@@ -251,15 +247,12 @@ TState xSemaphoreRelease(TSemaphore* pSemaphore, TOption option, TTimeTick timeo
                     /* 如果当前线程不能被阻塞则函数直接返回 */
                     if (uKernelVariable.CurrentThread->ACAPI & THREAD_ACAPI_BLOCK)
                     {
-                        /* 得到当前线程的IPC上下文结构地址 */
-                        pContext = &(uKernelVariable.CurrentThread->IpcContext);
-
                         /* 设定线程正在等待的资源的信息 */
-                        uIpcSaveContext(pContext, (void*)pSemaphore, 0U, 0U,
+                        uIpcInitContext(&context, (void*)pSemaphore, 0U, 0U,
                                         option | IPC_OPT_SEMAPHORE, &state, &error);
 
-                        /* 当前线程阻塞在该信号量的阻塞队列，时限或者无限等待，由IPC_OPT_TIMED参数决定 */
-                        uIpcBlockThread(pContext, &(pSemaphore->Queue), timeo);
+                        /* 当前线程阻塞在该信号量的阻塞队列，时限或者无限等待，由IPC_OPT_TIMEO参数决定 */
+                        uIpcBlockThread(&context, &(pSemaphore->Queue), timeo);
 
                         /* 当前线程被阻塞，其它线程得以执行 */
                         uThreadSchedule();
@@ -272,7 +265,7 @@ TState xSemaphoreRelease(TSemaphore* pSemaphore, TOption option, TTimeTick timeo
                         CpuEnterCritical(&imask);
 
                         /* 清除线程挂起信息 */
-                        uIpcCleanContext(pContext);
+                        uIpcCleanContext(&context);
                     }
                     else
                     {
@@ -292,15 +285,16 @@ TState xSemaphoreRelease(TSemaphore* pSemaphore, TOption option, TTimeTick timeo
 /*************************************************************************************************
  *  功能: 初始化计数信号量                                                                       *
  *  参数: (1) pSemaphore 计数信号量结构地址                                                      *
- *        (2) value      计数信号量初始值                                                        *
- *        (3) mvalue     计数信号量最大计数值                                                    *
- *        (4) property   信号量的初始属性                                                        *
- *        (5) pError     详细调用结果                                                            *
+ *        (2) pName      计数信号量名称                                                          *
+ *        (3) value      计数信号量初始值                                                        *
+ *        (4) mvalue     计数信号量最大计数值                                                    *
+ *        (5) property   信号量的初始属性                                                        *
+ *        (6) pError     详细调用结果                                                            *
  *  返回: (1) eSuccess   操作成功                                                                *
  *        (2) eFailure   操作失败                                                                *
  *  说明：信号量只使用基本IPC队列                                                                *
  *************************************************************************************************/
-TState xSemaphoreCreate(TSemaphore* pSemaphore, TBase32 value, TBase32 mvalue,
+TState xSemaphoreCreate(TSemaphore* pSemaphore, TChar* pName, TBase32 value, TBase32 mvalue,
                         TProperty property, TError* pError)
 {
     TState state = eFailure;
@@ -311,13 +305,17 @@ TState xSemaphoreCreate(TSemaphore* pSemaphore, TBase32 value, TBase32 mvalue,
 
     if (!(pSemaphore->Property & IPC_PROP_READY))
     {
+        /* 初始化信号量对象信息 */
+        uKernelAddObject(&(pSemaphore->Object), pName, eSemaphore, (void*)pSemaphore);
+
+        /* 初始化信号量基本信息 */
         property |= IPC_PROP_READY;
         pSemaphore->Property     = property;
         pSemaphore->Value        = value;
         pSemaphore->LimitedValue = mvalue;
         pSemaphore->InitialValue = value;
-        pSemaphore->Queue.PrimaryHandle   = (TObjNode*)0;
-        pSemaphore->Queue.AuxiliaryHandle = (TObjNode*)0;
+        pSemaphore->Queue.PrimaryHandle   = (TLinkNode*)0;
+        pSemaphore->Queue.AuxiliaryHandle = (TLinkNode*)0;
         pSemaphore->Queue.Property        = &(pSemaphore->Property);
 
         error = IPC_ERR_NONE;
@@ -355,6 +353,9 @@ TState xSemaphoreDelete(TSemaphore* pSemaphore, TError* pError)
          * 将信号量阻塞队列上的所有等待线程都释放，所有线程的等待结果都是TCLE_IPC_DELETE
          */
         uIpcUnblockAll(&(pSemaphore->Queue), eFailure, IPC_ERR_DELETE, (void**)0, &HiRP);
+
+    	/* 从内核中移除信号量 */
+        uKernelRemoveObject(&(pSemaphore->Object));
 
         /* 清除信号量对象的全部数据 */
         memset(pSemaphore, 0U, sizeof(TSemaphore));

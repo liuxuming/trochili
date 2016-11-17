@@ -28,8 +28,8 @@ typedef void (*TTraceEntry)(const char* pStr);
 /* 系统IDLE函数类型定义                         */
 typedef void (*TSysIdleEntry)(void);
 
-/* 系统Fault处理函数类型定义                         */
-typedef void (*TSysFaultEntry)(void);
+/* 系统Fault处理函数类型定义                    */
+typedef void (*TSysFaultEntry)(void* pKernelVariable);
 
 
 /* 代码运行环境类型定义，系统代码有三种运行环境 */
@@ -40,51 +40,52 @@ typedef enum
     eThreadState = 2,                                 /* 代码运行在线程态                      */
 } TKernelState;
 
-#define KERNEL_DIAG_ERROR_NONE      (0U)       /* 线程栈溢出                                   */
-#define KERNEL_DIAG_THREAD_ERROR    (0x1<<0U)  /* 线程错误                                     */
-#define KERNEL_DIAG_SCHED_ERROR     (0x1<<1U)  /*                                              */
-#define KERNEL_DIAG_TIMER_ERROR     (0x1<<2U)  /* 定时器错误                                   */
-#define KERNEL_DIAG_IRQ_ERROR       (0x1<<3U)  /* 在中断里操作了互斥量                         */
+#define KERNEL_DIAG_ERROR_NONE      (0U)              /* 线程栈溢出                            */
+#define KERNEL_DIAG_THREAD_ERROR    (0x1<<0U)         /* 线程错误                              */
+#define KERNEL_DIAG_SCHED_ERROR     (0x1<<1U)         /* 内核禁止线程调度                      */
+#define KERNEL_DIAG_TIMER_ERROR     (0x1<<2U)         /* 定时器错误                            */
+#define KERNEL_DIAG_IRQ_ERROR       (0x1<<3U)         /* 在中断里操作了互斥量                  */
 
 /* 内核变量结构定义，记录了内核运行时的各种数据 */
 struct KernelVariableDef
 {
-    TBase32          SchedLockTimes;                  /* 决定是否允许线程调度                    */
-    TThread*         NomineeThread;                   /* 内核候选线程指针                        */
-    TThread*         CurrentThread;                   /* 内核当前线程指针                        */
-    TKernelState     State;                           /* 记录代码执行时所处的运行状态            */
-    TBase32          IntrNestTimes;                   /* 记录内核被中断的嵌套次数                */
-    TTimeTick        Jiffies;                         /* 系统运行总的节拍数                      */
-    TBase32          ObjID;                           /* 内核对象编号生成计数                    */
-    TBitMask         Diagnosis;                       /* 内核运行状况记录                        */
-    TDBGLog          DBGLog;                          /* 内核运行状况记录                        */
-    TBoardSetupEntry BoardSetupEntry;                 /* 板级初始化程序入口                      */
-    TCpuSetupEntry   CpuSetupEntry;                   /* 处理器初始化程序入口                    */
-    TUserEntry       UserEntry;                       /* 记录用户程序入口                        */
-    TTraceEntry      TraceEntry;                      /* 内核打印函数                            */
-    TSysIdleEntry    SysIdleEntry;                    /* 内核IDLE函数                            */
-	TSysFaultEntry   SysFaultEntry;                   /* 内核FAULT函数                           */
-    TThread*         RootThread;                      /* 内核Root线程指针                        */
-
-#if ((TCLC_TIMER_ENABLE)&&(TCLC_TIMER_DAEMON_ENABLE))
-    TThread*         TimerDaemon;                     /* 用户定时器线程指针                      */
-#endif
-
-#if ((TCLC_IRQ_ENABLE)&&(TCLC_IRQ_DAEMON_ENABLE))
-    TThread*         IrqDaemon;                       /* IRQ线程指针                             */
-#endif
+    TBase32          SchedLockTimes;                  /* 决定是否允许线程调度                  */
+    TThread*         NomineeThread;                   /* 内核候选线程指针                      */
+    TThread*         CurrentThread;                   /* 内核当前线程指针                      */
+    TKernelState     State;                           /* 记录代码执行时所处的运行状态          */
+    TBase32          IntrNestTimes;                   /* 记录内核被中断的嵌套次数              */
+    TTimeTick        Jiffies;                         /* 系统运行总的节拍数                    */
+    TBitMask         Diagnosis;                       /* 内核运行状况记录                      */
+    TDBGLog          DBGLog;                          /* 内核运行状况记录                      */
+	
+    TBoardSetupEntry BoardSetupEntry;                 /* 板级初始化程序入口                    */
+    TCpuSetupEntry   CpuSetupEntry;                   /* 处理器初始化程序入口                  */
+    TUserEntry       UserEntry;                       /* 用户程序入口                          */
+    TTraceEntry      TraceEntry;                      /* 内核打印函数                          */
+    TSysIdleEntry    SysIdleEntry;                    /* 内核IDLE函数                          */
+	TSysFaultEntry   SysFaultEntry;                   /* 内核FAULT函数                         */
+    TThread*         RootThread;                      /* 内核ROOT线程指针                      */
 
 #if (TCLC_TIMER_ENABLE)
-    TTimerList*      TimerList;
+    TThread*         TimerDaemon;                     /* 用户定时器线程指针                    */    
+    TTimerList*      TimerList;                       /* 用户定时器链表指针                    */
 #endif
 
 #if (TCLC_IRQ_ENABLE)
-    TAddr32*         IrqMapTable;
-    TIrqVector*      IrqVectorTable;
+    TAddr32*         IrqMapTable;                     /* 内核中断映射表                        */
+    TIrqVector*      IrqVectorTable;                  /* 内核中断向量表                        */
 #endif
 
-    TThreadQueue*    ThreadAuxiliaryQueue;            /* 内核线程辅助队列指针                    */
-    TThreadQueue*    ThreadReadyQueue;                /* 内核进就绪队列结指针                    */
+#if ((TCLC_IRQ_ENABLE)&&(TCLC_IRQ_DAEMON_ENABLE))
+    TThread*         IrqDaemon;                       /* IRQ线程指针                           */
+#endif
+
+    TThreadQueue*    ThreadAuxiliaryQueue;            /* 内核线程辅助队列指针                  */
+    TThreadQueue*    ThreadReadyQueue;                /* 内核进就绪队列结指针                  */
+    TLinkNode*       ThreadTimerList;                 /* 线程延时结构链表指针                  */	
+
+    TLinkNode*       ObjectList;                      /* 内核对象的队列节点                    */	
+    TBase32          ObjectID;                        /* 内核对象编号生成计数                  */
 };
 typedef struct KernelVariableDef TKernelVariable;
 
@@ -92,6 +93,8 @@ typedef struct KernelVariableDef TKernelVariable;
 extern TKernelVariable uKernelVariable;
 
 extern void uKernelTrace(const char* pNote);
+extern void uKernelAddObject(TObject* pObject, TChar* pName, TObjectType type, void* pOwner);
+extern void uKernelRemoveObject(TObject* pObject);
 extern void xKernelEnterIntrState(void);
 extern void xKernelLeaveIntrState(void);
 extern void xKernelTrace(const char* pNote);
@@ -99,6 +102,7 @@ extern void xKernelTickISR(void);
 extern TState xKernelUnlockSched(void);
 extern TState xKernelLockSched(void);
 extern void xKernelSetIdleEntry(TSysIdleEntry pEntry);
+extern void xKernelSetFaultEntry(TSysFaultEntry pEntry);
 extern void xKernelGetCurrentThread(TThread** pThread2);
 extern void xKernelGetJiffies(TTimeTick* pJiffies);
 extern void xKernelStart(TUserEntry       pUserEntry,

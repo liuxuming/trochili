@@ -24,7 +24,7 @@ struct MemPoolDef
     TBase32   PageNbr;                    /* 内存页数目                        */
     TBase32   PageAvail;                  /* 可用内存页数目                    */
     TBase32   PageTags[MEM_PAGE_TAGS];    /* 内存页是否可用标记                */
-    TObjNode* PageList;                   /* 可用内存页链表头指针              */
+    TLinkNode* PageList;                   /* 可用内存页链表头指针              */
 };
 typedef struct MemPoolDef TMemPool;
 

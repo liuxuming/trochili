@@ -81,12 +81,12 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化互斥量 */
-    state = TclCreateMutex(&LedMutex, LED_MUTEX_PRIORITY, TCLP_IPC_DEFAULT, &error);
+    state = TclCreateMutex(&LedMutex, "mutex", LED_MUTEX_PRIORITY, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
     /* 初始化Led点亮线程 */
-    state = TclCreateThread(&ThreadLedOn,
+    state = TclCreateThread(&ThreadLedOn, "thread led on",
                           &ThreadLedOnEntry, (TArgument)0,
                           ThreadLedOnStack, THREAD_LED_STACK_BYTES,
                           THREAD_LED_PRIORITY, THREAD_LED_SLICE, 
@@ -95,7 +95,7 @@ static void AppSetupEntry(void)
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化Led熄灭线程 */
-    state = TclCreateThread(&ThreadLedOff,
+    state = TclCreateThread(&ThreadLedOff, "thread led off",
                           &ThreadLedOffEntry, (TArgument)0,
                           ThreadLedOffStack, THREAD_LED_STACK_BYTES,
                           THREAD_LED_PRIORITY + 1, THREAD_LED_SLICE, 

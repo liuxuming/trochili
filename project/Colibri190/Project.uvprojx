@@ -322,7 +322,7 @@
             <wLevel>2</wLevel>
             <uThumb>0</uThumb>
             <uSurpInc>0</uSurpInc>
-            <uC99>0</uC99>
+            <uC99>1</uC99>
             <useXO>0</useXO>
             <v6Lang>1</v6Lang>
             <v6LangP>1</v6LangP>
@@ -724,6 +724,11 @@
               <FileType>1</FileType>
               <FilePath>..\..\example\book_chapter_4_semaphore\semaphore_example8_abort.c</FilePath>
             </File>
+            <File>
+              <FileName>semaphore_example9_timeout.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\example\book_chapter_4_semaphore\semaphore_example9_timeout.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -909,11 +914,6 @@
               <FileType>1</FileType>
               <FilePath>..\..\example\book_chapter_9_timer\user_timer_lagticks_example.c</FilePath>
             </File>
-            <File>
-              <FileName>user_timer_urgent_example.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\example\book_chapter_9_timer\user_timer_urgent_example.c</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>
@@ -928,11 +928,6 @@
               <FileName>irq_example2.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\example\book_chapter_10_irq\irq_example2.c</FilePath>
-            </File>
-            <File>
-              <FileName>irq_example3.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\example\book_chapter_10_irq\irq_example3.c</FilePath>
             </File>
           </Files>
         </Group>

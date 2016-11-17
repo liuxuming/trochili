@@ -86,17 +86,17 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 设置和KEY相关的外部中断向量 */
-    state = TclSetIrqVector(KEY_IRQ_ID, &EvbKeyISR, (TThread*)0, (TArgument)0, &error);
+    state = TclSetIrqVector(KEY_IRQ_ID, &EvbKeyISR, (TArgument)0, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IRQ_NONE), "");
 
     /* 初始化事件标记 */
-    state = TclCreateFlags(&LedFlags, TCLP_IPC_DEFAULT, &error);
+    state = TclCreateFlags(&LedFlags, "flag", TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
     /* 初始化CTRL线程 */
-    state = TclCreateThread(&ThreadCTRL,
+    state = TclCreateThread(&ThreadCTRL, "thread ctrl",
                           &ThreadCtrlEntry, (TArgument)0,
                           ThreadCTRLStack, THREAD_CTRL_STACK_BYTES,
                           THREAD_CTRL_PRIORITY, THREAD_CTRL_SLICE,

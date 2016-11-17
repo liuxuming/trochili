@@ -16,7 +16,7 @@
 
 /* ISR返回值 */
 #define IRQ_ISR_DONE           (TBitMask)(0x0)       /* 中断处理程序结束              */
-#define IRQ_CALL_ASR           (TBitMask)(0x1<<0)    /* 请求调用高级异步中断处理线程  */
+#define IRQ_CALL_DAEMON        (TBitMask)(0x1<<0)    /* 请求调用高级异步中断处理线程  */
 
 #define IRQ_ERR_NONE           (TError)(0x0)
 #define IRQ_ERR_FAULT          (TError)(0x1<<0)      /* 一般性错误                    */
@@ -35,7 +35,6 @@ typedef struct
     TProperty  Property;
     TIndex     IRQn;                                 /* 物理中断号                    */
     TISR       ISR;                                  /* 同步中断处理函数              */
-    TThread*   ASR;                                  /* 异步中断处理线程              */
     TArgument  Argument;                             /* 中断向量参数                  */
 } TIrqVector;
 
@@ -53,13 +52,13 @@ typedef struct IrqDef
     TPriority Priority;                              /* IRQ优先级                     */
     TIrqEntry Entry;                                 /* IRQ回调函数                   */
     TArgument Argument;                              /* IRQ回调参数                   */
-    TObjNode  ObjNode;                               /* IRQ所在队列的链表指针         */
+    TLinkNode  LinkNode;                               /* IRQ所在队列的链表指针         */
 } TIrq;
 #endif
 
 extern void uIrqModuleInit(void);
 extern void xIrqEnterISR(TIndex irqn);
-extern TState xIrqSetVector(TIndex irqn, TISR pISR, TThread* pASR, TArgument data, TError* pError);
+extern TState xIrqSetVector(TIndex irqn, TISR pISR, TArgument data, TError* pError);
 extern TState xIrqCleanVector(TIndex irqn, TError* pError);
 
 #if (TCLC_IRQ_DAEMON_ENABLE)

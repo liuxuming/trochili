@@ -51,7 +51,7 @@ static void ThreadLedEntry(TArgument data)
             EvbLedControl(pMail->Index, pMail->Value);
 
             /* Led线程延时1秒 */
-            state = TclDelayThread((TThread*)0, TCLM_MLS2TICKS(1000), &error);
+            state = TclDelayThread(TCLM_MLS2TICKS(1000), &error);
             TCLM_ASSERT((state == eSuccess), "");
             TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
@@ -106,16 +106,16 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化信号量和邮箱 */
-    state = TclCreateMailBox(&LedMailbox, TCLP_IPC_DEFAULT, &error);
+    state = TclCreateMailBox(&LedMailbox, "mbox", TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
-    state = TclCreateSemaphore(&LedSemaphore, 0, 1, TCLP_IPC_DEFAULT, &error);
+    state = TclCreateSemaphore(&LedSemaphore, "semaphore", 0, 1, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
     /* 初始化Led设备控制线程 */
-    state = TclCreateThread(&ThreadLed,
+    state = TclCreateThread(&ThreadLed, "thread led",
                           &ThreadLedEntry,
                           (TArgument)0,
                           ThreadLedStack,
@@ -127,7 +127,7 @@ static void AppSetupEntry(void)
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化CTRL线程 */
-    state = TclCreateThread(&ThreadCTRL,
+    state = TclCreateThread(&ThreadCTRL, "thread ctrl",
                           &ThreadCtrlEntry,
                           (TArgument)0,
                           ThreadCTRLStack,

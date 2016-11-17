@@ -111,7 +111,7 @@ static void ThreadCtrlEntry(TArgument arg)
     while (eTrue)
     {
         /* CTRL线程延时1秒后强制解除全部线程的阻塞 */
-        state = TclDelayThread((TThread*)0, TCLM_MLS2TICKS(1000), &error);
+        state = TclDelayThread(TCLM_MLS2TICKS(1000), &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
@@ -129,12 +129,12 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化信号量 */
-    state = TclCreateSemaphore(&LedSemaphore, 0, 1, TCLP_IPC_DEFAULT, &error);
+    state = TclCreateSemaphore(&LedSemaphore, "semaphore", 0, 1, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
     /* 初始化Led1线程 */
-    state = TclCreateThread(&ThreadLed1,
+    state = TclCreateThread(&ThreadLed1, "thread led1",
                           &ThreadLed1Entry, (TArgument)0,
                           ThreadLed1Stack, THREAD_LED_STACK_BYTES,
                           THREAD_LED_PRIORITY, THREAD_LED_SLICE, &error);
@@ -142,7 +142,7 @@ static void AppSetupEntry(void)
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化Led2线程 */
-    state = TclCreateThread(&ThreadLed2,
+    state = TclCreateThread(&ThreadLed2, "thread led2",
                           &ThreadLed2Entry, (TArgument)0,
                           ThreadLed2Stack, THREAD_LED_STACK_BYTES,
                           THREAD_LED_PRIORITY, THREAD_LED_SLICE, &error);
@@ -150,7 +150,7 @@ static void AppSetupEntry(void)
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化Led3线程 */
-    state = TclCreateThread(&ThreadLed3,
+    state = TclCreateThread(&ThreadLed3, "thread led3",
                           &ThreadLed3Entry, (TArgument)0,
                           ThreadLed3Stack, THREAD_LED_STACK_BYTES,
                           THREAD_LED_PRIORITY, THREAD_LED_SLICE, &error);
@@ -158,7 +158,7 @@ static void AppSetupEntry(void)
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化CTRL线程 */
-    state = TclCreateThread(&ThreadCTRL,
+    state = TclCreateThread(&ThreadCTRL, "thread led ctrl",
                           &ThreadCtrlEntry, (TArgument)0,
                           ThreadCTRLStack, THREAD_CTRL_STACK_BYTES,
                           THREAD_CTRL_PRIORITY, THREAD_CTRL_SLICE, &error);

@@ -49,7 +49,7 @@ static void ThreadLedEntry(TArgument arg)
 static TBitMask EvbKeyISR(TArgument data)
 {
     TState state;
-	TError error;
+    TError error;
 	
     if (EvbKeyScan())
     {
@@ -69,17 +69,17 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 设置和KEY相关的外部中断向量 */
-    state = TclSetIrqVector(KEY_IRQ_ID, &EvbKeyISR, (TThread*)0, (TArgument)0, &error);
+    state = TclSetIrqVector(KEY_IRQ_ID, &EvbKeyISR, (TArgument)0, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IRQ_NONE), "");
 
     /* 初始化信号量 */
-    state = TclCreateSemaphore(&LedSemaphore, 0, 1, TCLP_IPC_DEFAULT, &error);
+    state = TclCreateSemaphore(&LedSemaphore, "semaphore1", 0, 1, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
     /* 初始化Led线程 */
-    state = TclCreateThread(&ThreadLed,
+    state = TclCreateThread(&ThreadLed, "thead led",
                           &ThreadLedEntry, (TArgument)0,
                           ThreadLedStack, THREAD_LED_STACK_BYTES,
                           THREAD_LED_PRIORITY, THREAD_LED_SLICE, &error);

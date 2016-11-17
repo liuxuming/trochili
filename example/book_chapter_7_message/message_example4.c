@@ -90,7 +90,7 @@ static void ThreadLed2Entry(TArgument arg)
         EvbLedControl(pMsg2->Index, pMsg2->Value);
 
         /* Led2线程延时1秒 */
-        state = TclDelayThread(0, TCLM_MLS2TICKS(1000), &error);
+        state = TclDelayThread(TCLM_MLS2TICKS(1000), &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
@@ -108,7 +108,7 @@ static void ThreadLed2Entry(TArgument arg)
         EvbLedControl(pMsg2->Index, pMsg2->Value);
 
         /* Led2线程延时1秒 */
-        state = TclDelayThread(0, TCLM_MLS2TICKS(1000), &error);
+        state = TclDelayThread(TCLM_MLS2TICKS(1000), &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
@@ -129,18 +129,18 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化消息队列 */
-    state = TclCreateMsgQueue(&LedMQ1, (void**)(&Led1MsgPool),
+    state = TclCreateMsgQueue(&LedMQ1, "queue1", (void**)(&Led1MsgPool),
                     MQ_POOL_LEN, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
-    state = TclCreateMsgQueue(&LedMQ2, (void**)(&Led2MsgPool),
+    state = TclCreateMsgQueue(&LedMQ2, "queue2", (void**)(&Led2MsgPool),
                     MQ_POOL_LEN, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
     /* 初始化Led设备控制线程1 */
-    state = TclCreateThread(&ThreadLed1,
+    state = TclCreateThread(&ThreadLed1,  "thread led1",
                   &ThreadLed1Entry, (TArgument)0,
                   ThreadLed1Stack, THREAD_LED_STACK_BYTES,
                   THREAD_LED_PRIORITY, THREAD_LED_SLICE,
@@ -149,7 +149,7 @@ static void AppSetupEntry(void)
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化Led设备控制线程2 */
-    state = TclCreateThread(&ThreadLed2,
+    state = TclCreateThread(&ThreadLed2, "thread led2",
                   &ThreadLed2Entry, (TArgument)0,
                   ThreadLed2Stack, THREAD_LED_STACK_BYTES,
                   THREAD_LED_PRIORITY, THREAD_LED_SLICE,

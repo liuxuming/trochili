@@ -42,7 +42,7 @@ TState xMemPoolCreate(TMemPool* pPool, void* pAddr, TBase32 pages, TBase32 pgsiz
         pTemp = (TChar*)pAddr;
         for (index = 0; index < pages; index++)
         {
-            uObjListAddNode(&(pPool->PageList), (TObjNode*)pTemp, eQuePosTail);
+            uObjListAddNode(&(pPool->PageList), (TLinkNode*)pTemp, eLinkPosTail);
             pTemp += pgsize;
         }
 
@@ -125,7 +125,7 @@ TState xPoolMemMalloc(TMemPool* pPool, void** pAddr2, TError* pError)
         {
             /* 将首内存页分配出去 */
             pTemp = (TChar*)(pPool->PageList);
-            uObjListRemoveNode(&(pPool->PageList), (TObjNode*)pTemp);
+            uObjListRemoveNode(&(pPool->PageList), (TLinkNode*)pTemp);
             pPool->PageAvail--;
             *pAddr2 = (void*)pTemp;
 
@@ -200,7 +200,7 @@ TState xPoolMemFree (TMemPool* pPool, void* pAddr, TError* pError)
                     memset(pAddr, 0U, pPool->PageSize);
 
                     /* 收回该地址的内存页 */
-                    uObjListAddNode(&(pPool->PageList), (TObjNode*)pAddr, eQuePosTail);
+                    uObjListAddNode(&(pPool->PageList), (TLinkNode*)pAddr, eLinkPosTail);
                     pPool->PageAvail++;
 
                     /* 标记该内存页可以被分配 */

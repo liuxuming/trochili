@@ -20,11 +20,12 @@ struct MutexDef
     TBase32   Nest;          /* 互斥信号量嵌套加锁深度         */
     TPriority Priority;      /* ceiling value                  */
     TIpcQueue Queue;         /* 互斥信号量的线程阻塞队列       */
-    TObjNode  LockNode;      /* 用来组成互斥量链表             */   
+    TLinkNode LockNode;      /* 用来组成互斥量链表             */   
+    TObject   Object;
 };
 typedef struct MutexDef TMutex;
 
-extern TState xMutexCreate(TMutex* pMutex, TPriority priority, TProperty property, TError* pError);
+extern TState xMutexCreate(TMutex* pMutex, TChar* pName, TPriority priority, TProperty property, TError* pError);
 extern TState xMutexDelete(TMutex* pMutex, TError* pError);
 extern TState xMutexLock(TMutex* pMutex, TOption option, TTimeTick timeo, TError* pError);
 extern TState xMutexFree(TMutex* pMutex, TError* pError);

@@ -37,12 +37,13 @@ struct MailBoxDef
     TMail          Mail;             /* 邮箱的邮件对象           */
     TMailBoxStatus Status;           /* 邮箱的状态               */
     TIpcQueue      Queue;            /* 邮箱的线程阻塞队列       */
+    TObject        Object;	
 };
 typedef struct MailBoxDef TMailBox;
 
 extern TState xMailBoxSend(TMailBox* pMailbox, TMail* pMail2, TOption option, TTimeTick timeo, TError* pError);
 extern TState xMailBoxReceive(TMailBox* pMailbox, TMail* pMail2, TOption option, TTimeTick timeo, TError* pError);
-extern TState xMailBoxCreate(TMailBox* pMailbox, TProperty property, TError* pError);
+extern TState xMailBoxCreate(TMailBox* pMailbox, TChar* pName, TProperty property, TError* pError);
 extern TState xMailBoxDelete(TMailBox* pMailbox, TError* pError);
 extern TState xMailBoxFlush(TMailBox* pMailbox, TError* pError);
 extern TState xMailboxReset(TMailBox* pMailbox, TError* pError);

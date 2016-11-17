@@ -149,7 +149,7 @@ TState xMailBoxReceive(TMailBox* pMailbox, TMail* pMail2, TOption option, TTimeT
     TState state = eFailure;
     TError error = IPC_ERR_UNREADY;
     TBool HiRP = eFalse;
-    TIpcContext* pContext;
+    TIpcContext context;
     TReg32 imask;
 
     CpuEnterCritical(&imask);
@@ -185,16 +185,14 @@ TState xMailBoxReceive(TMailBox* pMailbox, TMail* pMail2, TOption option, TTimeT
                     /* 如果当前线程不能被阻塞则函数直接返回 */
                     if (uKernelVariable.CurrentThread->ACAPI & THREAD_ACAPI_BLOCK)
                     {
-                        /* 得到当前线程的IPC上下文结构地址 */
-                        pContext = &(uKernelVariable.CurrentThread->IpcContext);
-
                         /* 保存线程挂起信息 */
-                        uIpcSaveContext(pContext, (void*)pMailbox, (TBase32)pMail2,
-                                        sizeof(TBase32), option | IPC_OPT_MAILBOX | IPC_OPT_READ_DATA,
+                        uIpcInitContext(&context, (void*)pMailbox,
+                                        (TBase32)pMail2, sizeof(TBase32),
+                                        option | IPC_OPT_MAILBOX | IPC_OPT_READ_DATA,
                                         &state, &error);
 
-                        /* 当前线程阻塞在该邮箱的阻塞队列，时限或者无限等待，由IPC_OPT_TIMED参数决定 */
-                        uIpcBlockThread(pContext, &(pMailbox->Queue), timeo);
+                        /* 当前线程阻塞在该邮箱的阻塞队列，时限或者无限等待，由IPC_OPT_TIMEO参数决定 */
+                        uIpcBlockThread(&context, &(pMailbox->Queue), timeo);
 
                         /* 当前线程被阻塞，其它线程得以执行 */
                         uThreadSchedule();
@@ -207,7 +205,7 @@ TState xMailBoxReceive(TMailBox* pMailbox, TMail* pMail2, TOption option, TTimeT
                         CpuEnterCritical(&imask);
 
                         /* 清除线程IPC阻塞信息 */
-                        uIpcCleanContext(pContext);
+                        uIpcCleanContext(&context);
                     }
                     else
                     {
@@ -222,7 +220,6 @@ TState xMailBoxReceive(TMailBox* pMailbox, TMail* pMail2, TOption option, TTimeT
     *pError = error;
     return state;
 }
-
 
 
 /*************************************************************************************************
@@ -242,7 +239,7 @@ TState xMailBoxSend(TMailBox* pMailbox, TMail* pMail2, TOption option, TTimeTick
     TState state = eFailure;
     TError error = IPC_ERR_UNREADY;
     TBool HiRP = eFalse;
-    TIpcContext* pContext;
+    TIpcContext context;
     TReg32 imask;
 
     CpuEnterCritical(&imask);
@@ -255,7 +252,7 @@ TState xMailBoxSend(TMailBox* pMailbox, TMail* pMail2, TOption option, TTimeTick
          * 所以在此处得到的HiRP标记无任何意义。
          */
         state = SendMail(pMailbox, (void**)pMail2, &HiRP, &error);
-		
+
         if ((uKernelVariable.State == eThreadState) &&
                 (uKernelVariable.SchedLockTimes == 0U))
         {
@@ -284,15 +281,14 @@ TState xMailBoxSend(TMailBox* pMailbox, TMail* pMail2, TOption option, TTimeTick
                             option |= IPC_OPT_USE_AUXIQ;
                         }
 
-                        /* 得到当前线程的IPC上下文结构地址 */
-                        pContext = &(uKernelVariable.CurrentThread->IpcContext);
-
                         /* 保存线程挂起信息 */
-                        uIpcSaveContext(pContext, (void*)pMailbox, (TBase32)pMail2, sizeof(TBase32),
-                                        option | IPC_OPT_MAILBOX | IPC_OPT_WRITE_DATA, &state, &error);
+                        uIpcInitContext(&context, (void*)pMailbox,
+                                        (TBase32)pMail2, sizeof(TBase32),
+                                        option | IPC_OPT_MAILBOX | IPC_OPT_WRITE_DATA,
+                                        &state, &error);
 
-                        /* 当前线程阻塞在该邮箱的阻塞队列，时限或者无限等待，由IPC_OPT_TIMED参数决定 */
-                        uIpcBlockThread(pContext, &(pMailbox->Queue), timeo);
+                        /* 当前线程阻塞在该邮箱的阻塞队列，时限或者无限等待，由IPC_OPT_TIMEO参数决定 */
+                        uIpcBlockThread(&context, &(pMailbox->Queue), timeo);
 
                         /* 当前线程被阻塞，其它线程得以执行 */
                         uThreadSchedule();
@@ -305,7 +301,7 @@ TState xMailBoxSend(TMailBox* pMailbox, TMail* pMail2, TOption option, TTimeTick
                         CpuEnterCritical(&imask);
 
                         /* 清除线程IPC阻塞信息 */
-                        uIpcCleanContext(pContext);
+                        uIpcCleanContext(&context);
                     }
                     else
                     {
@@ -325,13 +321,14 @@ TState xMailBoxSend(TMailBox* pMailbox, TMail* pMail2, TOption option, TTimeTick
 /*************************************************************************************************
  *  功能：初始化邮箱                                                                             *
  *  参数：(1) pMailbox   邮箱的地址                                                              *
- *        (2) property   邮箱的初始属性                                                          *
- *        (3) pError     详细调用结果                                                            *
+ *        (2) pName      邮箱的名称                                                              *
+ *        (3) property   邮箱的初始属性                                                          *
+ *        (4) pError     详细调用结果                                                            *
  *  返回: (1) eFailure   操作失败                                                                *
  *        (2) eSuccess   操作成功                                                                *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState xMailBoxCreate(TMailBox* pMailbox, TProperty property, TError* pError)
+TState xMailBoxCreate(TMailBox* pMailbox, TChar* pName, TProperty property, TError* pError)
 {
     TState state = eFailure;
     TError error = IPC_ERR_FAULT;
@@ -341,13 +338,17 @@ TState xMailBoxCreate(TMailBox* pMailbox, TProperty property, TError* pError)
 
     if (!(pMailbox->Property &IPC_PROP_READY))
     {
+        /* 初始化邮箱对象信息 */
+        uKernelAddObject(&(pMailbox->Object), pName, eMailbox, (void*)pMailbox);
+
+        /* 初始化邮箱基本信息 */
         property |= IPC_PROP_READY;
         pMailbox->Property = property;
         pMailbox->Status = eMailBoxEmpty;
         pMailbox->Mail = (void*)0;
 
-        pMailbox->Queue.PrimaryHandle   = (TObjNode*)0;
-        pMailbox->Queue.AuxiliaryHandle = (TObjNode*)0;
+        pMailbox->Queue.PrimaryHandle   = (TLinkNode*)0;
+        pMailbox->Queue.AuxiliaryHandle = (TLinkNode*)0;
         pMailbox->Queue.Property        = &(pMailbox->Property);
 
         error = IPC_ERR_NONE;
@@ -382,6 +383,9 @@ TState xMailBoxDelete(TMailBox* pMailbox, TError* pError)
     {
         /* 将邮箱阻塞队列上的所有等待线程都释放,所有线程的等待结果都是IPC_ERR_DELETE  */
         uIpcUnblockAll(&(pMailbox->Queue), eFailure, IPC_ERR_DELETE, (void**)0, &HiRP);
+
+        /* 从内核中移除邮箱对象 */
+        uKernelRemoveObject(&(pMailbox->Object));
 
         /* 清除邮箱对象的全部数据 */
         memset(pMailbox, 0U, sizeof(TMailBox));
@@ -451,7 +455,6 @@ TState xMailboxReset(TMailBox* pMailbox, TError* pError)
     *pError = error;
     return state;
 }
-
 
 
 /*************************************************************************************************
@@ -549,4 +552,3 @@ TState xMailBoxBroadcast(TMailBox* pMailbox, TMail* pMail2, TError* pError)
     return state;
 }
 #endif
-

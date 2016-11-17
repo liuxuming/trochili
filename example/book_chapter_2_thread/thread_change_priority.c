@@ -18,7 +18,7 @@ static TBase32 ThreadLed1Stack[THREAD_LED_STACK_BYTES/4];
 static TBase32 ThreadLed2Stack[THREAD_LED_STACK_BYTES/4];
 
 /* 线程做无用操作，起到空转效果 */
-static delay(TBase32 count)
+static void delay(TBase32 count)
 {
     while(count--);
 }
@@ -81,7 +81,7 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化Led1设备控制线程 */
-    state = TclCreateThread(&ThreadLed1,
+    state = TclCreateThread(&ThreadLed1, "thread led1",
                           &ThreadLed1Entry, (TArgument)0,
                           ThreadLed1Stack, THREAD_LED_STACK_BYTES,
                           THREAD_LED_PRIORITY, THREAD_LED_SLICE,
@@ -90,7 +90,7 @@ static void AppSetupEntry(void)
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化Led2设备控制线程 */
-    state = TclCreateThread(&ThreadLed2,
+    state = TclCreateThread(&ThreadLed2, "thread led2",
                           &ThreadLed2Entry, (TArgument)0,
                           ThreadLed2Stack, THREAD_LED_STACK_BYTES,
                           THREAD_LED_PRIORITY + 1, THREAD_LED_SLICE,
@@ -122,6 +122,5 @@ int main(void)
 
     return 1;
 }
-
 
 #endif

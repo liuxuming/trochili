@@ -69,12 +69,12 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化信号量 */
-    state = TclCreateSemaphore(&UartSemaphore, 1, 1, TCLP_IPC_DEFAULT, &error);
+    state = TclCreateSemaphore(&UartSemaphore, "uart semaphore", 1, 1, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
     /* 初始化UART设备控制线程 */
-    state = TclCreateThread(&ThreadUartLowCase,
+    state = TclCreateThread(&ThreadUartLowCase, "thread lowcase",
                           &ThreadUartLowCaseEntry, (TArgument)0,
                           ThreadUartLowCaseStack, THREAD_UART_STACK_BYTES,
                           THREAD_UART_PRIORITY, THREAD_UART_SLICE, &error);
@@ -82,7 +82,7 @@ static void AppSetupEntry(void)
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化UART设备控制线程 */
-    state = TclCreateThread(&ThreadUartUpCase,
+    state = TclCreateThread(&ThreadUartUpCase, "thread upcase",
                           &ThreadUartUpCaseEntry, (TArgument)0,
                           ThreadUartUpCaseStack, THREAD_UART_STACK_BYTES,
                           THREAD_UART_PRIORITY, THREAD_UART_SLICE, &error);

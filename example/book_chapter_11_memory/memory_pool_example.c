@@ -34,12 +34,12 @@ static void ThreadLedEntry(TArgument data)
 
     while (eTrue)
     {
-        state = TclDelayThread((TThread*)0, TCLM_MLS2TICKS(1000), &error);
+        state = TclDelayThread(TCLM_MLS2TICKS(1000), &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
         EvbLedControl(data, LED_ON);
 
-        state = TclDelayThread((TThread*)0, TCLM_MLS2TICKS(1000), &error);
+        state = TclDelayThread(TCLM_MLS2TICKS(1000), &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
         EvbLedControl(data, LED_OFF);
@@ -81,7 +81,7 @@ static void AppSetupEntry(void)
     TCLM_ASSERT((error == TCLE_MEMORY_NONE), "");
 
     /* 初始化Led线程1 */
-    state = TclCreateThread(pThreadLed1,
+    state = TclCreateThread(pThreadLed1, "thread led1",
                           &ThreadLedEntry, (TArgument)LED1,
                           pThreadStack1, THREAD_LED_STACK_BYTES,
                           THREAD_LED_PRIORITY, THREAD_LED_SLICE,
@@ -90,7 +90,7 @@ static void AppSetupEntry(void)
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化Led线程2*/
-    state = TclCreateThread(pThreadLed2,
+    state = TclCreateThread(pThreadLed2, "thread led2",
                           &ThreadLedEntry,(TArgument)LED2,
                           pThreadStack2, THREAD_LED_STACK_BYTES,
                           THREAD_LED_PRIORITY, THREAD_LED_SLICE,
@@ -99,7 +99,7 @@ static void AppSetupEntry(void)
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化Led线程3 */
-    state = TclCreateThread(pThreadLed3,
+    state = TclCreateThread(pThreadLed3, "thread led3",
                           &ThreadLedEntry, (TArgument)LED3,
                           pThreadStack3, THREAD_LED_STACK_BYTES,
                           THREAD_LED_PRIORITY, THREAD_LED_SLICE,

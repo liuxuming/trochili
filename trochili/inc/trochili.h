@@ -38,6 +38,7 @@ extern void TclStartKernel(TUserEntry pUserEntry,
                            TBoardSetupEntry pBoardEntry,
                            TTraceEntry      pTraceEntry);
 extern void TclSetSysIdleEntry(TSysIdleEntry pEntry);
+extern void TclSetSysFaultEntry(TSysFaultEntry pEntry);
 extern void TclGetCurrentThread(TThread** pThread2);
 extern void TclGetTimeJiffies(TTimeTick* pJiffies);
 extern void TclGetTimeStamp(TTimeStamp* pStamp);
@@ -54,6 +55,7 @@ extern void TclTrace(const char* pNote);
 #define TCLE_THREAD_PRIORITY         (THREAD_ERR_PRIORITY)
 
 extern TState TclCreateThread(TThread* pThread,
+                            TChar* pName,
                             TThreadEntry pEntry,
                             TBase32 argument,
                             void* pStack,
@@ -68,12 +70,11 @@ extern TState TclSuspendThread(TThread* pThread, TError* pError);
 extern TState TclResumeThread(TThread* pThread, TError* pError);
 extern TState TclSetThreadPriority(TThread* pThread, TPriority priority, TError* pError);
 extern TState TclSetThreadSlice(TThread* pThread, TTimeTick ticks, TError* pError);
-extern TState TclUnblockThread(TThread* pThread, TError* pError);
 extern TState TclYieldThread(TError* pError);
-
-#if (TCLC_TIMER_ENABLE)
-extern TState TclDelayThread(TThread* pThread, TTimeTick ticks, TError* pError);
+extern TState TclDelayThread(TTimeTick ticks, TError* pError);
 extern TState TclUnDelayThread(TThread* pThread, TError* pError);
+#if (TCLC_IPC_ENABLE)
+extern TState TclUnblockThread(TThread* pThread, TError* pError);
 #endif
 
 #if (TCLC_TIMER_ENABLE)
@@ -81,19 +82,19 @@ extern TState TclUnDelayThread(TThread* pThread, TError* pError);
 /* 用户定时器属性定义，用户程序使用 */
 #define TCLP_TIMER_DEFAULT         (TIMER_PROP_DEAULT)
 #define TCLP_TIMER_PERIODIC        (TIMER_PROP_PERIODIC)
-#define TCLP_TIMER_URGENT          (TIMER_PROP_URGENT)
+#define TCLP_TIMER_ACCURATE        (TIMER_PROP_ACCURATE)
 
 /* 用户定时器操作结果，用户程序使用 */
 #define TCLE_TIMER_NONE            (TIMER_ERR_NONE)
 #define TCLE_TIMER_FAULT           (TIMER_ERR_FAULT)
 #define TCLE_TIMER_UNREADY         (TIMER_ERR_UNREADY)
 
-extern TState TclCreateTimer(TTimer* pTimer, TProperty property, TTimeTick ticks,
-                               TTimerRoutine routine, TArgument data, TError* pError);
+extern TState TclCreateTimer(TTimer* pTimer, TChar* pName, TProperty property, TTimeTick ticks,
+                               TTimerRoutine routine, TArgument data, TPriority priority, TError* pError);
 extern TState TclDeleteTimer(TTimer* pTimer, TError* pError);
 extern TState TclStartTimer(TTimer* pTimer, TTimeTick lagticks, TError* pError);
 extern TState TclStopTimer(TTimer* pTimer, TError* pError);
-extern TState TclConfigTimer(TTimer* pTimer, TTimeTick ticks, TError* pError);
+extern TState TclConfigTimer(TTimer* pTimer, TTimeTick ticks, TPriority priority, TError* pError);
 
 #endif
 
@@ -102,21 +103,15 @@ extern TState TclConfigTimer(TTimer* pTimer, TTimeTick ticks, TError* pError);
 
 /* ISR返回值 */
 #define TCLR_IRQ_DONE       (IRQ_ISR_DONE)       /* 中断处理程序结束                    */
-#define TCLR_IRQ_ASR        (IRQ_CALL_ASR)       /* 请求调用高级异步中断处理线程        */
+#define TCLR_IRQ_DAEMON     (IRQ_CALL_DAEMON)    /* 请求调用高级异步中断处理线程        */
  
 #define TCLE_IRQ_NONE       (IRQ_ERR_NONE)       
 #define TCLE_IRQ_FAULT      (IRQ_ERR_FAULT)      /* 一般性错误                          */
 #define TCLE_IRQ_UNREADY    (IRQ_ERR_UNREADY)    /* 中断请求结构未初始化                */
 
-extern TState TclSetIrqVector(TIndex irqn, TISR pISR, TThread* pDaemon, TArgument data, TError* pError);
+extern TState TclSetIrqVector(TIndex irqn, TISR pISR, TArgument data, TError* pError);
 extern TState TclCleanIrqVector(TIndex vector, TError* pError);
-extern TState TclCreateAsyISR(TThread* pThread,
-                            TThreadEntry pEntry,
-                            TBase32 Argument,
-                            void* pStack,
-                            TBase32 bytes,
-                            TError* pError);
-extern TState TclDeleteAsyISR(TThread* pThread, TError* pError);
+
 #endif
 
 #if ((TCLC_IRQ_ENABLE) && (TCLC_IRQ_DAEMON_ENABLE))
@@ -147,7 +142,7 @@ extern TState TclCancelIRQ(TIrq* pIRQ, TError* pError);
 /* IPC选项，用户程序使用 */
 #define TCLO_IPC_DEFAULT         (IPC_OPT_DEFAULT)
 #define TCLO_IPC_WAIT            (IPC_OPT_WAIT)
-#define TCLO_IPC_TIMED           (IPC_OPT_TIMED)
+#define TCLO_IPC_TIMEO           (IPC_OPT_TIMEO)
 #define TCLO_IPC_UARGENT         (IPC_OPT_UARGENT)
 #define TCLO_IPC_AND             (IPC_OPT_AND)
 #define TCLO_IPC_OR              (IPC_OPT_OR)
@@ -156,7 +151,8 @@ extern TState TclCancelIRQ(TIrq* pIRQ, TError* pError);
 #endif
 
 #if (TCLC_IPC_ENABLE && TCLC_IPC_SEMAPHORE_ENABLE)
-extern TState TclCreateSemaphore(TSemaphore* pSemaphore, TBase32 value, TBase32 mvalue,
+extern TState TclCreateSemaphore(TSemaphore* pSemaphore, TChar* pName,
+                               TBase32 value, TBase32 mvalue,
                                TProperty property, TError* pError);
 extern TState TclDeleteSemaphore(TSemaphore* pSemaphore, TError* pError);
 extern TState TclResetSemaphore(TSemaphore* pSemaphore, TError* pError);
@@ -169,7 +165,7 @@ extern TState TclIsrReleaseSemaphore(TSemaphore* pSemaphore, TError* pError);
 #endif
 
 #if ((TCLC_IPC_ENABLE) && (TCLC_IPC_MUTEX_ENABLE))
-extern TState TclCreateMutex(TMutex* pMutex, TPriority priority, TProperty property, TError* pError);
+extern TState TclCreateMutex(TMutex* pMutex, TChar* pName, TPriority priority, TProperty property, TError* pError);
 extern TState TclDeleteMutex(TMutex* pMutex, TError* pError);
 extern TState TclLockMutex(TMutex* pMutex, TOption option, TTimeTick timeo, TError* pError);
 extern TState TclFreeMutex(TMutex* pMutex, TError* pError);
@@ -178,7 +174,7 @@ extern TState TclFlushMutex(TMutex* pMutex, TError* pError);
 #endif
 
 #if ((TCLC_IPC_ENABLE) && (TCLC_IPC_FLAGS_ENABLE))
-extern TState TclCreateFlags(TFlags* pFlags, TProperty property, TError* pError);
+extern TState TclCreateFlags(TFlags* pFlags, TChar* pName, TProperty property, TError* pError);
 extern TState TclDeleteFlags(TFlags* pFlags, TError* pError);
 extern TState TclSendFlags(TFlags* pFlags, TBitMask pattern, TError* pError);
 extern TState TclReceiveFlags(TFlags* pFlags, TBitMask* pPattern, TOption option,
@@ -188,7 +184,7 @@ extern TState TclFlushFlags(TFlags* pFlags,  TError* pError);
 #endif
 
 #if ((TCLC_IPC_ENABLE) && (TCLC_IPC_MAILBOX_ENABLE))
-extern TState TclCreateMailBox(TMailBox* pMailbox, TProperty property, TError* pError);
+extern TState TclCreateMailBox(TMailBox* pMailbox, TChar* pName, TProperty property, TError* pError);
 extern TState TclDeleteMailBox(TMailBox* pMailbox, TError* pError);
 extern TState TclReceiveMail(TMailBox* pMailbox, TMail* pMail2, TOption option,
                              TTimeTick timeo, TError* pError);
@@ -201,7 +197,7 @@ extern TState TclFlushMailBox(TMailBox* pMailbox, TError* pError);
 #endif
 
 #if ((TCLC_IPC_ENABLE) && (TCLC_IPC_MQUE_ENABLE))
-extern TState TclCreateMsgQueue(TMsgQueue* pMsgQue, void** pPool2, TBase32 capacity,
+extern TState TclCreateMsgQueue(TMsgQueue* pMsgQue, TChar* pName, void** pPool2, TBase32 capacity,
                               TProperty property, TError* pError);
 extern TState TclDeleteMsgQueue(TMsgQueue* pMsgQue, TError* pError);
 extern TState TclReceiveMessage(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option,

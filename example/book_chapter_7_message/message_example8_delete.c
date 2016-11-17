@@ -127,7 +127,7 @@ static void ThreadCtrlEntry(TArgument data)
     while (eTrue)
     {
         /* CTRL线程延时1秒 */
-        state = TclDelayThread((TThread*)0, TCLM_MLS2TICKS(1000), &error);
+        state = TclDelayThread(TCLM_MLS2TICKS(1000), &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
@@ -137,7 +137,7 @@ static void ThreadCtrlEntry(TArgument data)
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
         /* 重置后的消息队列需要再次初始化才能使用 */
-        state = TclCreateMsgQueue(&LedMQ, (void**)(&LedMsgPool),
+        state = TclCreateMsgQueue(&LedMQ, "queue renewal", (void**)(&LedMsgPool),
                                 MQ_POOL_LEN, TCLP_IPC_DEFAULT, &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
@@ -152,13 +152,13 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化消息队列 */
-    state = TclCreateMsgQueue(&LedMQ, (void**)(&LedMsgPool),
+    state = TclCreateMsgQueue(&LedMQ, "queue", (void**)(&LedMsgPool),
                             MQ_POOL_LEN, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
     /* 初始化Led线程1 */
-    state = TclCreateThread(&ThreadLed1,
+    state = TclCreateThread(&ThreadLed1, "thread led1",
                           &ThreadLed1Entry, (TArgument)0,
                           ThreadLed1Stack, THREAD_LED_STACK_BYTES,
                           THREAD_LED_PRIORITY, THREAD_LED_SLICE, &error);
@@ -166,7 +166,7 @@ static void AppSetupEntry(void)
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化Led线程2 */
-    state = TclCreateThread(&ThreadLed2,
+    state = TclCreateThread(&ThreadLed2, "thread led2",
                           &ThreadLed2Entry, (TArgument)0,
                           ThreadLed2Stack, THREAD_LED_STACK_BYTES,
                           THREAD_LED_PRIORITY, THREAD_LED_SLICE,
@@ -175,7 +175,7 @@ static void AppSetupEntry(void)
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化Led线程3 */
-    state = TclCreateThread(&ThreadLed3,
+    state = TclCreateThread(&ThreadLed3, "thread led3",
                           &ThreadLed3Entry, (TArgument)0,
                           ThreadLed3Stack, THREAD_LED_STACK_BYTES,
                           THREAD_LED_PRIORITY, THREAD_LED_SLICE,
@@ -184,7 +184,7 @@ static void AppSetupEntry(void)
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化CTRL线程 */
-    state = TclCreateThread(&ThreadCTRL,
+    state = TclCreateThread(&ThreadCTRL, "thread ctrl",
                           &ThreadCtrlEntry, (TArgument)0,
                           ThreadCTRLStack, THREAD_CTRL_STACK_BYTES,
                           THREAD_CTRL_PRIORITY, THREAD_CTRL_SLICE,

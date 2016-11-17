@@ -12,7 +12,7 @@ static TThread ThreadLed;
 static TBase32 ThreadLedStack[THREAD_LED_STACK_BYTES/4];
 
 
-static delay(TBase32 count)
+static void delay(TBase32 count)
 {
     while (count--)
         ;
@@ -50,7 +50,7 @@ static void AppSetupEntry(void)
     TState state;
 
     /* 初始化Led设备控制线程 */
-    state = TclCreateThread(&ThreadLed,
+    state = TclCreateThread(&ThreadLed, "thread led",
                           &ThreadLedEntry, (TArgument)0,
                           ThreadLedStack,  THREAD_LED_STACK_BYTES,
                           THREAD_LED_PRIORITY, THREAD_LED_SLICE,

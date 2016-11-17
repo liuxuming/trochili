@@ -30,11 +30,11 @@ static void EnterBlockedQueue(TIpcQueue* pQueue, TIpcContext* pContext)
     {
         if (property &IPC_PROP_PREEMP_AUXIQ)
         {
-            uObjQueueAddPriorityNode(&(pQueue->AuxiliaryHandle), &(pContext->ObjNode));
+            uObjQueueAddPriorityNode(&(pQueue->AuxiliaryHandle), &(pContext->LinkNode));
         }
         else
         {
-            uObjQueueAddFifoNode(&(pQueue->AuxiliaryHandle), &(pContext->ObjNode), eQuePosTail);
+            uObjQueueAddFifoNode(&(pQueue->AuxiliaryHandle), &(pContext->LinkNode), eLinkPosTail);
         }
         property |= IPC_PROP_AUXIQ_AVAIL;
     }
@@ -42,11 +42,11 @@ static void EnterBlockedQueue(TIpcQueue* pQueue, TIpcContext* pContext)
     {
         if (property &IPC_PROP_PREEMP_PRIMIQ)
         {
-            uObjQueueAddPriorityNode(&(pQueue->PrimaryHandle), &(pContext->ObjNode));
+            uObjQueueAddPriorityNode(&(pQueue->PrimaryHandle), &(pContext->LinkNode));
         }
         else
         {
-            uObjQueueAddFifoNode(&(pQueue->PrimaryHandle), &(pContext->ObjNode), eQuePosTail);
+            uObjQueueAddFifoNode(&(pQueue->PrimaryHandle), &(pContext->LinkNode), eLinkPosTail);
         }
         property |= IPC_PROP_PRIMQ_AVAIL;
     }
@@ -74,16 +74,16 @@ static void LeaveBlockedQueue(TIpcQueue* pQueue, TIpcContext* pContext)
     /* 将线程从指定的分队列中取出 */
     if ((pContext->Option) & IPC_OPT_USE_AUXIQ)
     {
-        uObjQueueRemoveNode(&(pQueue->AuxiliaryHandle), &(pContext->ObjNode));
-        if (pQueue->AuxiliaryHandle == (TObjNode*)0)
+        uObjQueueRemoveNode(&(pQueue->AuxiliaryHandle), &(pContext->LinkNode));
+        if (pQueue->AuxiliaryHandle == (TLinkNode*)0)
         {
             property &= ~IPC_PROP_AUXIQ_AVAIL;
         }
     }
     else
     {
-        uObjQueueRemoveNode(&(pQueue->PrimaryHandle), &(pContext->ObjNode));
-        if (pQueue->PrimaryHandle == (TObjNode*)0)
+        uObjQueueRemoveNode(&(pQueue->PrimaryHandle), &(pContext->LinkNode));
+        if (pQueue->PrimaryHandle == (TLinkNode*)0)
         {
             property &= ~IPC_PROP_PRIMQ_AVAIL;
         }
@@ -98,8 +98,8 @@ static void LeaveBlockedQueue(TIpcQueue* pQueue, TIpcContext* pContext)
 
 /*************************************************************************************************
  *  功能：将线程放入资源阻塞队列                                                                 *
- *  参数：(1) pQueue  线程队列结构地址                                                           *
- *        (2) pThread 线程结构地址                                                               *
+ *  参数：(1) pContext阻塞对象地址                                                               *
+ *        (2) pQueue  线程队列结构地址                                                           *
  *        (3) ticks   资源等待时限                                                               *
  *  返回：无                                                                                     *
  *  说明：对于线程进出相关队列的策略根据队列策略特性来进行                                       *
@@ -110,7 +110,7 @@ void uIpcBlockThread(TIpcContext* pContext, TIpcQueue* pQueue, TTimeTick ticks)
 
     KNL_ASSERT((uKernelVariable.State != eIntrState), "");
 
-    /* 将线程放入内核线程辅助队列 */
+    /* 获得线程地址 */
     pThread = (TThread*)(pContext->Owner);
 
     /* 只有处于就绪状态的线程才可以被阻塞 */
@@ -121,33 +121,27 @@ void uIpcBlockThread(TIpcContext* pContext, TIpcQueue* pQueue, TTimeTick ticks)
         uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
+    /* 将线程放入内核线程辅助队列 */
     uThreadLeaveQueue(uKernelVariable.ThreadReadyQueue, pThread);
-    uThreadEnterQueue(uKernelVariable.ThreadAuxiliaryQueue, pThread, eQuePosTail);
+    uThreadEnterQueue(uKernelVariable.ThreadAuxiliaryQueue, pThread, eLinkPosTail);
     pThread->Status = eThreadBlocked;
 
     /* 将线程放入阻塞队列 */
     EnterBlockedQueue(pQueue, pContext);
 
-#if (TCLC_TIMER_ENABLE && TCLC_IPC_TIMER_ENABLE)
-    /* 如果需要就初始化并且打开线程用于访问资源的时限定时器 */
-    if ((pContext->Option & IPC_OPT_TIMED) && (ticks > 0U))
+    /* 如果需要就启动线程用于访问资源的时限定时器 */
+    if ((pContext->Option & IPC_OPT_TIMEO) && (ticks > 0U))
     {
-        uTimerConfig(&(pThread->Timer), eIpcTimer, ticks);
-        uTimerStart(&(pThread->Timer), 0U);
+        pThread->Timer.RemainTicks = ticks;
+        uObjListAddDiffNode(&(uKernelVariable.ThreadTimerList),
+                            &(pThread->Timer.LinkNode));
     }
-#else
-    /* 访问资源时不支持时限阻塞方式 */
-    if (pContext->Option & IPC_OPT_TIMED)
-    {
-        pThread->Diagnosis |= THREAD_DIAG_INVALID_TIMEO;
-    }
-#endif
 }
 
 
 /*************************************************************************************************
  *  功能：唤醒IPC阻塞队列中指定的线程                                                            *
- *  参数：(1) pThread 线程地址                                                                   *
+ *  参数：(1) pContext阻塞对象地址                                                               *
  *        (2) state   线程资源访问返回结果                                                       *
  *        (3) error   详细调用结果                                                               *
  *        (4) pHiRP   是否因唤醒更高优先级而导致需要进行线程调度的标记                           *
@@ -160,51 +154,55 @@ void uIpcUnblockThread(TIpcContext* pContext, TState state, TError error, TBool*
     pThread = (TThread*)(pContext->Owner);
 
     /* 只有处于阻塞状态的线程才可以被解除阻塞 */
-    if (pThread->Status == eThreadBlocked)
+    if (pThread->Status != eThreadBlocked)
     {
-        /*
-         * 操作线程，完成线程队列和状态转换,注意只有中断处理时，
-         * 当前线程才会处在内核线程辅助队列里(因为还没来得及线程切换)
-         * 当前线程返回就绪队列时，一定要回到相应的队列头
-         * 当线程进出就绪队列时，不需要处理线程的时钟节拍数
-         */
-        uThreadLeaveQueue(uKernelVariable.ThreadAuxiliaryQueue, pThread);
-        if (pThread == uKernelVariable.CurrentThread)
-        {
-            uThreadEnterQueue(uKernelVariable.ThreadReadyQueue, pThread, eQuePosHead);
-            pThread->Status = eThreadRunning;
-        }
-        else
-        {
-            uThreadEnterQueue(uKernelVariable.ThreadReadyQueue, pThread, eQuePosTail);
-            pThread->Status = eThreadReady;
-        }
+        uKernelVariable.Diagnosis |= KERNEL_DIAG_THREAD_ERROR;
+        pThread->Diagnosis |= THREAD_DIAG_INVALID_STATE;
+        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+    }
 
-        /* 将线程从阻塞队列移出 */
-        LeaveBlockedQueue(pContext->Queue, pContext);
+    /*
+     * 操作线程，完成线程队列和状态转换,注意只有中断处理时，
+     * 当前线程才会处在内核线程辅助队列里(因为还没来得及线程切换)
+     * 当前线程返回就绪队列时，一定要回到相应的队列头
+     * 当线程进出就绪队列时，不需要处理线程的时钟节拍数
+     */
+    uThreadLeaveQueue(uKernelVariable.ThreadAuxiliaryQueue, pThread);
+    if (pThread == uKernelVariable.CurrentThread)
+    {
+        uThreadEnterQueue(uKernelVariable.ThreadReadyQueue,
+                          pThread, eLinkPosHead);
+        pThread->Status = eThreadRunning;
+    }
+    else
+    {
+        uThreadEnterQueue(uKernelVariable.ThreadReadyQueue,
+                          pThread, eLinkPosTail);
+        pThread->Status = eThreadReady;
+    }
 
-        /* 设置线程访问资源的结果和错误代码 */
-        *(pContext->State) = state;
-        *(pContext->Error) = error;
+    /* 将线程从阻塞队列移出 */
+    LeaveBlockedQueue(pContext->Queue, pContext);
 
-        /* 如果线程是以时限方式访问资源则取消该线程的时限定时器 */
-#if ((TCLC_IPC_TIMER_ENABLE) && (TCLC_TIMER_ENABLE))
-        if ((pContext->Option & IPC_OPT_TIMED) && (error != IPC_ERR_TIMEO))
-        {
-            KNL_ASSERT((pThread->Timer.Type == eIpcTimer), "");
-            uTimerStop(&(pThread->Timer));
-        }
-#endif
-        /* 设置线程调度请求标记,此标记只在线程环境下有效。
-         * 在ISR里，当前线程可能在任何队列里，跟当前线程相比较优先级也是无意义的
-         *
-         * 在线程环境下，如果当前线程的优先级已经不再是线程就绪队列的最高优先级，
-         * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
-         */
-        if (pThread->Priority < uKernelVariable.CurrentThread->Priority)
-        {
-            *pHiRP = eTrue;
-        }
+    /* 设置线程访问资源的结果和错误代码 */
+    *(pContext->State) = state;
+    *(pContext->Error) = error;
+
+    /* 如果线程是以时限方式访问资源则关闭该线程的时限定时器 */
+    if (pContext->Option & IPC_OPT_TIMEO)
+    {
+        uObjListRemoveDiffNode(&(uKernelVariable.ThreadTimerList),
+                               &(pThread->Timer.LinkNode));
+    }
+
+    /* 设置线程调度请求标记,此标记只在线程环境下有效。
+     * 在ISR里，当前线程可能在任何队列里，跟当前线程相比较优先级也是无意义的。
+     * 在线程环境下，如果当前线程的优先级已经不再是线程就绪队列的最高优先级，
+     * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
+     */
+    if (pThread->Priority < uKernelVariable.CurrentThread->Priority)
+    {
+        *pHiRP = eTrue;
     }
 }
 
@@ -224,7 +222,7 @@ void uIpcUnblockAll(TIpcQueue* pQueue, TState state, TError error, void** pData2
     TIpcContext* pContext;
 
     /* 辅助队列中的线程首先被解除阻塞 */
-    while (pQueue->AuxiliaryHandle != (TObjNode*)0)
+    while (pQueue->AuxiliaryHandle != (TLinkNode*)0)
     {
         pContext = (TIpcContext*)(pQueue->AuxiliaryHandle->Owner);
         uIpcUnblockThread(pContext, state, error, pHiRP);
@@ -236,7 +234,7 @@ void uIpcUnblockAll(TIpcQueue* pQueue, TState state, TError error, void** pData2
     }
 
     /* 基本队列中的线程随后被解除阻塞 */
-    while (pQueue->PrimaryHandle != (TObjNode*)0)
+    while (pQueue->PrimaryHandle != (TLinkNode*)0)
     {
         pContext = (TIpcContext*)(pQueue->PrimaryHandle->Owner);
         uIpcUnblockThread(pContext, state, error, pHiRP);
@@ -251,7 +249,7 @@ void uIpcUnblockAll(TIpcQueue* pQueue, TState state, TError error, void** pData2
 
 /*************************************************************************************************
  *  功能：改变处在IPC阻塞队列中的线程的优先级                                                    *
- *  参数：(1) pThread  线程结构地址                                                              *
+ *  参数：(1) pContext 阻塞对象地址                                                              *
  *        (2) priority 资源等待时限                                                              *
  *  返回：无                                                                                     *
  *  说明：如果线程所属阻塞队列采用优先级策略，则将线程从所属的阻塞队列中移出，然后修改它的优先级,*
@@ -263,23 +261,23 @@ void uIpcSetPriority(TIpcContext* pContext, TPriority priority)
     TIpcQueue* pQueue;
 
     pQueue = pContext->Queue;
-   
+
     /* 根据实际情况来重新安排线程在IPC阻塞队列里的位置 */
     property = *(pContext->Queue->Property);
     if (pContext->Option & IPC_OPT_USE_AUXIQ)
     {
         if (property & IPC_PROP_PREEMP_AUXIQ)
         {
-            uObjQueueRemoveNode(&(pQueue->AuxiliaryHandle), &(pContext->ObjNode));
-            uObjQueueAddPriorityNode(&(pQueue->AuxiliaryHandle), &(pContext->ObjNode));
+            uObjQueueRemoveNode(&(pQueue->AuxiliaryHandle), &(pContext->LinkNode));
+            uObjQueueAddPriorityNode(&(pQueue->AuxiliaryHandle), &(pContext->LinkNode));
         }
     }
     else
     {
         if (property & IPC_PROP_PREEMP_PRIMIQ)
         {
-            uObjQueueRemoveNode(&(pQueue->PrimaryHandle), &(pContext->ObjNode));
-            uObjQueueAddPriorityNode(&(pQueue->PrimaryHandle), &(pContext->ObjNode));
+            uObjQueueRemoveNode(&(pQueue->PrimaryHandle), &(pContext->LinkNode));
+            uObjQueueAddPriorityNode(&(pQueue->PrimaryHandle), &(pContext->LinkNode));
         }
     }
 }
@@ -287,7 +285,7 @@ void uIpcSetPriority(TIpcContext* pContext, TPriority priority)
 
 /*************************************************************************************************
  *  功能：设定阻塞线程的IPC对象的信息                                                            *
- *  参数：(1) pThread 线程结构地址                                                               *
+ *  参数：(1) pContext阻塞对象地址                                                               *
  *        (2) pIpc    正在操作的IPC对象的地址                                                    *
  *        (3) data    指向数据目标对象指针的指针                                                 *
  *        (4) len     数据的长度                                                                 *
@@ -297,9 +295,15 @@ void uIpcSetPriority(TIpcContext* pContext, TPriority priority)
  *  返回：无                                                                                     *
  *  说明：data指向的指针，就是需要通过IPC机制来传递的数据在线程空间的指针                        *
  *************************************************************************************************/
-void uIpcSaveContext(TIpcContext* pContext, void* pIpc, TBase32 data, TBase32 len,
+void uIpcInitContext(TIpcContext* pContext, void* pIpc, TBase32 data, TBase32 len,
                      TOption option, TState* pState, TError* pError)
 {
+    TThread* pThread;
+
+    pThread = uKernelVariable.CurrentThread;
+    pThread->IpcContext = pContext;
+
+    pContext->Owner      = (void*)pThread;
     pContext->Object     = pIpc;
     pContext->Queue      = (TIpcQueue*)0;
     pContext->Data.Value = data;
@@ -307,6 +311,13 @@ void uIpcSaveContext(TIpcContext* pContext, void* pIpc, TBase32 data, TBase32 le
     pContext->Option     = option;
     pContext->State      = pState;
     pContext->Error      = pError;
+
+    pContext->LinkNode.Next   = (TLinkNode*)0;
+    pContext->LinkNode.Prev   = (TLinkNode*)0;
+    pContext->LinkNode.Handle = (TLinkNode**)0;
+    pContext->LinkNode.Data   = (TBase32*)(&(pThread->Priority));
+    pContext->LinkNode.Owner  = (void*)pContext;
+
     *pState              = eError;
     *pError              = IPC_ERR_FAULT;
 }
@@ -314,35 +325,17 @@ void uIpcSaveContext(TIpcContext* pContext, void* pIpc, TBase32 data, TBase32 le
 
 /*************************************************************************************************
  *  功能：清除阻塞线程的IPC对象的信息                                                            *
- *  参数：(1) pThread  线程结构地址                                                              *
+ *  参数：(1) pContext 阻塞对象地址                                                              *
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
 void uIpcCleanContext(TIpcContext* pContext)
 {
-    pContext->Object     = (void*)0;
-    pContext->Queue      = (TIpcQueue*)0;
-    pContext->Data.Value = 0U;
-    pContext->Length     = 0U;
-    pContext->Option     = IPC_OPT_DEFAULT;
-    pContext->State      = (TState*)0;
-    pContext->Error      = (TError*)0;
-}
-
-
-/*************************************************************************************************
- *  功能：初始化IPC队列                                                                          *
- *  参数：(1) pQueue   IPC队列结构地址                                                           *
- *        (2) property IPC队列的行为参数                                                         *
- *  返回：无                                                                                     *
- *  说明：pContext->Owner 成员在此初始化之后就永远不要被清除                                     *
- *************************************************************************************************/
-void uIpcInitContext(TIpcContext* pContext, void* pOwner)
-{
     TThread* pThread;
 
-    pThread = (TThread*)pOwner;
-    pContext->Owner      = pOwner;
+    pThread = (TThread*)(pContext->Owner);
+    pThread->IpcContext = (TIpcContext*)0;
+
     pContext->Object     = (void*)0;
     pContext->Queue      = (TIpcQueue*)0;
     pContext->Data.Value = 0U;
@@ -350,12 +343,6 @@ void uIpcInitContext(TIpcContext* pContext, void* pOwner)
     pContext->Option     = IPC_OPT_DEFAULT;
     pContext->State      = (TState*)0;
     pContext->Error      = (TError*)0;
-
-    pContext->ObjNode.Next   = (TObjNode*)0;
-    pContext->ObjNode.Prev   = (TObjNode*)0;
-    pContext->ObjNode.Handle = (TObjNode**)0;
-    pContext->ObjNode.Data   = (TBase32*)(&(pThread->Priority));
-    pContext->ObjNode.Owner  = (void*)pContext;
 }
 
 #endif

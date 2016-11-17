@@ -16,8 +16,8 @@
 struct IpcBlockedQueueDef
 {
     TProperty* Property;                                /* 线程阻塞队列属性                          */
-    TObjNode*  PrimaryHandle;                           /* 队列中基本线程分队列                      */
-    TObjNode*  AuxiliaryHandle;                         /* 队列中辅助线程分队列                      */
+    TLinkNode*  PrimaryHandle;                           /* 队列中基本线程分队列                      */
+    TLinkNode*  AuxiliaryHandle;                         /* 队列中辅助线程分队列                      */
 };
 typedef struct IpcBlockedQueueDef TIpcQueue;
 
@@ -62,7 +62,7 @@ typedef struct IpcBlockedQueueDef TIpcQueue;
 /* 线程IPC选项，内核代码使用 */
 #define IPC_OPT_DEFAULT               (TOption)(0x0)
 #define IPC_OPT_WAIT             (TOption)(0x1<<1)       /* 永久方式等待IPC                          */
-#define IPC_OPT_TIMED            (TOption)(0x1<<2)       /* 时限方式等待标记                         */
+#define IPC_OPT_TIMEO            (TOption)(0x1<<2)       /* 时限方式等待标记                         */
 #define IPC_OPT_UARGENT          (TOption)(0x1<<3)       /* 消息队列、邮件使用                       */
 #define IPC_OPT_AND              (TOption)(0x1<<4)       /* 标记事件标记操作是AND类型                */
 #define IPC_OPT_OR               (TOption)(0x1<<5)       /* 标记事件标记操作是OR类型                 */
@@ -78,11 +78,11 @@ typedef struct IpcBlockedQueueDef TIpcQueue;
 #define IPC_OPT_READ_DATA        (TOption)(0x1<<24)      /* 接收邮件或者消息                         */
 #define IPC_OPT_WRITE_DATA       (TOption)(0x1<<25)      /* 发送邮件或者消息                         */
 
-#define IPC_USER_SEMAPHORE_OPTION  (IPC_OPT_WAIT|IPC_OPT_TIMED)
-#define IPC_USER_MUTEX_OPTION      (IPC_OPT_WAIT|IPC_OPT_TIMED)
-#define IPC_USER_MBOX_OPTION       (IPC_OPT_WAIT|IPC_OPT_TIMED|IPC_OPT_UARGENT)
-#define IPC_USER_MSGQ_OPTION       (IPC_OPT_WAIT|IPC_OPT_TIMED|IPC_OPT_UARGENT)
-#define IPC_USER_FLAG_OPTION       (IPC_OPT_WAIT|IPC_OPT_TIMED|IPC_OPT_AND|IPC_OPT_OR|IPC_OPT_CONSUME)
+#define IPC_USER_SEMAPHORE_OPTION  (IPC_OPT_WAIT|IPC_OPT_TIMEO)
+#define IPC_USER_MUTEX_OPTION      (IPC_OPT_WAIT|IPC_OPT_TIMEO)
+#define IPC_USER_MBOX_OPTION       (IPC_OPT_WAIT|IPC_OPT_TIMEO|IPC_OPT_UARGENT)
+#define IPC_USER_MSGQ_OPTION       (IPC_OPT_WAIT|IPC_OPT_TIMEO|IPC_OPT_UARGENT)
+#define IPC_USER_FLAG_OPTION       (IPC_OPT_WAIT|IPC_OPT_TIMEO|IPC_OPT_AND|IPC_OPT_OR|IPC_OPT_CONSUME)
 
 /* NOTE: not compliant MISRA2004 18.4: Unions shall not be used. */
 union IpcDataDef
@@ -104,12 +104,12 @@ struct IpcContextDef
     TState*      State;                           /* IPC对象操作的返回值                        */
     TError*      Error;                           /* IPC对象操作的错误代码                      */
     void*        Owner;                           /* IPC对象所属线程                            */
-    TObjNode     ObjNode;                         /* 线程所在IPC队列的链表节点                  */
+    TLinkNode    LinkNode;                        /* 线程所在IPC队列的链表节点                  */
 };
 typedef struct IpcContextDef TIpcContext;
 
-extern void uIpcInitContext(TIpcContext* pContext, void* pOwner);
-extern void uIpcSaveContext(TIpcContext* pContext, void* pIpc, TBase32 data, TBase32 len, TOption option,
+
+extern void uIpcInitContext(TIpcContext* pContext, void* pIpc, TBase32 data, TBase32 len, TOption option,
                             TState* pState, TError* pError);
 extern void uIpcCleanContext(TIpcContext* pContext);
 extern void uIpcBlockThread(TIpcContext* pContext, TIpcQueue* pQueue, TTimeTick ticks);

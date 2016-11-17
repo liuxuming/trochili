@@ -32,13 +32,13 @@
 /* 线程属性定义                       */
 #define THREAD_PROP_NONE              (TProperty)(0x0)
 #define THREAD_PROP_READY             (TProperty)(0x1<<0) /* 线程初始化完毕标记位,
-                                                             本成员在结构体中的位置跟汇编代码相关    */
+本成员在结构体中的位置跟汇编代码相关    */
 #define THREAD_PROP_PRIORITY_FIXED    (TProperty)(0x1<<1) /* 线程优先级锁定标记                      */
 #define THREAD_PROP_PRIORITY_SAFE     (TProperty)(0x1<<2) /* 线程优先级安全标记                      */
 #define THREAD_PROP_CLEAN_STACK       (TProperty)(0x1<<3) /* 主动清空线程栈空间                      */
-#define THREAD_PROP_DAEMON            (TProperty)(0x1<<4) /* 守护线程标记位                          */
-#define THREAD_PROP_ASR               (TProperty)(0x1<<5) /* 用户中断处理线程标记位                  */
-#define THREAD_PROP_ROOT              (TProperty)(0x1<<6) /* ROOT线程标记位                          */
+#define THREAD_PROP_KERNEL_ROOT       (TProperty)(0x1<<6) /* ROOT线程标记位                          */
+#define THREAD_PROP_KERNEL_DAEMON     (TProperty)(0x1<<4) /* 内核守护线程标记位                      */
+
 
 /* 线程权限控制，各种线程API操作时的许可位 */
 #define THREAD_ACAPI_NONE             (TBitMask)(0x0)
@@ -67,7 +67,6 @@
     THREAD_ACAPI_UNBLOCK|\
     THREAD_ACAPI_BLOCK|\
     THREAD_ACAPI_YIELD)
-#define THREAD_ACAPI_ASR (THREAD_ACAPI_DELETE | THREAD_ACAPI_DEACTIVATE)
 
 /* 线程状态定义  */
 enum ThreadStausdef
@@ -81,16 +80,26 @@ enum ThreadStausdef
 };
 typedef enum ThreadStausdef TThreadStatus;
 
-/* 
+/*
  * 线程队列结构定义，该结构大小随内核支持的优先级范围而变化，
- * 可以实现固定时间的线程优先级计算算法                                                          
+ * 可以实现固定时间的线程优先级计算算法
  */
 struct ThreadQueueDef
 {
     TBitMask   PriorityMask;                 /* 队列中就绪优先级掩码                             */
-    TObjNode*  Handle[TCLC_PRIORITY_NUM];    /* 队列中线程分队列                                 */
+    TLinkNode* Handle[TCLC_PRIORITY_NUM];    /* 队列中线程分队列                                 */
 };
 typedef struct ThreadQueueDef TThreadQueue;
+
+
+/* 线程延时定时器结构定义 */
+struct TickTimerDef
+{
+    TTimeTick     RemainTicks;               /* 线程定时器计时数                                 */
+    void*         Owner;                     /* 线程定时器所属线程                               */
+    TLinkNode     LinkNode;                  /* 线程定时器队列的链表节点                         */
+};
+typedef struct TickTimerDef TTickTimer;
 
 /* 线程主函数类型定义                                                                            */
 typedef void (*TThreadEntry)(TArgument data);
@@ -115,78 +124,71 @@ struct ThreadDef
     TThreadEntry  Entry;                     /* 线程的主函数                                     */
     TArgument     Argument;                  /* 线程主函数的用户参数,用户来赋值                  */
     TBitMask      Diagnosis;                 /* 线程运行错误码                                   */
-#if (TCLC_TIMER_ENABLE)
-    TTimer        Timer;                     /* 线程自带定时器                                   */
-#endif
-
+    TTickTimer    Timer;                     /* 用于线程延时或者线程时限阻塞的时间管理结构       */
 #if (TCLC_IPC_ENABLE)
-    TIpcContext  IpcContext;                 /* 线程互斥、同步或者通信的上下文                   */
+    TIpcContext*  IpcContext;                /* 线程互斥、同步或者通信的上下文                   */
 #endif
-
 #if ((TCLC_IPC_ENABLE) && (TCLC_IPC_MUTEX_ENABLE))
-    TObjNode*     LockList;                  /* 线程占有的锁的队列                               */
-#endif
-
-#if (TCLC_IRQ_ENABLE)
-    TBase32       SyncValue;
+    TLinkNode*    LockList;                  /* 线程占有的锁的队列                               */
 #endif
     TThreadQueue* Queue;                     /* 指向线程所属线程队列的指针                       */
-    TBase32       ThreadID;                  /* 线程ID                                           */
-    TObjNode      ObjNode;                   /* 线程所在队列的节点                               */
+    TLinkNode     LinkNode;                  /* 线程所在队列的节点                               */
+    TObject       Object;	                 /* 线程的内核对象节点                               */
 };
 typedef struct ThreadDef TThread;
 
-#define NODE2THREAD(NODE) ((TThread*)((TByte*)(NODE)-OFF_SET_OF(TThread, ObjNode)))
+#define NODE2THREAD(NODE) ((TThread*)((TByte*)(NODE) - OFF_SET_OF(TThread, LinkNode)))
 
 
 extern TThreadQueue uThreadAuxiliaryQueue;   /* 内核线程辅助队列                                 */
 extern TThreadQueue SetThreadReadyQueue;     /* 内核进就绪队列结                                 */
 
 extern void uThreadLeaveQueue(TThreadQueue* pQueue, TThread* pThread);
-extern void uThreadEnterQueue(TThreadQueue* pQueue, TThread* pThread, TQueuePos pos);
+extern void uThreadEnterQueue(TThreadQueue* pQueue, TThread* pThread, TLinkPos pos);
 extern void uThreadSchedule(void);
-extern void uThreadTickISR(void);
+extern void uThreadTickUpdate(void);
+extern void uThreadTimerUpdate(void);
 extern void uThreadModuleInit(void);
 extern void uThreadResumeFromISR(TThread* pThread);
 extern void uThreadSuspendSelf(void);
 extern void uThreadCreate(TThread*    pThread,
-                        TThreadStatus status,
-                        TProperty     property,
-                        TBitMask      acapi,
-                        TThreadEntry  pEntry,
-                        TArgument     argument,
-                        void*         pStack,
-                        TBase32       bytes,
-                        TPriority     priority,
-                        TTimeTick     ticks);
+                          TChar*        pName,
+                          TThreadStatus status,
+                          TProperty     property,
+                          TBitMask      acapi,
+                          TThreadEntry  pEntry,
+                          TArgument     argument,
+                          void*         pStack,
+                          TBase32       bytes,
+                          TPriority     priority,
+                          TTimeTick     ticks);
 extern TState uThreadDelete(TThread* pThread, TError* pError);
 extern TState uThreadSetPriority(TThread* pThread, TPriority priority,
                                  TBool flag, TBool* pHiRP, TError* pError);
 extern TState xThreadCreate(TThread* pThread,
-                        TThreadStatus status,
-                        TProperty     property,
-                        TBitMask      acapi,
-                        TThreadEntry  pEntry,
-                        TBase32       argument,
-                        void*         pStack,
-                        TBase32       bytes,
-                        TPriority     priority,
-                        TTimeTick     ticks,
-                        TError*       pError);
+                            TChar*        pName,
+                            TThreadStatus status,
+                            TProperty     property,
+                            TBitMask      acapi,
+                            TThreadEntry  pEntry,
+                            TBase32       argument,
+                            void*         pStack,
+                            TBase32       bytes,
+                            TPriority     priority,
+                            TTimeTick     ticks,
+                            TError*       pError);
 extern TState xThreadDelete(TThread* pThread, TError* pError);
 extern TState xThreadActivate(TThread* pThread, TError* pError);
 extern TState xThreadDeactivate(TThread* pThread, TError* pError);
 extern TState xThreadSuspend(TThread* pThread, TError* pError);
 extern TState xThreadResume(TThread* pThread, TError* pError);
-extern TState xThreadUnblock(TThread* pThread, TError* pError);
-#if (TCLC_TIMER_ENABLE)
-extern TState xThreadDelay(TThread* pThread, TTimeTick ticks, TError* pError);
+extern TState xThreadDelay(TTimeTick ticks, TError* pError);
 extern TState xThreadUndelay(TThread* pThread, TError* pError);
-#endif
-
 extern TState xThreadYield(TError* pError);
 extern TState xThreadSetPriority(TThread* pThread, TPriority priority, TError* pError);
 extern TState xThreadSetTimeSlice(TThread* pThread, TTimeTick ticks, TError* pError);
-
+#if (TCLC_IPC_ENABLE)
+extern TState xThreadUnblock(TThread* pThread, TError* pError);
+#endif
 #endif /*_TCL_THREAD_H */
 

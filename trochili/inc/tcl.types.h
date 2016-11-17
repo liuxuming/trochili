@@ -33,9 +33,11 @@ typedef enum
 typedef enum
 {
     eFailure,                            /* 函数调用失败                                         */
-    eSuccess,                            /* 函数调用成功                                         */		
-    eError,                              /* 函数调用发生错误                                     */    
+    eSuccess,                            /* 函数调用成功                                         */
+    eError,                              /* 函数调用发生错误                                     */
 } TState;
+
+#define TCLM_OFFSET_OF(TYPE, MEMBER) ((TBase32)(&(((TYPE *)0)->MEMBER)))
 
 
 /* 寄存器读写宏定义 */

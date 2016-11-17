@@ -71,7 +71,7 @@ static TState RemoveLock(TThread* pThread, TMutex* pMutex, TBool* pHiRP, TError*
     TState state = eSuccess;
     TError error = IPC_ERR_NONE;
     TPriority priority = TCLC_LOWEST_PRIORITY;
-    TObjNode* pHead = (TObjNode*)0;
+    TLinkNode* pHead = (TLinkNode*)0;
     TBool     nflag = eFalse;
 
     /* 将互斥量从线程锁队列中移除 */
@@ -85,7 +85,7 @@ static TState RemoveLock(TThread* pThread, TMutex* pMutex, TBool* pHiRP, TError*
     {
         /* 如果线程锁队列为空，则线程优先级恢复到基础优先级,
            在mutex里，线程优先级一定不低于线程基础优先级 */
-        if (pThread->LockList == (TObjNode*)0)
+        if (pThread->LockList == (TLinkNode*)0)
         {
             /* 如果线程没有占有别的互斥量上,则设置线程优先级可以被API修改 */
             pThread->Property |= (THREAD_PROP_PRIORITY_SAFE);
@@ -289,7 +289,7 @@ TState xMutexLock(TMutex* pMutex, TOption option, TTimeTick timeo, TError* pErro
     TState state = eFailure;
     TError error = IPC_ERR_UNREADY;
     TBool HiRP = eFalse;
-    TIpcContext* pContext;
+    TIpcContext context;
     TReg32 imask;
 
     CpuEnterCritical(&imask);
@@ -313,14 +313,11 @@ TState xMutexLock(TMutex* pMutex, TOption option, TTimeTick timeo, TError* pErro
                     /* 如果当前线程不能被阻塞则函数直接返回 */
                     if (uKernelVariable.CurrentThread->ACAPI & THREAD_ACAPI_BLOCK)
                     {
-                        /* 得到当前线程的IPC上下文结构地址 */
-                        pContext = &(uKernelVariable.CurrentThread->IpcContext);
-
                         /* 设定线程正在等待的资源的信息 */
-                        uIpcSaveContext(pContext, (void*)pMutex, 0U, 0U, (option | IPC_OPT_MUTEX), &state, &error);
+                        uIpcInitContext(&context, (void*)pMutex, 0U, 0U, (option | IPC_OPT_MUTEX), &state, &error);
 
-                        /* 当前线程阻塞在该互斥量的阻塞队列，时限或者无限等待，由IPC_OPT_TIMED参数决定 */
-                        uIpcBlockThread(pContext, &(pMutex->Queue), timeo);
+                        /* 当前线程阻塞在该互斥量的阻塞队列，时限或者无限等待，由IPC_OPT_TIMEO参数决定 */
+                        uIpcBlockThread(&context, &(pMutex->Queue), timeo);
 
                         /* 当前线程被阻塞，其它线程得以执行 */
                         uThreadSchedule();
@@ -333,7 +330,7 @@ TState xMutexLock(TMutex* pMutex, TOption option, TTimeTick timeo, TError* pErro
                         CpuEnterCritical(&imask);
 
                         /* 清除线程挂起信息 */
-                        uIpcCleanContext(pContext);
+                        uIpcCleanContext(&context);
                     }
                     else
                     {
@@ -354,14 +351,15 @@ TState xMutexLock(TMutex* pMutex, TOption option, TTimeTick timeo, TError* pErro
 /*************************************************************************************************
  *  功能: 初始化互斥量                                                                           *
  *  参数: (1) pMute    互斥量结构地址                                                            *
- *        (2) priority 互斥量的优先级天花板                                                      *
- *        (3) property 互斥量的初始属性                                                          *
- *        (4) pError   详细调用结果                                                              *
+ *        (2) pName    互斥量的名称                                                              * 
+ *        (3) priority 互斥量的优先级天花板                                                      *
+ *        (4) property 互斥量的初始属性                                                          *
+ *        (5) pError   详细调用结果                                                              *
  *  返回: (1) eSuccess 操作成功                                                                  *
  *        (2) eFailure 操作失败                                                                  *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState xMutexCreate(TMutex* pMutex, TPriority priority, TProperty property, TError* pError)
+TState xMutexCreate(TMutex* pMutex, TChar* pName, TPriority priority, TProperty property, TError* pError)
 {
     TState state = eFailure;
     TError error = IPC_ERR_FAULT;
@@ -378,21 +376,25 @@ TState xMutexCreate(TMutex* pMutex, TPriority priority, TProperty property, TErr
 
     if (!(pMutex->Property & IPC_PROP_READY))
     {
+        /* 初始化互斥量对象信息 */
+        uKernelAddObject(&(pMutex->Object), pName, eMutex, (void*)pMutex);
+		
+        /* 初始化互斥量基本信息 */		
         property |= IPC_PROP_READY;
         pMutex->Property = property;
         pMutex->Nest = 0U;
         pMutex->Owner = (TThread*)0;
         pMutex->Priority = priority;
 
-        pMutex->Queue.PrimaryHandle   = (TObjNode*)0;
-        pMutex->Queue.AuxiliaryHandle = (TObjNode*)0;
+        pMutex->Queue.PrimaryHandle   = (TLinkNode*)0;
+        pMutex->Queue.AuxiliaryHandle = (TLinkNode*)0;
         pMutex->Queue.Property        = &(pMutex->Property);
 
         pMutex->LockNode.Owner = (void*)pMutex;
         pMutex->LockNode.Data = (TBase32*)(&(pMutex->Priority));
         pMutex->LockNode.Next = 0;
         pMutex->LockNode.Prev = 0;
-        pMutex->LockNode.Handle = (TObjNode**)0;
+        pMutex->LockNode.Handle = (TLinkNode**)0;
 
         error = IPC_ERR_NONE;
         state = eSuccess;
@@ -444,6 +446,9 @@ TState xMutexDelete(TMutex* pMutex, TError* pError)
                            (void**)0, &HiRP);
         }
 
+    	/* 从内核中移除互斥量 */
+        uKernelRemoveObject(&(pMutex->Object));
+		
         /* 清除互斥量对象的全部数据 */
         memset(pMutex, 0U, sizeof(TMutex));
 

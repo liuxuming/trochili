@@ -19,10 +19,11 @@ struct FlagsDef
     TProperty Property;  /* 线程的调度策略等属性配置   */
     TBitMask  Value;     /* 事件标记的当前事件组       */
     TIpcQueue Queue;     /* 事件标记的线程阻塞队列     */
+    TObject   Object;		
 };
 typedef struct FlagsDef TFlags;
 
-extern TState xFlagsCreate(TFlags* pFlags, TProperty property, TError* pError);
+extern TState xFlagsCreate(TFlags* pFlags, TChar* pName, TProperty property, TError* pError);
 extern TState xFlagsDelete(TFlags* pFlags, TError* pError);
 extern TState xFlagsReset(TFlags* pFlags, TError* pError);
 extern TState xFlagsFlush(TFlags* pFlags, TError* pError);

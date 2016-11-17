@@ -131,7 +131,7 @@ static void ThreadCtrlEntry(TArgument data)
     while (eTrue)
     {
         /* CTRL线程延时1秒后强制解除LED1线程的阻塞 */
-        state = TclDelayThread(&ThreadCTRL, TCLM_MLS2TICKS(1000), &error);
+        state = TclDelayThread(TCLM_MLS2TICKS(1000), &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
@@ -149,43 +149,47 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化事件标记 */
-    state = TclCreateFlags(&LedFlags, TCLP_IPC_DEFAULT, &error);
+    state = TclCreateFlags(&LedFlags, "flag", TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
     /* 初始化Led线程1 */
     state = TclCreateThread(&ThreadLED1,
-                          &ThreadLED1Entry, (TArgument)0,
-                          ThreadLED1Stack, THREAD_LED_STACK_BYTES,
-                          THREAD_LED_PRIORITY, THREAD_LED_SLICE,
-                          &error);
+                            "thread led1",
+                            &ThreadLED1Entry, (TArgument)0,
+                            ThreadLED1Stack, THREAD_LED_STACK_BYTES,
+                            THREAD_LED_PRIORITY, THREAD_LED_SLICE,
+                            &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化Led线程2 */
     state = TclCreateThread(&ThreadLed2,
-                          &ThreadLed2Entry, (TArgument)0,
-                          ThreadLed2Stack, THREAD_LED_STACK_BYTES,
-                          THREAD_LED_PRIORITY, THREAD_LED_SLICE,
-                          &error);
+                            "thread led2",
+                            &ThreadLed2Entry, (TArgument)0,
+                            ThreadLed2Stack, THREAD_LED_STACK_BYTES,
+                            THREAD_LED_PRIORITY, THREAD_LED_SLICE,
+                            &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化Led线程3 */
     state = TclCreateThread(&ThreadLed3,
-                          &ThreadLed3Entry, (TArgument)0,
-                          ThreadLed3Stack, THREAD_LED_STACK_BYTES,
-                          THREAD_LED_PRIORITY, THREAD_LED_SLICE,
-                          &error);
+                            "thread led3",
+                            &ThreadLed3Entry, (TArgument)0,
+                            ThreadLed3Stack, THREAD_LED_STACK_BYTES,
+                            THREAD_LED_PRIORITY, THREAD_LED_SLICE,
+                            &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化CTRL线程 */
     state = TclCreateThread(&ThreadCTRL,
-                          &ThreadCtrlEntry, (TArgument)0,
-                          ThreadCTRLStack, THREAD_CTRL_STACK_BYTES,
-                          THREAD_CTRL_PRIORITY, THREAD_CTRL_SLICE,
-                          &error);
+                            "thread ctrl",
+                            &ThreadCtrlEntry, (TArgument)0,
+                            ThreadCTRLStack, THREAD_CTRL_STACK_BYTES,
+                            THREAD_CTRL_PRIORITY, THREAD_CTRL_SLICE,
+                            &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 

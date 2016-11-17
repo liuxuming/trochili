@@ -57,7 +57,7 @@ static void ThreadLedEntry(TArgument arg)
             EvbLedControl(pMsg->Index, pMsg->Value);
 
             /* Led线程休眠1秒 */
-            state = TclDelayThread(0, TCLM_MLS2TICKS(1000), &error);
+            state = TclDelayThread(TCLM_MLS2TICKS(1000), &error);
             TCLM_ASSERT((state == eSuccess), "");
             TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
@@ -112,17 +112,17 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化消息队列和信号量 */
-    state = TclCreateMsgQueue(&LedMQ, (void**)(&LedMsgPool),
+    state = TclCreateMsgQueue(&LedMQ, "queue", (void**)(&LedMsgPool),
                             MQ_POOL_LEN, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
-    state = TclCreateSemaphore(&LedSemaphore, 0, 1, TCLP_IPC_DEFAULT, &error);
+    state = TclCreateSemaphore(&LedSemaphore, "semaphore", 0, 1, TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化Led设备控制线程 */
-    state = TclCreateThread(&ThreadLed,
+    state = TclCreateThread(&ThreadLed,  "thread led",
                           &ThreadLedEntry, (TArgument)0,
                           ThreadLedStack, THREAD_LED_STACK_BYTES,
                           THREAD_LED_PRIORITY, THREAD_LED_SLICE,
@@ -131,7 +131,7 @@ static void AppSetupEntry(void)
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化CTRL线程 */
-    state = TclCreateThread(&ThreadCTRL,
+    state = TclCreateThread(&ThreadCTRL, "thread ctrl",
                           &ThreadCtrlEntry, (TArgument)0,
                           ThreadCTRLStack, THREAD_CTRL_STACK_BYTES,
                           THREAD_CTRL_PRIORITY, THREAD_CTRL_SLICE,

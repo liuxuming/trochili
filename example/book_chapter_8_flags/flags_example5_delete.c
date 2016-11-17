@@ -62,7 +62,7 @@ static void ThreadCtrlEntry(TArgument data)
     while (eTrue)
     {
         /* CTRL线程延时1秒，此后Led线程才得到运行机会 */
-        state = TclDelayThread(&ThreadCTRL, TCLM_MLS2TICKS(1000), &error);
+        state = TclDelayThread(TCLM_MLS2TICKS(1000), &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
@@ -71,7 +71,7 @@ static void ThreadCtrlEntry(TArgument data)
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
-        state =TclCreateFlags(&LedFlags, TCLP_IPC_DEFAULT, &error);
+        state =TclCreateFlags(&LedFlags, "flag renewal", TCLP_IPC_DEFAULT, &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
     }
@@ -85,12 +85,12 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化Led事件标记 */
-    state = TclCreateFlags(&LedFlags, TCLP_IPC_DEFAULT, &error);
+    state = TclCreateFlags(&LedFlags, "flag", TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
     /* 初始化Led设备控制线程 */
-    state = TclCreateThread(&ThreadLed,
+    state = TclCreateThread(&ThreadLed, "thread led",
                           &ThreadLedEntry, (TArgument)0,
                           ThreadLedStack, THREAD_LED_STACK_BYTES,
                           THREAD_LED_PRIORITY, THREAD_LED_SLICE,
@@ -99,7 +99,7 @@ static void AppSetupEntry(void)
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化CTRL线程 */
-    state = TclCreateThread(&ThreadCTRL,
+    state = TclCreateThread(&ThreadCTRL, "thread ctrl",
                           &ThreadCtrlEntry, (TArgument)0,
                           ThreadCTRLStack,THREAD_CTRL_STACK_BYTES,
                           THREAD_CTRL_PRIORITY, THREAD_CTRL_SLICE,

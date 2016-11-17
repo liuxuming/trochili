@@ -60,7 +60,7 @@ static void ThreadCtrlEntry(TArgument data)
     while (eTrue)
     {
         /* CTRL线程初始化互斥量，然后提前获得互斥量 */
-        state = TclCreateMutex(&LedMutex, 0, TCLP_IPC_DEFAULT, &error);
+        state = TclCreateMutex(&LedMutex, "mutex", 0, TCLP_IPC_DEFAULT, &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
@@ -69,7 +69,7 @@ static void ThreadCtrlEntry(TArgument data)
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
         /* CTRL线程延时1秒，此后Led线程才得到运行机会 */
-        state = TclDelayThread(&ThreadCTRL, TCLM_MLS2TICKS(1000), &error);
+        state = TclDelayThread(TCLM_MLS2TICKS(1000), &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
@@ -88,7 +88,7 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化Led设备控制线程 */
-    state = TclCreateThread(&ThreadLed,
+    state = TclCreateThread(&ThreadLed, "thread led",
                           &ThreadLedEntry, (TArgument)0,
                           ThreadLedStack, THREAD_LED_STACK_BYTES,
                           THREAD_LED_PRIORITY, THREAD_LED_SLICE, &error);
@@ -96,7 +96,7 @@ static void AppSetupEntry(void)
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化CTRL线程 */
-    state = TclCreateThread(&ThreadCTRL,
+    state = TclCreateThread(&ThreadCTRL, "thread ctrl",
                           &ThreadCtrlEntry, (TArgument)0,
                           ThreadCTRLStack, THREAD_CTRL_STACK_BYTES,
                           THREAD_CTRL_PRIORITY, THREAD_CTRL_SLICE, &error);

@@ -42,10 +42,10 @@ static void ThreadLed1Entry(TBase32 pArg)
     TBase32 index = 1;
     while (eTrue)
     {
-        state = TclDelayThread((TThread*)0, TCLM_MLS2TICKS(1000), &error);
+        state = TclDelayThread(TCLM_MLS2TICKS(1000), &error);
         EvbLedControl(Led1, LED_ON);
 
-        state = TclDelayThread((TThread*)0, TCLM_MLS2TICKS(1000), &error);
+        state = TclDelayThread(TCLM_MLS2TICKS(1000), &error);
         EvbLedControl(Led1, LED_OFF);
 
         index++;

@@ -44,22 +44,21 @@ static TState SetThreadReady(TThread* pThread, TThreadStatus status, TBool* pHiR
          * 因为是在线程环境下，所以此时pThread一定不是当前线程
          */
         uThreadLeaveQueue(&ThreadAuxiliaryQueue, pThread);
-        uThreadEnterQueue(&ThreadReadyQueue, pThread, eQuePosTail);
+        uThreadEnterQueue(&ThreadReadyQueue, pThread, eLinkPosTail);
         pThread->Status = eThreadReady;
         if (pThread->Priority < uKernelVariable.CurrentThread->Priority)
         {
             *pHiRP = eTrue;
         }
 
-#if (TCLC_TIMER_ENABLE)
-        /* 如果是取消定时操作则需要停止线程定时器 */
-        if ((state == eSuccess) && (status == eThreadDelayed))
-        {
-            uTimerStop(&(pThread->Timer));
-        }
-#endif
         state = eSuccess;
         error = THREAD_ERR_NONE;
+    }
+
+    /* 如果是取消定时操作则需要停止线程定时器 */
+    if ((state == eSuccess) && (status == eThreadDelayed))
+    {
+        uObjListRemoveDiffNode(&(uKernelVariable.ThreadTimerList), &(pThread->Timer.LinkNode));
     }
 
     *pError = error;
@@ -90,7 +89,7 @@ static TState SetThreadUnready(TThread* pThread, TThreadStatus status, TTimeTick
         if (uKernelVariable.SchedLockTimes == 0U)
         {
             uThreadLeaveQueue(&ThreadReadyQueue, pThread);
-            uThreadEnterQueue(&ThreadAuxiliaryQueue, pThread, eQuePosTail);
+            uThreadEnterQueue(&ThreadAuxiliaryQueue, pThread, eLinkPosTail);
             pThread->Status = status;
             *pHiRP = eTrue;
 
@@ -106,7 +105,7 @@ static TState SetThreadUnready(TThread* pThread, TThreadStatus status, TTimeTick
     {
         /* 如果被操作的线程不是当前线程，则不会引起线程调度，所以直接处理线程和队列 */
         uThreadLeaveQueue(&ThreadReadyQueue, pThread);
-        uThreadEnterQueue(&ThreadAuxiliaryQueue, pThread, eQuePosTail);
+        uThreadEnterQueue(&ThreadAuxiliaryQueue, pThread, eLinkPosTail);
         pThread->Status = status;
 
         error = THREAD_ERR_NONE;
@@ -117,14 +116,12 @@ static TState SetThreadUnready(TThread* pThread, TThreadStatus status, TTimeTick
         uDebugAlarm("");
     }
 
-#if (TCLC_TIMER_ENABLE)
     /* 重置并启动线程定时器 */
     if ((state == eSuccess) && (status == eThreadDelayed))
     {
-        uTimerConfig(&(pThread->Timer), eThreadTimer, ticks);
-        uTimerStart(&(pThread->Timer), 0U);
+        pThread->Timer.RemainTicks = ticks;
+        uObjListAddDiffNode(&(uKernelVariable.ThreadTimerList), &(pThread->Timer.LinkNode));
     }
-#endif
 
     *pError = error;
     return state;
@@ -182,46 +179,14 @@ static void CheckThreadStack(TThread* pThread)
  *************************************************************************************************/
 static void xSuperviseThread(TThread* pThread)
 {
-    TReg32 imask;
-    KNL_ASSERT((pThread == uKernelVariable.CurrentThread), "");
-
-#if (TCLC_IRQ_ENABLE)
-    if (pThread->Property &THREAD_PROP_ASR)
-    {
-        while (eTrue)
-        {
-            /*
-            * 调用用户ASR线程主函数，这类函数的特点是唤醒执行后，
-            * 会被系统自动挂起，等待下次唤醒。
-            */
-            pThread->Entry(pThread->Argument);
-
-            /*
-            * 当ASR之行结束后，准备挂起时，此时ISR可能会又一次进入尝试唤醒ASR，
-            * 不巧此时ASR为运行状态。为了避免ASR丢失下轮的唤醒请求，在这里略纠结
-            * 的添加了检查
-            */
-            CpuEnterCritical(&imask);
-            if (pThread->SyncValue == 0U)
-            {
-                uThreadSuspendSelf();
-            }
-            else
-            {
-                pThread->SyncValue = 0U;
-            }
-            CpuLeaveCritical(imask);
-        }
-    }
-#endif
-
     /* 普通线程需要注意用户不小心退出导致非法指令等死机的问题 */
+    KNL_ASSERT((pThread == uKernelVariable.CurrentThread), "");
     pThread->Entry(pThread->Argument);
+
     uKernelVariable.Diagnosis |= KERNEL_DIAG_THREAD_ERROR;
     pThread->Diagnosis |= THREAD_DIAG_INVALID_EXIT;
     uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
 }
-
 
 
 /*************************************************************************************************
@@ -264,10 +229,10 @@ void uThreadModuleInit(void)
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void uThreadEnterQueue(TThreadQueue* pQueue, TThread* pThread, TQueuePos pos)
+void uThreadEnterQueue(TThreadQueue* pQueue, TThread* pThread, TLinkPos pos)
 {
     TPriority priority;
-    TObjNode** pHandle;
+    TLinkNode** pHandle;
 
     /* 检查线程和线程队列 */
     KNL_ASSERT((pThread != (TThread*)0), "");
@@ -278,7 +243,7 @@ void uThreadEnterQueue(TThreadQueue* pQueue, TThread* pThread, TQueuePos pos)
     pHandle = &(pQueue->Handle[priority]);
 
     /* 将线程加入指定的分队列 */
-    uObjQueueAddFifoNode(pHandle, &(pThread->ObjNode), pos);
+    uObjQueueAddFifoNode(pHandle, &(pThread->LinkNode), pos);
 
     /* 设置线程所属队列 */
     pThread->Queue = pQueue;
@@ -298,7 +263,7 @@ void uThreadEnterQueue(TThreadQueue* pQueue, TThread* pThread, TQueuePos pos)
 void uThreadLeaveQueue(TThreadQueue* pQueue, TThread* pThread)
 {
     TPriority priority;
-    TObjNode** pHandle;
+    TLinkNode** pHandle;
 
     /* 检查线程是否属于本队列,如果不属于则内核发生致命错误 */
     KNL_ASSERT((pThread != (TThread*)0), "");
@@ -309,13 +274,13 @@ void uThreadLeaveQueue(TThreadQueue* pQueue, TThread* pThread)
     pHandle = &(pQueue->Handle[priority]);
 
     /* 将线程从指定的分队列中取出 */
-    uObjQueueRemoveNode(pHandle, &(pThread->ObjNode));
+    uObjQueueRemoveNode(pHandle, &(pThread->LinkNode));
 
     /* 设置线程所属队列 */
     pThread->Queue = (TThreadQueue*)0;
 
     /* 处理线程离开队列后对队列优先级就绪标记的影响 */
-    if (pQueue->Handle[priority] == (TObjNode*)0)
+    if (pQueue->Handle[priority] == (TLinkNode*)0)
     {
         /* 设定该线程优先级未就绪 */
         pQueue->PriorityMask &= (~(0x1 << priority));
@@ -336,12 +301,10 @@ void uThreadLeaveQueue(TThreadQueue* pQueue, TThread* pThread)
  * 3 辅助队列或者阻塞队列里
  * 只有情况1才需要进行时间片轮转的处理，但此时不涉及线程切换,因为本函数只在ISR中调用。
  */
-
-/* 本函数要求比应用代码里的中断优先级要高 */
-void uThreadTickISR(void)
+void uThreadTickUpdate(void)
 {
     TThread* pThread;
-    TObjNode* pHandle;
+    TLinkNode* pHandle;
 
     /* 将当前线程时间片减去1个节拍数,线程运行总节拍数加1 */
     pThread = uKernelVariable.CurrentThread;
@@ -371,6 +334,77 @@ void uThreadTickISR(void)
                 /* 将线程状态置为就绪,准备线程切换 */
                 pThread->Status = eThreadReady;
             }
+        }
+    }
+}
+
+
+/*************************************************************************************************
+ *  功能：线程定时器处理函数                                                                     *
+ *  参数：无                                                                                     *
+ *  返回：无                                                                                     *
+ *  说明:                                                                                        *
+ *************************************************************************************************/
+void uThreadTimerUpdate(void)
+{
+    TThread* pThread;
+    TTickTimer* pTimer;
+    TBool HiRP = eFalse;
+
+    /* 得到处于队列头的线程定时器，将对应的定时计数减1 */
+    if (uKernelVariable.ThreadTimerList != (TLinkNode*)0)
+    {
+        pTimer = (TTickTimer*)(uKernelVariable.ThreadTimerList->Owner);
+        pTimer->RemainTicks--;
+
+        /* 处理计数为0的线程定时器 */
+        while (pTimer->RemainTicks == 0u)
+        {
+            /*
+             * 操作线程，完成线程队列和状态转换,注意只有中断处理时，
+             * 当前线程才会处在内核线程辅助队列里(因为还没来得及线程切换)
+             * 当前线程返回就绪队列时，一定要回到相应的队列头
+             * 当线程进出就绪队列时，不需要处理线程的时钟节拍数
+             */
+            pThread = (TThread*)(pTimer->Owner);
+            if (pThread->Status == eThreadDelayed)
+            {
+                uThreadLeaveQueue(uKernelVariable.ThreadAuxiliaryQueue, pThread);
+                if (pThread == uKernelVariable.CurrentThread)
+                {
+                    uThreadEnterQueue(uKernelVariable.ThreadReadyQueue,
+                                      pThread, eLinkPosHead);
+                    pThread->Status = eThreadRunning;
+                }
+                else
+                {
+                    uThreadEnterQueue(uKernelVariable.ThreadReadyQueue,
+                                      pThread, eLinkPosTail);
+                    pThread->Status = eThreadReady;
+                }
+                /* 将线程定时器从差分队列中移出 */
+                uObjListRemoveDiffNode(&(uKernelVariable.ThreadTimerList),
+                                       &(pTimer->LinkNode));
+            }
+#if (TCLC_IPC_ENABLE)
+            /* 将线程从阻塞队列中解除阻塞 */
+            else if (pThread->Status == eThreadBlocked)
+            {
+                uIpcUnblockThread(pThread->IpcContext, eFailure, IPC_ERR_TIMEO, &HiRP);
+            }
+#endif
+            else
+            {
+                uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+            }
+
+            if (uKernelVariable.ThreadTimerList == (TLinkNode*)0)
+            {
+                break;
+            }
+
+            /* 获得下一个线程定时器 */
+            pTimer = (TTickTimer*)(uKernelVariable.ThreadTimerList->Owner);
         }
     }
 }
@@ -438,7 +472,7 @@ void uThreadSchedule(void)
     {
         CpuCancelThreadSwitch();
         /*
-         * 在定时器、ASR、Deamon等相关操作时，有可能在当先线程尚未切换上下文的时候，
+         * 在定时器、DAEMON、Deamon等相关操作时，有可能在当先线程尚未切换上下文的时候，
          * 重新放回就绪队列，此时在相关代码里已经将当前线程重新设置成运行状态。
          * 而在yeild、tick isr里，有可能将当前线程设置成就绪态，而此时当前线程所在
          * 队列又只有唯一一个线程就绪，所以这时需要将当前线程重新设置成运行状态。
@@ -463,13 +497,15 @@ void uThreadSchedule(void)
  *  返回：(1)  eFailure                                                                          *
  *        (2)  eSuccess                                                                          *
  *  说明：注意栈起始地址、栈大小和栈告警地址的字节对齐问题                                       *
- *  说明：函数名的前缀'u'(Universal)表示本函数为模块间通用函数                                   *
  *************************************************************************************************/
-void uThreadCreate(TThread* pThread, TThreadStatus status, TProperty property, TBitMask acapi,
-                   TThreadEntry pEntry, TArgument argument, void* pStack, TBase32 bytes,
-                   TPriority priority, TTimeTick ticks)
+void uThreadCreate(TThread* pThread, TChar* pName, TThreadStatus status, TProperty property,
+                   TBitMask acapi, TThreadEntry pEntry, TArgument argument,
+                   void* pStack, TBase32 bytes, TPriority priority, TTimeTick ticks)
 {
     TThreadQueue* pQueue;
+
+    /* 初始化线程基本对象信息 */
+    uKernelAddObject(&(pThread->Object), pName, eThread, (void*)pThread);
 
     /* 设置线程栈相关数据和构造线程初始栈栈帧 */
     KNL_ASSERT((bytes >= TCLC_CPU_MINIMAL_STACK), "");
@@ -504,10 +540,6 @@ void uThreadCreate(TThread* pThread, TThreadStatus status, TProperty property, T
     pThread->Priority = priority;
     pThread->BasePriority = priority;
 
-    /* 设置线程唯一ID数值 */
-    pThread->ThreadID = uKernelVariable.ObjID;
-    uKernelVariable.ObjID++;
-
     /* 设置线程入口函数和线程参数 */
     pThread->Entry = pEntry;
     pThread->Argument = argument;
@@ -515,24 +547,26 @@ void uThreadCreate(TThread* pThread, TThreadStatus status, TProperty property, T
     /* 设置线程所属队列信息 */
     pThread->Queue = (TThreadQueue*)0;
 
-    /* 设置线程定时器信息 */
-#if (TCLC_TIMER_ENABLE)
-    uTimerCreate(&(pThread->Timer), (TProperty)0, eThreadTimer, (TTimeTick)0,
-                 (TTimerRoutine)0, (TArgument)0, (void*)pThread);
-#endif
+    /* 设置线程定时器 */
+    pThread->Timer.LinkNode.Owner = (void*)(&(pThread->Timer));
+    pThread->Timer.LinkNode.Data = (TBase32*)(&(pThread->Timer.RemainTicks));
+    pThread->Timer.LinkNode.Prev = (TLinkNode*)0;
+    pThread->Timer.LinkNode.Next = (TLinkNode*)0;
+    pThread->Timer.LinkNode.Handle = (TLinkNode**)0;
+    pThread->Timer.Owner = (void*)pThread;
+    pThread->Timer.RemainTicks = (TTimeTick)0;
 
-    /* 清空线程IPC阻塞上下文 */
+    /*
+     * 线程IPC阻塞上下文结构，没有直接定义在线程结构里，而是在需要阻塞的时候，
+     * 临时在线程栈里安排的。好处是减少了线程结构占用的内存。
+     */
 #if (TCLC_IPC_ENABLE)
-    uIpcInitContext(&(pThread->IpcContext), (void*)pThread);
+    pThread->IpcContext = (TIpcContext*)0;
 #endif
 
     /* 清除线程占有的锁(MUTEX)队列 */
 #if ((TCLC_IPC_ENABLE) && (TCLC_IPC_MUTEX_ENABLE))
-    pThread->LockList = (TObjNode*)0;
-#endif
-
-#if (TCLC_IRQ_ENABLE)
-    pThread->SyncValue = 0;
+    pThread->LockList = (TLinkNode*)0;
 #endif
 
     /* 初始线程运行诊断信息 */
@@ -542,15 +576,15 @@ void uThreadCreate(TThread* pThread, TThreadStatus status, TProperty property, T
     pThread->ACAPI = acapi;
 
     /* 设置线程链表节点信息，线程此时不属于任何线程队列 */
-    pThread->ObjNode.Owner = (void*)pThread;
-    pThread->ObjNode.Data = (TBase32*)(&(pThread->Priority));
-    pThread->ObjNode.Prev = (TObjNode*)0;
-    pThread->ObjNode.Next = (TObjNode*)0;
-    pThread->ObjNode.Handle = (TObjNode**)0;
+    pThread->LinkNode.Owner = (void*)pThread;
+    pThread->LinkNode.Data = (TBase32*)(&(pThread->Priority));
+    pThread->LinkNode.Prev = (TLinkNode*)0;
+    pThread->LinkNode.Next = (TLinkNode*)0;
+    pThread->LinkNode.Handle = (TLinkNode**)0;
 
     /* 将线程加入内核线程队列，设置线程状态 */
     pQueue = (status == eThreadReady) ? (&ThreadReadyQueue): (&ThreadAuxiliaryQueue);
-    uThreadEnterQueue(pQueue, pThread, eQuePosTail);
+    uThreadEnterQueue(pQueue, pThread, eLinkPosTail);
     pThread->Status = status;
 
     /* 标记线程已经完成初始化 */
@@ -582,10 +616,8 @@ TState uThreadDelete(TThread* pThread, TError* pError)
         else
 #endif
         {
+            uKernelRemoveObject(&(pThread->Object));
             uThreadLeaveQueue(pThread->Queue, pThread);
-#if (TCLC_TIMER_ENABLE)
-            uTimerDelete(&(pThread->Timer));
-#endif
             memset(pThread, 0, sizeof(pThread));
             error = THREAD_ERR_NONE;
             state = eSuccess;
@@ -620,9 +652,9 @@ TState uThreadSetPriority(TThread* pThread, TPriority priority, TBool flag, TBoo
             /* 阻塞状态的线程都在辅助队列里，修改其优先级 */
             uThreadLeaveQueue(&ThreadAuxiliaryQueue, pThread);
             pThread->Priority = priority;
-            uThreadEnterQueue(&ThreadAuxiliaryQueue, pThread, eQuePosTail);
+            uThreadEnterQueue(&ThreadAuxiliaryQueue, pThread, eLinkPosTail);
 
-            uIpcSetPriority(&(pThread->IpcContext), priority);
+            uIpcSetPriority(pThread->IpcContext, priority);
             state = eSuccess;
             error = THREAD_ERR_NONE;
         }
@@ -635,7 +667,7 @@ TState uThreadSetPriority(TThread* pThread, TPriority priority, TBool flag, TBoo
         {
             uThreadLeaveQueue(&ThreadReadyQueue, pThread);
             pThread->Priority = priority;
-            uThreadEnterQueue(&ThreadReadyQueue, pThread, eQuePosTail);
+            uThreadEnterQueue(&ThreadReadyQueue, pThread, eLinkPosTail);
 
             /*
              * 得到当前就绪队列的最高就绪优先级，因为就绪线程(包括当前线程)
@@ -658,7 +690,7 @@ TState uThreadSetPriority(TThread* pThread, TPriority priority, TBool flag, TBoo
              */
             uThreadLeaveQueue(&ThreadReadyQueue, pThread);
             pThread->Priority = priority;
-            uThreadEnterQueue(&ThreadReadyQueue, pThread, eQuePosHead);
+            uThreadEnterQueue(&ThreadReadyQueue, pThread, eLinkPosHead);
 
             /*
              * 因为当前线程在线程就绪队列内的折腾会导致当前线程可能不是最高优先级，
@@ -678,7 +710,7 @@ TState uThreadSetPriority(TThread* pThread, TPriority priority, TBool flag, TBoo
             /*其它状态的线程都在辅助队列里，修改其优先级 */
             uThreadLeaveQueue(&ThreadAuxiliaryQueue, pThread);
             pThread->Priority = priority;
-            uThreadEnterQueue(&ThreadAuxiliaryQueue, pThread, eQuePosTail);
+            uThreadEnterQueue(&ThreadAuxiliaryQueue, pThread, eLinkPosTail);
             state = eSuccess;
             error = THREAD_ERR_NONE;
         }
@@ -715,24 +747,14 @@ void uThreadResumeFromISR(TThread* pThread)
         uThreadLeaveQueue(&ThreadAuxiliaryQueue, pThread);
         if (pThread == uKernelVariable.CurrentThread)
         {
-            uThreadEnterQueue(&ThreadReadyQueue, pThread, eQuePosHead);
+            uThreadEnterQueue(&ThreadReadyQueue, pThread, eLinkPosHead);
             pThread->Status = eThreadRunning;
         }
         else
         {
-            uThreadEnterQueue(&ThreadReadyQueue, pThread, eQuePosTail);
+            uThreadEnterQueue(&ThreadReadyQueue, pThread, eLinkPosTail);
             pThread->Status = eThreadReady;
         }
-    }
-    else if ((pThread->Status == eThreadRunning) ||
-             (pThread->Status == eThreadReady))
-    {
-#if (TCLC_IRQ_ENABLE)
-        if (pThread->Property &THREAD_PROP_ASR)
-        {
-            pThread->SyncValue = 1U;
-        }
-#endif
     }
 }
 
@@ -752,7 +774,7 @@ void uThreadSuspendSelf(void)
     if (uKernelVariable.SchedLockTimes == 0U)
     {
         uThreadLeaveQueue(&ThreadReadyQueue, pThread);
-        uThreadEnterQueue(&ThreadAuxiliaryQueue, pThread, eQuePosTail);
+        uThreadEnterQueue(&ThreadAuxiliaryQueue, pThread, eLinkPosTail);
         pThread->Status = eThreadSuspended;
         uThreadSchedule();
     }
@@ -781,9 +803,10 @@ void uThreadSuspendSelf(void)
  *        (2)  eSuccess                                                                          *
  *  说明：函数名的前缀'x'(eXtreme)表示本函数需要处理临界区代码                                   *
  *************************************************************************************************/
-TState xThreadCreate(TThread* pThread, TThreadStatus status, TProperty property, TBitMask acapi,
-                     TThreadEntry pEntry, TArgument argument, void* pStack, TBase32 bytes,
-                     TPriority priority, TTimeTick ticks, TError* pError)
+TState xThreadCreate(TThread* pThread, TChar* pName, TThreadStatus status, TProperty property,
+                     TBitMask acapi, TThreadEntry pEntry, TArgument argument,
+                     void* pStack, TBase32 bytes, TPriority priority, TTimeTick ticks,
+                     TError* pError)
 {
     TState state = eFailure;
     TError error = THREAD_ERR_FAULT;
@@ -797,7 +820,9 @@ TState xThreadCreate(TThread* pThread, TThreadStatus status, TProperty property,
         /* 检查线程是否已经被初始化 */
         if (!(pThread->Property &THREAD_PROP_READY))
         {
-            uThreadCreate(pThread, status, property, acapi, pEntry, argument, pStack, bytes,
+            uThreadCreate(pThread, pName, status, property,
+                          acapi, pEntry, argument,
+                          pStack, bytes,
                           priority, ticks);
             error = THREAD_ERR_NONE;
             state = eSuccess;
@@ -1266,7 +1291,6 @@ TState xThreadResume(TThread* pThread, TError* pError)
 }
 
 
-#if (TCLC_TIMER_ENABLE)
 /*************************************************************************************************
  *  功能：线程延时模块接口函数                                                                   *
  *  参数：(1) pThread 线程结构地址                                                               *
@@ -1276,24 +1300,22 @@ TState xThreadResume(TThread* pThread, TError* pError)
  *        (2) eFailure                                                                           *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState xThreadDelay(TThread* pThread, TTimeTick ticks, TError* pError)
+TState xThreadDelay(TTimeTick ticks, TError* pError)
 {
     TState state = eFailure;
     TError error = THREAD_ERR_FAULT;
     TBool HiRP = eFalse;
     TReg32 imask;
+    TThread* pThread;
 
     CpuEnterCritical(&imask);
 
     /* 只允许在线程代码里调用本函数 */
     if (uKernelVariable.State == eThreadState)
     {
-        /* 如果没有给出被操作的线程地址，则强制使用当前线程 */
-        if (pThread == (TThread*)0)
-        {
-            pThread = uKernelVariable.CurrentThread;
-        }
-		
+        /* 强制使用当前线程 */
+        pThread = uKernelVariable.CurrentThread;
+
         /* 检查线程是否已经被初始化 */
         if (pThread->Property &THREAD_PROP_READY)
         {
@@ -1370,9 +1392,8 @@ TState xThreadUndelay(TThread* pThread, TError* pError)
     *pError = error;
     return state;
 }
-#endif
 
-
+#if (TCLC_IPC_ENABLE)
 /*************************************************************************************************
  *  功能：解除线程阻塞函数                                                                       *
  *  参数：(1) pThread 线程结构地址                                                               *
@@ -1406,7 +1427,7 @@ TState xThreadUnblock(TThread* pThread, TError* pError)
                      * 在线程环境下，如果当前线程的优先级已经不再是线程就绪队列的最高优先级，
                      * 并且内核此时并没有关闭线程调度，那么就需要进行一次线程抢占
                      */
-                    uIpcUnblockThread(&(pThread->IpcContext), eFailure, IPC_ERR_ABORT, &HiRP);
+                    uIpcUnblockThread(pThread->IpcContext, eFailure, IPC_ERR_ABORT, &HiRP);
                     if ((uKernelVariable.SchedLockTimes == 0U) && (HiRP == eTrue))
                     {
                         uThreadSchedule();
@@ -1430,3 +1451,5 @@ TState xThreadUnblock(TThread* pThread, TError* pError)
     *pError = error;
     return state;
 }
+#endif
+

@@ -16,6 +16,7 @@
 #define CH4_SEMAPHORE_EXAMPLE6     (46)       /* FLUSH                */
 #define CH4_SEMAPHORE_EXAMPLE7     (47)       /* DELETE               */
 #define CH4_SEMAPHORE_EXAMPLE8     (48)       /* ABORT                */
+#define CH4_SEMAPHORE_EXAMPLE9     (49)       /* TIMEOUT              */
 
 #define CH5_MUTEX_EXAMPLE1         (51)
 #define CH5_MUTEX_EXAMPLE2         (53)       /* RESET                */
@@ -53,11 +54,9 @@
 #define CH9_TIMER_BASIC_EXAMPLE    (91)
 #define CH9_TIMER_CONFIG_EXAMPLE   (92)
 #define CH9_TIMER_LAGTICKS_EXAMPLE (93)
-#define CH9_TIMER_URGENT_EXAMPLE   (94)
 
 #define CH10_IRQ_ISR_EXAMPLE       (101)      /* IRQ  ISR             */
-#define CH10_IRQ_ASR_EXAMPLE       (102)      /* IRQ  ASR             */
-#define CH10_IRQ_DAEMON_EXAMPLE    (103)      /* IRQ  DAEMON          */
+#define CH10_IRQ_DAEMON_EXAMPLE    (102)      /* IRQ  DAEMON          */
 
 #define CH11_MEMORY_POOL_EXAMPLE   (111)
 #define CH11_MEMORY_BUDDY_EXAMPLE  (112)

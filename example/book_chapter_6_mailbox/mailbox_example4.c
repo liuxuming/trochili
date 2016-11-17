@@ -51,7 +51,7 @@ static void ThreadLed1Entry(TArgument data)
         EvbLedControl(pMail1->Index, pMail1->Value);
 
         /* Led1线程延时1秒 */
-        state = TclDelayThread((TThread*)0, TCLM_MLS2TICKS(1000), &error);
+        state = TclDelayThread(TCLM_MLS2TICKS(1000), &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
@@ -71,7 +71,7 @@ static void ThreadLed1Entry(TArgument data)
         EvbLedControl(pMail1->Index, pMail1->Value);
 
         /* Led1线程延时1秒 */
-        state = TclDelayThread((TThread*)0, TCLM_MLS2TICKS(1000), &error);
+        state = TclDelayThread(TCLM_MLS2TICKS(1000), &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
@@ -134,17 +134,18 @@ static void AppSetupEntry(void)
     TState state;
     TError error;
 
-    /* 初始化Led邮箱 */
-    state = TclCreateMailBox(&Led2MailBox, TCLP_IPC_DEFAULT, &error);
+    /* 初始化Led1邮箱 */	
+	  state = TclCreateMailBox(&Led1MailBox, "mbox1", TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
-
-    state = TclCreateMailBox(&Led1MailBox, TCLP_IPC_DEFAULT, &error);
+	
+  	/* 初始化Led2邮箱 */
+    state = TclCreateMailBox(&Led2MailBox, "mbox2", TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
     /* 初始化Led1设备控制线程 */
-    state = TclCreateThread(&ThreadLed1,
+    state = TclCreateThread(&ThreadLed1, "thread led1",
                           &ThreadLed1Entry, (TArgument)0,
                           ThreadLed1Stack, THREAD_LED_STACK_BYTES,
                           THREAD_LED_PRIORITY, THREAD_LED_SLICE,
@@ -153,7 +154,7 @@ static void AppSetupEntry(void)
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化Led2设备控制线程 */
-    state =  TclCreateThread(&ThreadLed2,
+    state =  TclCreateThread(&ThreadLed2, "thread led2",
                            &ThreadLed2Entry, (TArgument)0,
                            ThreadLed2Stack, THREAD_LED_STACK_BYTES,
                            THREAD_LED_PRIORITY + 1, THREAD_LED_SLICE,

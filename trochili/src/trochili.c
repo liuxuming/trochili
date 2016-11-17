@@ -29,7 +29,6 @@ void TclStartKernel(TUserEntry pUserEntry,
 }
 
 
-
 /*************************************************************************************************
  *  功能：设置系统Idle函数供IDLE线程调用                                                         *
  *  参数：(1) pEntry 系统Idle函数                                                                *
@@ -40,6 +39,19 @@ void TclSetSysIdleEntry(TSysIdleEntry pEntry)
 {
     KNL_ASSERT((pEntry != (TSysIdleEntry)0), "");
     xKernelSetIdleEntry(pEntry);
+}
+
+
+/*************************************************************************************************
+ *  功能：设置系统Fault函数                                                                      *
+ *  参数：(1) pEntry 系统Fault函数                                                               *
+ *  返回：无                                                                                     *
+ *  说明：                                                                                       *
+ *************************************************************************************************/
+void TclSetSysFaultEntry(TSysFaultEntry pEntry)
+{
+    KNL_ASSERT((pEntry != (TSysFaultEntry)0), "");
+    xKernelSetFaultEntry(pEntry);
 }
 
 
@@ -90,20 +102,20 @@ void TclGetTimeStamp(TTimeStamp* pStamp)
  *  功能：设置中断向量函数                                                                       *
  *  参数：(1) irqn     中断号                                                                    *
  *        (2) pISR     ISR处理函数                                                               *
- *        (3) pASR     中断处理线程                                                              *
+ *        (3) pDAEMON     中断处理线程                                                              *
  *        (4) data     应用提供的回调数据                                                        *
  *        (5) pError   详细调用结果                                                              *
  *  返回: (1) eFailure 操作失败                                                                  *
  *        (2) eSuccess 操作成功                                                                  *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState TclSetIrqVector(TIndex irqn, TISR pISR, TThread* pASR, TArgument data, TError* pError)
+TState TclSetIrqVector(TIndex irqn, TISR pISR, TArgument data, TError* pError)
 {
     TState state;
     KNL_ASSERT((irqn < TCLC_CPU_IRQ_NUM), "");
     KNL_ASSERT((pISR != (TISR)0), "");
 
-    state = xIrqSetVector(irqn, pISR, pASR, data, pError);
+    state = xIrqSetVector(irqn, pISR,  data, pError);
     return state;
 }
 
@@ -182,7 +194,8 @@ void TclTrace(const char* pNote)
  *        (2) eSuccess                                                                           *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState TclCreateThread(TThread* pThread,
+TState TclCreateThread(TThread*     pThread,
+                       TChar*       pName,
                        TThreadEntry pEntry,
                        TArgument    data,
                        void*        pStack,
@@ -195,6 +208,7 @@ TState TclCreateThread(TThread* pThread,
 
     /* 必要的参数检查 */
     KNL_ASSERT((pThread != (TThread*)0), "");
+    KNL_ASSERT((pName != (TChar*)0), "");
     KNL_ASSERT((pEntry != (void*)0), "");
     KNL_ASSERT((pStack != (void*)0), "");
     KNL_ASSERT((bytes > 0U), "");
@@ -203,6 +217,7 @@ TState TclCreateThread(TThread* pThread,
     KNL_ASSERT((ticks > 0U), "");
 
     state = xThreadCreate(pThread,
+                          pName,
                           eThreadDormant,
                           THREAD_PROP_PRIORITY_SAFE,
                           THREAD_ACAPI_ALL,
@@ -216,69 +231,6 @@ TState TclCreateThread(TThread* pThread,
 
     return state;
 }
-
-#if (TCLC_IRQ_ENABLE)
-/*************************************************************************************************
- *  功能：线程结构初始化API                                                                      *
- *  参数：(1) pThread  线程结构地址                                                              *
- *        (2) pEntry   线程函数地址                                                              *
- *        (3) pArg     线程参数地址                                                              *
- *        (4) pStack   线程栈地址                                                                *
- *        (5) bytes    线程栈大小，以字节为单位                                                  *
- *  返回：(1) eFailure                                                                           *
- *        (2) eSuccess                                                                           *
- *  说明：                                                                                       *
- *************************************************************************************************/
-TState TclCreateAsyISR(TThread* pThread,
-                       TThreadEntry pEntry,
-                       TBase32 argument,
-                       void* pStack,
-                       TBase32 bytes,
-                       TError* pError)
-{
-    TState state;
-
-    /* 必要的参数检查 */
-    KNL_ASSERT((pThread != (TThread*)0), "");
-    KNL_ASSERT((pEntry != (void*)0), "");
-    KNL_ASSERT((pStack != (void*)0), "");
-    KNL_ASSERT((bytes > 0U), "");
-
-    state = xThreadCreate(pThread,
-                          eThreadSuspended,
-                          THREAD_PROP_ASR| \
-                          THREAD_PROP_PRIORITY_FIXED,
-                          THREAD_ACAPI_ASR,
-                          pEntry,
-                          argument,
-                          pStack,
-                          bytes,
-                          TCLC_IRQ_ASR_PRIORITY,
-                          TCLC_IRQ_ASR_SLICE,
-                          pError);
-    return state;
-}
-
-
-/*************************************************************************************************
- *  功能：当前线程注销                                                                           *
- *  参数：(1) pThread 线程结构地址                                                               *
- *  返回：(1) eFailure                                                                           *
- *        (2) eSuccess                                                                           *
- *  说明：初始化线程和定时器线程不能被休眠                                                       *
- *************************************************************************************************/
-TState TclDeleteAsyISR(TThread* pThread, TError* pError)
-{
-    TState state;
-
-    /* 必要的参数检查 */
-    KNL_ASSERT((pError != (TError*)0), "");
-
-    state = xThreadDelete(pThread, pError);
-    return state;
-}
-
-#endif
 
 
 /*************************************************************************************************
@@ -417,25 +369,7 @@ TState TclSetThreadSlice(TThread* pThread, TTimeTick ticks, TError* pError)
     return state;
 }
 
-#if (TCLC_IPC_ENABLE)
-/*************************************************************************************************
- *  功能：强制解除线程阻塞API                                                                    *
- *  参数：(1) pThread 线程结构地址                                                               *
- *  返回：参考线程相关返回值定义                                                                 *
- *  说明：                                                                                       *
- *************************************************************************************************/
-TState TclUnblockThread(TThread* pThread, TError* pError)
-{
-    TState state;
-    KNL_ASSERT((pThread != (TThread*)0), "");
-    KNL_ASSERT((pError != (TError*)0), "");
 
-    state = xThreadUnblock(pThread, pError);
-    return state;
-}
-#endif
-
-#if (TCLC_TIMER_ENABLE)
 /*************************************************************************************************
  *  功能：线程延时模块接口函数                                                                   *
  *  参数：(1) pThread 线程结构地址                                                               *
@@ -444,14 +378,13 @@ TState TclUnblockThread(TThread* pThread, TError* pError)
  *        (2) eFailure   操作失败                                                                *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState TclDelayThread(TThread* pThread, TTimeTick ticks, TError* pError)
+TState TclDelayThread(TTimeTick ticks, TError* pError)
 {
     TState state;
     KNL_ASSERT((ticks > 0U), "");
-    KNL_ASSERT((ticks < TCLM_MAX_VALUE32), "");
     KNL_ASSERT((pError != (TError*)0), "");
-	
-    state = xThreadDelay(pThread, ticks, pError);
+
+    state = xThreadDelay(ticks, pError);
     return state;
 }
 
@@ -471,32 +404,51 @@ TState TclUnDelayThread(TThread* pThread, TError* pError)
     state = xThreadUndelay(pThread, pError);
     return state;
 }
-#endif
 
+
+#if (TCLC_IPC_ENABLE)
+/*************************************************************************************************
+ *  功能：强制解除线程阻塞API                                                                    *
+ *  参数：(1) pThread 线程结构地址                                                               *
+ *  返回：参考线程相关返回值定义                                                                 *
+ *  说明：                                                                                       *
+ *************************************************************************************************/
+TState TclUnblockThread(TThread* pThread, TError* pError)
+{
+    TState state;
+    KNL_ASSERT((pThread != (TThread*)0), "");
+    KNL_ASSERT((pError != (TError*)0), "");
+
+    state = xThreadUnblock(pThread, pError);
+    return state;
+}
+#endif
 
 #if ((TCLC_IPC_ENABLE)&&(TCLC_IPC_SEMAPHORE_ENABLE))
 /*************************************************************************************************
  *  功能: 初始化计数信号量                                                                       *
  *  参数: (1) pSemaphore 计数信号量结构地址                                                      *
- *        (2) value      计数信号量初始值                                                        *
- *        (3) mvalue     计数信号量最大计数值                                                    *
- *        (4) property   信号量的初始属性                                                        *
- *        (5) pError     详细调用结果                                                            *
+ *        (2) pName      计数信号量名称                                                          *
+ *        (3) value      计数信号量初始值                                                        *
+ *        (4) mvalue     计数信号量最大计数值                                                    *
+ *        (5) property   信号量的初始属性                                                        *
+ *        (6) pError     详细调用结果                                                            *
  *  返回: (1) eSuccess   操作成功                                                                *
  *        (2) eFailure   操作失败                                                                *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState TclCreateSemaphore(TSemaphore* pSemaphore, TBase32 value, TBase32 mvalue,
+TState TclCreateSemaphore(TSemaphore* pSemaphore, TChar* pName, TBase32 value, TBase32 mvalue,
                           TProperty property, TError* pError)
 {
     TState state;
     KNL_ASSERT((pSemaphore != (TSemaphore*)0), "");
+    KNL_ASSERT((pName != (TChar*)0), "");
     KNL_ASSERT((mvalue >= 1U), "");
     KNL_ASSERT((mvalue >= value), "");
     KNL_ASSERT((pError != (TError*)0), "");
 
     property &= IPC_USER_SEMAPHORE_PROP;
-    state = xSemaphoreCreate(pSemaphore, value, mvalue, property, pError);
+    state = xSemaphoreCreate(pSemaphore, pName, value, mvalue, property, pError);
     return state;
 }
 
@@ -518,7 +470,7 @@ TState TclObtainSemaphore(TSemaphore* pSemaphore, TOption option, TTimeTick time
     KNL_ASSERT((pSemaphore != (TSemaphore*)0), "");
     KNL_ASSERT((pError != (TError*)0), "");
     KNL_ASSERT((timeo < TCLM_MAX_VALUE32), "");
-	
+
     /* 调整操作选项，屏蔽不需要支持的选项 */
     option &= IPC_USER_SEMAPHORE_OPTION;
     state = xSemaphoreObtain(pSemaphore, option, timeo, pError);
@@ -543,7 +495,7 @@ TState TclReleaseSemaphore(TSemaphore* pSemaphore, TOption option, TTimeTick tim
     KNL_ASSERT((pSemaphore != (TSemaphore*)0), "");
     KNL_ASSERT((pError != (TError*)0), "");
     KNL_ASSERT((timeo < TCLM_MAX_VALUE32), "");
-	
+
     /* 调整操作选项，屏蔽不需要支持的选项 */
     option &= IPC_USER_SEMAPHORE_OPTION;
     state = xSemaphoreRelease(pSemaphore, option, timeo, pError);
@@ -632,22 +584,24 @@ TState TclFlushSemaphore(TSemaphore* pSemaphore, TError* pError)
 /*************************************************************************************************
  *  功能: 初始化互斥量                                                                           *
  *  参数: (1) pMute    互斥量结构地址                                                            *
- *        (2) priority 互斥量的优先级天花板                                                      *
- *        (3) property 互斥量的初始属性                                                          *
- *        (4) pError   详细调用结果                                                              *
+ *        (2) pName    互斥量的名称                                                              *
+ *        (3) priority 互斥量的优先级天花板                                                      *
+ *        (4) property 互斥量的初始属性                                                          *
+ *        (5) pError   详细调用结果                                                              *
  *  返回: (1) eSuccess 操作成功                                                                  *
  *        (2) eFailure 操作失败                                                                  *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState TclCreateMutex(TMutex* pMutex, TPriority priority, TProperty property, TError* pError)
+TState TclCreateMutex(TMutex* pMutex, TChar* pName, TPriority priority, TProperty property, TError* pError)
 {
     TState state;
     KNL_ASSERT((pMutex != (TMutex*)0), "");
+    KNL_ASSERT((pName != (TChar*)0), "");
     KNL_ASSERT((priority < TCLC_LOWEST_PRIORITY), "");
     KNL_ASSERT((pError != (TError*)0), "");
 
     property &= IPC_USER_MUTEX_PROP;
-    state = xMutexCreate(pMutex, priority, property, pError);
+    state = xMutexCreate(pMutex, pName, priority, property, pError);
     return state;
 }
 
@@ -687,7 +641,7 @@ TState TclLockMutex(TMutex* pMutex, TOption option, TTimeTick timeo, TError* pEr
     KNL_ASSERT((pMutex != (TMutex*)0), "");
     KNL_ASSERT((pError != (TError*)0), "");
     KNL_ASSERT((timeo < TCLM_MAX_VALUE32), "");
-	
+
     /* 调整操作选项，屏蔽不需要支持的选项 */
     option &= IPC_USER_MUTEX_OPTION;
     state = xMutexLock(pMutex, option, timeo, pError);
@@ -760,20 +714,22 @@ TState TclFlushMutex(TMutex* pMutex, TError* pError)
 /*************************************************************************************************
  *  功能：初始化邮箱                                                                             *
  *  参数：(1) pMailbox   邮箱的地址                                                              *
- *        (2) property   邮箱的初始属性                                                          *
- *        (3) pError     详细调用结果                                                            *
+ *        (2) pName      邮箱的名称                                                              *
+ *        (3) property   邮箱的初始属性                                                          *
+ *        (4) pError     详细调用结果                                                            *
  *  返回: (1) eFailure   操作失败                                                                *
  *        (2) eSuccess   操作成功                                                                *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState TclCreateMailBox(TMailBox* pMailbox, TProperty property, TError* pError)
+TState TclCreateMailBox(TMailBox* pMailbox, TChar* pName, TProperty property, TError* pError)
 {
     TState state;
     KNL_ASSERT((pMailbox != (TMailBox*)0), "");
+    KNL_ASSERT((pName != (TChar*)0), "");
     KNL_ASSERT((pError != (TError*)0), "");
 
     property &= IPC_USER_MBOX_PROP;
-    state = xMailBoxCreate(pMailbox, property, pError);
+    state = xMailBoxCreate(pMailbox, pName, property, pError);
     return state;
 }
 
@@ -816,7 +772,7 @@ TState TclReceiveMail(TMailBox* pMailbox, TMail* pMail2, TOption option, TTimeTi
     KNL_ASSERT((pMail2 != (TMail*)0), "");
     KNL_ASSERT((pError != (TError*)0), "");
     KNL_ASSERT((timeo < TCLM_MAX_VALUE32), "");
-	
+
     /* 调整操作选项，屏蔽不需要支持的选项 */
     option &= IPC_USER_MBOX_OPTION;
     state = xMailBoxReceive(pMailbox, pMail2, option, timeo, pError);
@@ -844,7 +800,7 @@ TState TclSendMail(TMailBox* pMailbox, TMail* pMail2, TOption option,
     KNL_ASSERT((pMail2 != (TMail*)0), "");
     KNL_ASSERT((pError != (TError*)0), "");
     KNL_ASSERT((timeo < TCLM_MAX_VALUE32), "");
-	
+
     /* 调整操作选项，屏蔽不需要支持的选项 */
     option &= IPC_USER_MBOX_OPTION;
     state = xMailBoxSend(pMailbox, pMail2, option, timeo, pError);
@@ -943,25 +899,27 @@ TState TclFlushMailBox(TMailBox* pMailbox, TError* pError)
 /*************************************************************************************************
  *  功能：消息队列初始化函数                                                                     *
  *  输入：(1) pMsgQue   消息队列结构地址                                                         *
- *        (2) pPool2    消息数组地址                                                             *
- *        (3) capacity  消息队列容量，即消息数组大小                                             *
- *        (4) policy    消息队列线程调度策略                                                     *
- *        (5) pError    详细调用结果                                                             *
+ *        (2) pName     消息队列名称                                                             *
+ *        (3) pPool2    消息数组地址                                                             *
+ *        (4) capacity  消息队列容量，即消息数组大小                                             *
+ *        (5) policy    消息队列线程调度策略                                                     *
+ *        (6) pError    详细调用结果                                                             *
  *  返回：(1) eSuccess  操作成功                                                                 *
  *        (2) eFailure  操作失败                                                                 *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState TclCreateMsgQueue(TMsgQueue* pMsgQue, void** pPool2, TBase32 capacity, TProperty property,
+TState TclCreateMsgQueue(TMsgQueue* pMsgQue, TChar* pName, void** pPool2, TBase32 capacity, TProperty property,
                          TError* pError)
 {
     TState state;
     KNL_ASSERT((pMsgQue != (TMsgQueue*)0), "");
+    KNL_ASSERT((pName != (TChar*)0), "");
     KNL_ASSERT((pPool2 != (void*)0), "");
     KNL_ASSERT((capacity != 0U), "");
     KNL_ASSERT((pError != (TError*)0), "");
 
     property &= IPC_USER_MQUE_PROP;
-    state = xMQCreate(pMsgQue, pPool2, capacity, property, pError);
+    state = xMQCreate(pMsgQue, pName, pPool2, capacity, property, pError);
     return state;
 }
 
@@ -1012,7 +970,7 @@ TState TclSendMessage(TMsgQueue* pMsgQue, TMessage* pMsg2, TOption option, TTime
     KNL_ASSERT((pMsg2 != (TMessage*)0), "");
     KNL_ASSERT((pError != (TError*)0), "");
     KNL_ASSERT((timeo < TCLM_MAX_VALUE32), "");
-	
+
     /* 调整操作选项，屏蔽不需要支持的选项 */
     option &= IPC_USER_MSGQ_OPTION;
     state = xMQSend(pMsgQue, pMsg2, option, timeo, pError);
@@ -1129,20 +1087,22 @@ TState TclFlushMsgQueue(TMsgQueue* pMsgQue, TError* pError)
 /*************************************************************************************************
  *  功能：初始化事件标记                                                                         *
  *  参数：(1) pFlags     事件标记的地址                                                          *
- *        (2) property   事件标记的初始属性                                                      *
- *        (3) pError     函数调用详细返回值                                                      *
+ *        (2) pName      事件标记的名称                                                          *
+ *        (3) property   事件标记的初始属性                                                      *
+ *        (4) pError     函数调用详细返回值                                                      *
  *  返回: (1) eFailure   操作失败                                                                *
  *        (2) eSuccess   操作成功                                                                *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState TclCreateFlags(TFlags* pFlags, TProperty property, TError* pError)
+TState TclCreateFlags(TFlags* pFlags, TChar* pName, TProperty property, TError* pError)
 {
     TState state;
     KNL_ASSERT((pFlags != (TFlags*)0), "");
+    KNL_ASSERT((pName != (TChar*)0), "");
     KNL_ASSERT((pError != (TError*)0), "");
 
     property &= IPC_USER_FLAG_PROP;
-    state = xFlagsCreate(pFlags, property, pError);
+    state = xFlagsCreate(pFlags, pName, property, pError);
     return state;
 }
 
@@ -1206,7 +1166,7 @@ TState TclReceiveFlags(TFlags* pFlags, TBitMask* pPattern, TOption option, TTime
     KNL_ASSERT((option & (IPC_OPT_AND | IPC_OPT_OR)) != 0U, "");
     KNL_ASSERT((pError != (TError*)0), "");
     KNL_ASSERT((timeo < TCLM_MAX_VALUE32), "");
-	
+
     /* 调整操作选项，屏蔽不需要支持的选项 */
     option &= IPC_USER_FLAG_OPTION;
     state = xFlagsReceive(pFlags, pPattern, option, timeo, pError);
@@ -1260,27 +1220,30 @@ TState TclFlushFlags(TFlags* pFlags, TError* pError)
 /*************************************************************************************************
  *  功能：用户定时器初始化函数                                                                   *
  *  参数：(1) pTimer   定时器地址                                                                *
- *        (2) property 定时器属性                                                                *
- *        (3) ticks    定时器滴答数目                                                            *
- *        (4) pRoutine 用户定时器回调函数                                                        *
- *        (5) pData    用户定时器回调函数参数                                                    *
- *        (6) pError   详细调用结果                                                              *
+ *        (2) pName    定时器名称                                                                *
+ *        (3) property 定时器属性                                                                *
+ *        (4) ticks    定时器滴答数目                                                            *
+ *        (5) pRoutine 用户定时器回调函数                                                        *
+ *        (6) pData    用户定时器回调函数参数                                                    *
+ *        (7) pError   详细调用结果                                                              *
+ *        (8) priority 定时器优先级                                                              *
  *  返回: (1) eSuccess 操作成功                                                                  *
  *        (2) eFailure 操作失败                                                                  *
  *  说明                                                                                         *
  *************************************************************************************************/
-TState TclCreateTimer(TTimer* pTimer, TProperty property, TTimeTick ticks,
-                      TTimerRoutine pRoutine, TArgument data, TError* pError)
+TState TclCreateTimer(TTimer* pTimer, TChar* pName, TProperty property, TTimeTick ticks,
+                      TTimerRoutine pRoutine, TArgument data, TPriority priority, TError* pError)
 {
     TState state;
     KNL_ASSERT((pTimer != (TTimer*)0), "");
+    KNL_ASSERT((pName != (TChar*)0), "");
     KNL_ASSERT((pRoutine != (TTimerRoutine)0), "");
     KNL_ASSERT((ticks > 0U), "");
-	KNL_ASSERT((ticks < TCLM_MAX_VALUE32), "");
+    KNL_ASSERT((ticks < (TCLM_MAX_VALUE64 >> 1U)), "");
     KNL_ASSERT((pError != (TError*)0), "");
 
     property &= TIMER_USER_PROPERTY;
-    state = xTimerCreate(pTimer, property, ticks, pRoutine, data, pError);
+    state = xTimerCreate(pTimer, pName, property, ticks, pRoutine, data, priority, pError);
     return state;
 }
 
@@ -1318,7 +1281,7 @@ TState TclStartTimer(TTimer* pTimer, TTimeTick lagticks, TError* pError)
     TState state;
     KNL_ASSERT((pTimer != (TTimer*)0), "");
     KNL_ASSERT((pError != (TError*)0), "");
-	KNL_ASSERT((lagticks < TCLM_MAX_VALUE32), "");
+    KNL_ASSERT((lagticks < (TCLM_MAX_VALUE64 >> 1U)), "");
 
     state = xTimerStart(pTimer, lagticks, pError);
     return state;
@@ -1351,15 +1314,15 @@ TState TclStopTimer(TTimer* pTimer, TError* pError)
  *  返回：无                                                                                     *
  *  说明                                                                                         *
  *************************************************************************************************/
-TState TclConfigTimer(TTimer* pTimer, TTimeTick ticks, TError* pError)
+TState TclConfigTimer(TTimer* pTimer, TTimeTick ticks, TPriority priority, TError* pError)
 {
     TState state;
     KNL_ASSERT((pTimer != (TTimer*)0), "");
     KNL_ASSERT((ticks > 0U), "");
     KNL_ASSERT((ticks < TCLM_MAX_VALUE32), "");
     KNL_ASSERT((pError != (TError*)0), "");
-	
-    state = xTimerConfig(pTimer, ticks, pError);
+
+    state = xTimerConfig(pTimer, ticks, priority, pError);
     return state;
 }
 #endif
@@ -1425,7 +1388,6 @@ TState TclCreateMemoryPool(TMemPool* pPool, void* pAddr, TBase32 pages, TBase32 
     KNL_ASSERT((pgsize > 0U), "");
     KNL_ASSERT((pages <= TCLC_MEMORY_POOL_PAGES), "");
     KNL_ASSERT((pError != (TError*)0), "");
-
 
     state = xMemPoolCreate(pPool, pAddr, pages, pgsize, pError);
     return state;
@@ -1510,9 +1472,9 @@ TState TclCreateMemoryBuddy(TMemBuddy* pBuddy, TChar* pAddr, TBase32 pages, TBas
 {
     TState state;
     KNL_ASSERT((pBuddy != (TMemBuddy*)0), "");
-    KNL_ASSERT((pAddr != (TChar*)0), "");
-    KNL_ASSERT((pages > 0U), "");
-    KNL_ASSERT((pages <= TCLC_MEMORY_BUDDY_PAGES), "");
+    KNL_ASSERT((pAddr  != (TChar*)0), "");
+    KNL_ASSERT((pages  > 0U), "");
+    KNL_ASSERT((pages  <= TCLC_MEMORY_BUDDY_PAGES), "");
     KNL_ASSERT((pagesize > 0U), "");
     KNL_ASSERT((pError != (TError*)0), "");
 
@@ -1576,7 +1538,7 @@ TState TclFreeBuddyMemory(TMemBuddy* pBuddy,  void* pAddr, TError* pError)
 {
     TState state;
     KNL_ASSERT((pBuddy != (TMemBuddy*)0), "");
-    KNL_ASSERT((pAddr != (char*)0), "");
+    KNL_ASSERT((pAddr  != (char*)0), "");
     KNL_ASSERT((pError != (TError*)0), "");
 
     state = xBuddyMemFree(pBuddy, pAddr, pError);

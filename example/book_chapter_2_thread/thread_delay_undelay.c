@@ -1,5 +1,3 @@
-/*  线程延时API演示 */
-
 #include "example.h"
 #include "trochili.h"
 
@@ -30,13 +28,13 @@ static void ThreadLed1Entry(TArgument data)
 
     while (eTrue)
     {
-        state = TclDelayThread(0, TCLM_SEC2TICKS(1), &error);
+        state = TclDelayThread(TCLM_SEC2TICKS(1), &error);
         if(state == eSuccess)
         {
             EvbLedControl(LED1, LED_OFF);
         }
 
-        state = TclDelayThread(0, TCLM_SEC2TICKS(1), &error);
+        state = TclDelayThread(TCLM_SEC2TICKS(1), &error);
         if(state == eSuccess)
         {
             EvbLedControl(LED1, LED_ON);
@@ -53,13 +51,13 @@ static void ThreadLed2Entry(TArgument data)
 
     while (eTrue)
     {
-        state = TclDelayThread(0, TCLM_SEC2TICKS(60), &error);
+        state = TclDelayThread(TCLM_SEC2TICKS(200), &error);
         if(state == eSuccess)
         {
             EvbLedControl(LED2, LED_OFF);
         }
 
-        state = TclDelayThread(0, TCLM_SEC2TICKS(60), &error);
+        state = TclDelayThread(TCLM_SEC2TICKS(200), &error);
         if(state == eSuccess)
         {
             EvbLedControl(LED2, LED_ON);
@@ -81,7 +79,7 @@ static void ThreadCtrlEntry(TArgument data)
         i = 0xfffff;
         while (i--);
         state = TclUnDelayThread(&ThreadLed2, &error);
-			  state = state;
+        state = state;
     }
 }
 
@@ -94,6 +92,7 @@ static void AppSetupEntry(void)
 
     /* 初始化Led1控制线程 */
     state = TclCreateThread(&ThreadLed1,
+                            "thread led1",
                             &ThreadLed1Entry,
                             (TArgument)(&ThreadLed1),
                             ThreadLed1Stack,
@@ -106,6 +105,7 @@ static void AppSetupEntry(void)
 
     /* 初始化Led2控制线程 */
     state = TclCreateThread(&ThreadLed2,
+                            "thread led2",
                             &ThreadLed2Entry,
                             (TArgument)(&ThreadLed2),
                             ThreadLed2Stack,
@@ -118,6 +118,7 @@ static void AppSetupEntry(void)
 
     /* 初始化Led2控制线程 */
     state = TclCreateThread(&ThreadCtrl,
+                            "thread ctrl",
                             &ThreadCtrlEntry,
                             (TArgument)(&ThreadLed2),
                             ThreadCtrlStack,
@@ -159,5 +160,4 @@ int main(void)
 }
 
 #endif
-
 
