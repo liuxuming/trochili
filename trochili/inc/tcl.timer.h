@@ -15,6 +15,7 @@
 #define TIMER_ERR_NONE               (0x0)
 #define TIMER_ERR_FAULT              (0x1<<0)           /* 一般性错误                          */
 #define TIMER_ERR_UNREADY            (0x1<<1)           /* 定时器管理结构未初始化              */
+#define TIMER_ERR_STATUS             (0x1<<2)           /* 定时器状态错误                      */
 
 /* 定时器状态枚举定义 */
 enum TimerStatusDef
@@ -52,6 +53,7 @@ struct TimerDef
     TPriority     Priority;                              /* 定时器回调优先级                     */
     TTimeTick     ExpiredTicks;                          /* 定时器期满时刻                       */
     TLinkNode     ExpiredNode;                           /* 定时器期满队列的链表指针             */
+    TBase32       ExpiredTimes;                          /* 定时器期满次数                       */	
     TBitMask      Diagnosis;                             /* 定时器运行错误码                     */
     TLinkNode     LinkNode;                              /* 定时器所在队列的链表指针             */
     TObject       Object;

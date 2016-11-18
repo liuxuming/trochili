@@ -88,6 +88,7 @@ extern TState TclUnblockThread(TThread* pThread, TError* pError);
 #define TCLE_TIMER_NONE            (TIMER_ERR_NONE)
 #define TCLE_TIMER_FAULT           (TIMER_ERR_FAULT)
 #define TCLE_TIMER_UNREADY         (TIMER_ERR_UNREADY)
+#define TCLE_TIMER_STATUS          (TIMER_ERR_STATUS)
 
 extern TState TclCreateTimer(TTimer* pTimer, TChar* pName, TProperty property, TTimeTick ticks,
                                TTimerRoutine routine, TArgument data, TPriority priority, TError* pError);

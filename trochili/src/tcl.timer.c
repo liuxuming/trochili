@@ -36,7 +36,7 @@ static TTimerList TimerList;
  *        (4)这里虽然有线程队列操作但是不进行调度，是因为这个函数是在中断中调用的，              *
  *           在最后一层中断返回后，会尝试进行一次线程切换，所以在这里做切换的话是白白浪费时间    *
  *************************************************************************************************/
-static void DispatchTimer(TTimer* pTimer)
+static void DispatchExpiredTimer(TTimer* pTimer)
 {
     TIndex spoke;
 
@@ -57,9 +57,10 @@ static void DispatchTimer(TTimer* pTimer)
     /* 将周期类型的用户定时器重新放回活动定时器队列里 */
     if (pTimer->Property & TIMER_PROP_PERIODIC)
     {
+      	pTimer->ExpiredTimes++;
         pTimer->MatchTicks += pTimer->PeriodTicks;
         spoke = (TBase32)(pTimer->MatchTicks % TCLC_TIMER_WHEEL_SIZE);
-        uObjListAddNode(&(TimerList.ActiveHandle[spoke]), &(pTimer->LinkNode), eLinkPosTail);
+        uObjListAddPriorityNode(&(TimerList.ActiveHandle[spoke]), &(pTimer->LinkNode));
         pTimer->Status = eTimerActive;
     }
     else
@@ -91,7 +92,7 @@ void uTimerTickUpdate(void)
     /*
      * 检查当前活动定时器队列里的定时器。队列里的定时器按照期满节拍值由小到大排列。
      * 如果某个队列队首定时器计数小于当前系统时钟节拍计数，这说明有定时器计数发生溢出，
-     * 在本系统中，系统时钟节拍计数为64Bits,同时强制要求定时器延时计数必须小于63Bits，
+     * 不过在本系统中，系统时钟节拍计数为64Bits,同时强制要求定时器延时计数必须小于63Bits，
      * 这样即使定时器计数发生溢出，也不会丢失计数。
      */
     while (pNode != (TLinkNode*)0)
@@ -100,9 +101,10 @@ void uTimerTickUpdate(void)
         pTimer = (TTimer*)(pNode->Owner);
 
         /*
-         * 如果定时器的延时节拍数小于此时系统时钟节拍数则跳过该定时器;
-         * 如果定时器的延时节拍数等于此时系统时钟节拍数则处理该定时器;
-         * 如果定时器的延时节拍数大于此时系统时钟节拍数则退出整个流程;
+         * 比较定时器的延时节拍数和此时系统时钟节拍数，
+         * 如果小于则跳过该定时器;
+         * 如果等于则处理该定时器;
+         * 如果大于则退出整个流程;
          */
         if (pTimer->MatchTicks < uKernelVariable.Jiffies)
         {
@@ -110,7 +112,7 @@ void uTimerTickUpdate(void)
         }
         else if (pTimer->MatchTicks == uKernelVariable.Jiffies)
         {
-            DispatchTimer(pTimer);
+            DispatchExpiredTimer(pTimer);
             pNode = pNext;
         }
         else
@@ -157,14 +159,22 @@ TState xTimerCreate(TTimer* pTimer, TChar* pName, TProperty property, TTimeTick 
         uKernelAddObject(&(pTimer->Object), pName, eTimer, (void*)pTimer);
 
         /* 初始化定时器，设置定时器信息 */
-        pTimer->Status         = eTimerDormant;
-        pTimer->Property       = (property | TIMER_PROP_READY);
-        pTimer->PeriodTicks    = ticks;
-        pTimer->MatchTicks     = (TTimeTick)0;
-        pTimer->Routine        = pRoutine;
-        pTimer->Argument       = data;
-        pTimer->Priority       = priority;
-        pTimer->ExpiredTicks   = (TTimeTick)0;
+        pTimer->Status       = eTimerDormant;
+        pTimer->Property     = (property | TIMER_PROP_READY);
+        pTimer->PeriodTicks  = ticks;
+        pTimer->MatchTicks   = (TTimeTick)0;
+        pTimer->Routine      = pRoutine;
+        pTimer->Argument     = data;
+        pTimer->Priority     = priority;
+        pTimer->ExpiredTicks = (TTimeTick)0;
+  	    pTimer->ExpiredTimes = 0U;
+		
+        /* 设置定时器期满链表节点信息 */
+        pTimer->ExpiredNode.Next   = (TLinkNode*)0;
+        pTimer->ExpiredNode.Prev   = (TLinkNode*)0;
+        pTimer->ExpiredNode.Handle = (TLinkNode**)0;
+        pTimer->ExpiredNode.Data   = (TBase32*)(&(pTimer->Priority));
+        pTimer->ExpiredNode.Owner  = (void*)pTimer;
 
         /* 设置定时器链表节点信息, 并将定时器加入休眠队列中 */
         pTimer->LinkNode.Next   = (TLinkNode*)0;
@@ -174,12 +184,6 @@ TState xTimerCreate(TTimer* pTimer, TChar* pName, TProperty property, TTimeTick 
         pTimer->LinkNode.Owner  = (void*)pTimer;
         uObjListAddNode(&(TimerList.DormantHandle), &(pTimer->LinkNode), eLinkPosHead);
 
-        /* 设置定时器期满链表节点信息 */
-        pTimer->ExpiredNode.Next   = (TLinkNode*)0;
-        pTimer->ExpiredNode.Prev   = (TLinkNode*)0;
-        pTimer->ExpiredNode.Handle = (TLinkNode**)0;
-        pTimer->ExpiredNode.Data   = (TBase32*)(&(pTimer->Priority));
-        pTimer->ExpiredNode.Owner  = (void*)pTimer;
         error = TIMER_ERR_NONE;
         state = eSuccess;
 
@@ -226,7 +230,7 @@ TState xTimerDelete(TTimer* pTimer, TError* pError)
         }
         else
         {
-            error = TIMER_ERR_FAULT;
+            error = TIMER_ERR_STATUS;
         }
     }
 
@@ -266,14 +270,14 @@ TState xTimerStart(TTimer* pTimer,TTimeTick lagticks, TError* pError)
             /* 将定时器加入活动队列里 */
             pTimer->MatchTicks  = uKernelVariable.Jiffies + pTimer->PeriodTicks + lagticks;
             spoke = (TBase32)(pTimer->MatchTicks % TCLC_TIMER_WHEEL_SIZE);
-            uObjListAddNode(&(TimerList.ActiveHandle[spoke]), &(pTimer->LinkNode), eLinkPosTail);
+            uObjListAddPriorityNode(&(TimerList.ActiveHandle[spoke]), &(pTimer->LinkNode));
             pTimer->Status = eTimerActive;
             error = TIMER_ERR_NONE;
             state = eSuccess;
         }
         else
         {
-            error = TIMER_ERR_FAULT;
+            error = TIMER_ERR_STATUS;
         }
 
     }
@@ -323,7 +327,7 @@ TState xTimerStop(TTimer* pTimer, TError* pError)
         }
         else
         {
-            error = TIMER_ERR_FAULT;
+            error = TIMER_ERR_STATUS;
         }
 
     }
@@ -363,7 +367,7 @@ TState xTimerConfig(TTimer* pTimer, TTimeTick ticks, TPriority priority, TError*
         }
         else
         {
-            error = TIMER_ERR_FAULT;
+            error = TIMER_ERR_STATUS;
         }
     }
 
@@ -413,8 +417,15 @@ static void xTimerDaemonEntry(TArgument argument)
             /* 从期满队列中取得一个定时器 */
             pTimer = (TTimer*)(TimerList.ExpiredHandle->Owner);
 
-            /* 计算定时器的漂移时间 */
-            if (uKernelVariable.Jiffies >= pTimer->ExpiredTicks)
+            /*
+             * 计算定时器的漂移时间,如果精准定时器的漂移时间大于等于定时周期，
+             * 说明定时器被耽搁的实在太长了~,一定是哪里有问题。
+             */
+            if (uKernelVariable.Jiffies == pTimer->ExpiredTicks)
+            {
+                ticks = 0U;
+            }
+            else if (uKernelVariable.Jiffies > pTimer->ExpiredTicks)
             {
                 ticks = uKernelVariable.Jiffies - pTimer->ExpiredTicks;
             }
@@ -423,10 +434,6 @@ static void xTimerDaemonEntry(TArgument argument)
                 ticks = TCLM_MAX_VALUE64 - pTimer->ExpiredTicks + uKernelVariable.Jiffies;
             }
 
-            /*
-             * 如果精准定时器的漂移时间大于等于定时周期，说明定时器被耽搁的实在太长了~
-             * 一定是哪里有问题。
-             */
             if (pTimer->Property & TIMER_PROP_ACCURATE)
             {
                 if (ticks >= pTimer->PeriodTicks)
