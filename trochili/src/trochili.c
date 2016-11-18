@@ -1225,8 +1225,8 @@ TState TclFlushFlags(TFlags* pFlags, TError* pError)
  *        (4) ticks    定时器滴答数目                                                            *
  *        (5) pRoutine 用户定时器回调函数                                                        *
  *        (6) pData    用户定时器回调函数参数                                                    *
- *        (7) pError   详细调用结果                                                              *
- *        (8) priority 定时器优先级                                                              *
+ *        (7) priority 定时器优先级                                                              *
+ *        (8) pError   详细调用结果                                                              *
  *  返回: (1) eSuccess 操作成功                                                                  *
  *        (2) eFailure 操作失败                                                                  *
  *  说明                                                                                         *
@@ -1251,9 +1251,9 @@ TState TclCreateTimer(TTimer* pTimer, TChar* pName, TProperty property, TTimeTic
 /*************************************************************************************************
  *  功能：内核定时器取消初始化                                                                   *
  *  参数：(1) pTimer   定时器结构地址                                                            *
+ *        (2) pError   详细调用结果                                                              *
  *  返回: (1) eSuccess 操作成功                                                                  *
  *        (2) eFailure 操作失败                                                                  *
- *        (3) pError   详细调用结果                                                              *
  *  说明                                                                                         *
  *************************************************************************************************/
 TState TclDeleteTimer(TTimer* pTimer, TError* pError)
@@ -1291,10 +1291,10 @@ TState TclStartTimer(TTimer* pTimer, TTimeTick lagticks, TError* pError)
 /*************************************************************************************************
  *  功能：停止用户定时器函数                                                                     *
  *  参数：(1) pTimer   定时器地址                                                                *
+ *        (2) pError   详细调用结果                                                              * 
  *  返回: (1) eSuccess 操作成功                                                                  *
  *        (2) eFailure 操作失败                                                                  *
- *        (3) pError   详细调用结果                                                              *
- *  说明：                                                                                       *
+ *  说明：                                                                                       * 
  *************************************************************************************************/
 TState TclStopTimer(TTimer* pTimer, TError* pError)
 {
@@ -1306,12 +1306,15 @@ TState TclStopTimer(TTimer* pTimer, TError* pError)
     return state;
 }
 
+
 /*************************************************************************************************
- *  功能：重置定时器类型和定时时间                                                               *
- *  参数：(1) pTimer 定时器结构地址                                                              *
- *        (2) ticks  定时器时钟节拍数目                                                          *
- *        (3) pError 详细调用结果                                                                *
- *  返回：无                                                                                     *
+ *  功能：重置定时器类型、定时时间和优先级                                                       *
+ *  参数：(1) pTimer   定时器结构地址                                                            *
+ *        (2) ticks    定时器时钟节拍数目                                                        *
+ *        (3) priority 定时器优先级                                                              *
+ *        (4) pError   详细调用结果                                                              *
+ *  返回: (1) eSuccess 操作成功                                                                  *
+ *        (2) eFailure 操作失败                                                                  *
  *  说明                                                                                         *
  *************************************************************************************************/
 TState TclConfigTimer(TTimer* pTimer, TTimeTick ticks, TPriority priority, TError* pError)
@@ -1332,19 +1335,20 @@ TState TclConfigTimer(TTimer* pTimer, TTimeTick ticks, TPriority priority, TErro
 /*************************************************************************************************
  *  功能：提交中断请求                                                                           *
  *  参数：(1) pIRQ      中断请求结构地址                                                         *
- *        (2) priority  中断请求优先级                                                           *
- *        (3) pEntry    中断处理回调函数                                                         *
- *        (4) data      中断处理回调参数                                                         *
+ *        (2) pEntry    中断处理回调函数                                                         *
+ *        (3) data      中断处理回调参数                                                         *
+ *        (4) priority  中断请求优先级                                                           *
+ *        (5) pError    详细调用结果                                                             *
  *  返回: (1) eFailure  操作失败                                                                 *
  *        (2) eSuccess  操作成功                                                                 *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState TclPostIRQ(TIrq* pIRQ, TPriority priority, TIrqEntry pEntry, TArgument data, TError* pError)
+TState TclPostIRQ(TIrq* pIRQ, TIrqEntry pEntry, TArgument data, TPriority priority, TError* pError)
 {
     TState state;
     KNL_ASSERT((pIRQ != (TIrq*)0), "");
 
-    state = xIrqPostRequest(pIRQ, priority, pEntry, data, pError);
+    state = xIrqPostRequest(pIRQ, pEntry, data, priority, pError);
     return state;
 }
 
@@ -1352,6 +1356,7 @@ TState TclPostIRQ(TIrq* pIRQ, TPriority priority, TIrqEntry pEntry, TArgument da
 /*************************************************************************************************
  *  功能：撤销中断请求                                                                           *
  *  参数：(1) TIrq      中断请求结构地址                                                         *
+ *        (2) pError    详细调用结果                                                             * 
  *  返回: (1) eFailure  操作失败                                                                 *
  *        (2) eSuccess  操作成功                                                                 *
  *  说明：                                                                                       *

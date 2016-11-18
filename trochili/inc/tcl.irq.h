@@ -43,7 +43,7 @@ typedef TBitMask (*TISR)(TArgument data);
 
 #if (TCLC_IRQ_DAEMON_ENABLE)
 /* IRQ回调函数类型定义 */
-typedef void(*TIrqEntry)(TArgument data);            
+typedef void(*TIrqEntry)(TArgument data);
 
 /* IRQ请求结构定义 */
 typedef struct IrqDef
@@ -62,8 +62,8 @@ extern TState xIrqSetVector(TIndex irqn, TISR pISR, TArgument data, TError* pErr
 extern TState xIrqCleanVector(TIndex irqn, TError* pError);
 
 #if (TCLC_IRQ_DAEMON_ENABLE)
-extern TState xIrqPostRequest(TIrq* pIRQ, TPriority priority, 
-                              TIrqEntry pEntry, TArgument data, TError* pError);
+extern TState xIrqPostRequest(TIrq* pIRQ, TIrqEntry pEntry, TArgument data,
+                              TPriority priority, TError* pError);
 extern TState xIrqCancelRequest(TIrq* pIRQ, TError* pError);
 extern void uIrqCreateDaemon(void);
 #endif

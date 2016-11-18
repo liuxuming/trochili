@@ -120,6 +120,10 @@ TState xIrqSetVector(TIndex irqn, TISR pISR, TArgument data, TError* pError)
         }
         else
         {
+            /* 更新中断向量对应的中断服务程序 */
+            pVector->ISR      = pISR;
+            pVector->Argument = data;
+
             error = IRQ_ERR_NONE;
             state = eSuccess;
         }
@@ -132,23 +136,21 @@ TState xIrqSetVector(TIndex irqn, TISR pISR, TArgument data, TError* pError)
             pVector = (TIrqVector*)IrqVectorTable + index;
             if (!(pVector->Property & IRQ_VECTOR_PROP_READY))
             {
-                /* 建立中断号和对应的中断向量的联系 */
+                /*
+                 * 建立中断号和对应的中断向量的联系,
+                 * 设置中断向量对应的中断服务程序
+                 */
                 IrqMapTable[irqn] = (TAddr32)pVector;
-                pVector->IRQn       = irqn;
-                pVector->Property   = IRQ_VECTOR_PROP_READY;
+                pVector->IRQn     = irqn;
+                pVector->ISR      = pISR;
+                pVector->Argument = data;
+                pVector->Property = IRQ_VECTOR_PROP_READY;
 
                 error = IRQ_ERR_NONE;
                 state = eSuccess;
                 break;
             }
         }
-    }
-
-    /* 设置中断向量对应的中断服务程序，中断服务线程(如果没有则默认为IrqDaemon线程) */
-    if (state == eSuccess)
-    {
-        pVector->ISR      = pISR;
-        pVector->Argument = data;
     }
 
     CpuLeaveCritical(imask);
@@ -160,8 +162,10 @@ TState xIrqSetVector(TIndex irqn, TISR pISR, TArgument data, TError* pError)
 
 /*************************************************************************************************
  *  功能：清空中断向量函数                                                                       *
- *  参数：(1) irqn 中断编号                                                                      *
- *  返回：无                                                                                     *
+ *  参数：(1) irqn   中断编号                                                                    *
+ *        (2) pError 详细调用结果                                                                *
+ *  返回: (1) eSuccess 操作成功                                                                  *
+ *        (2) eFailure 操作失败                                                                  *
  *  说明：                                                                                       *
  *************************************************************************************************/
 TState xIrqCleanVector(TIndex irqn, TError* pError)
@@ -212,17 +216,19 @@ static TBase32 IrqDaemonStack[TCLC_IRQ_DAEMON_STACK_BYTES >> 2];
 /* IRQ请求队列 */
 static TIrqList IrqReqList;
 
+
 /*************************************************************************************************
  *  功能：提交中断请求                                                                           *
  *  参数：(1) pIRQ      中断请求结构地址                                                         *
- *        (2) priority  中断请求优先级                                                           *
- *        (3) pEntry    中断处理回调函数                                                         *
- *        (4) data      中断处理回调参数                                                         *
+ *        (2) pEntry    中断处理回调函数                                                         *
+ *        (3) data      中断处理回调参数                                                         *
+ *        (4) priority  中断请求优先级                                                           *
+ *        (5) pError    详细调用结果                                                             *
  *  返回: (1) eFailure  操作失败                                                                 *
  *        (2) eSuccess  操作成功                                                                 *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState xIrqPostRequest(TIrq* pIRQ, TPriority priority, TIrqEntry pEntry, TArgument data,
+TState xIrqPostRequest(TIrq* pIRQ, TIrqEntry pEntry, TArgument data, TPriority priority,
                        TError* pError)
 {
     TState state = eFailure;
@@ -258,6 +264,7 @@ TState xIrqPostRequest(TIrq* pIRQ, TPriority priority, TIrqEntry pEntry, TArgume
 /*************************************************************************************************
  *  功能：撤销中断请求                                                                           *
  *  参数：(1) pIRQ      中断请求结构地址                                                         *
+ *        (2) pError    详细调用结果                                                             *
  *  返回: (1) eFailure  操作失败                                                                 *
  *        (2) eSuccess  操作成功                                                                 *
  *  说明：                                                                                       *
@@ -286,7 +293,7 @@ TState xIrqCancelRequest(TIrq* pIRQ, TError* pError)
 
 /*************************************************************************************************
  *  功能：内核中的IRQ守护线程函数                                                                *
- *  参数：(1) argument IRQ守护线程的用户参数                                                     *
+ *  参数：(1) argument IRQ守护线程的参数                                                         *
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/

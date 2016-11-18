@@ -116,7 +116,7 @@ extern TState TclCleanIrqVector(TIndex vector, TError* pError);
 #endif
 
 #if ((TCLC_IRQ_ENABLE) && (TCLC_IRQ_DAEMON_ENABLE))
-extern TState TclPostIRQ(TIrq* pIRQ, TPriority priority, TIrqEntry pEntry, TArgument data, TError* pError);
+extern TState TclPostIRQ(TIrq* pIRQ, TIrqEntry pEntry, TArgument data, TPriority priority, TError* pError);
 extern TState TclCancelIRQ(TIrq* pIRQ, TError* pError);
 #endif
 

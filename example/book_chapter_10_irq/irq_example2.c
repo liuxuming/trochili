@@ -50,9 +50,9 @@ static TBitMask EvbKeyISR(TArgument data)
     if (key == 1)
     {
         state = TclPostIRQ(&irq1,
-                           (TPriority)5,
                            IrqCallback,
                            (TArgument)(&LedSemaphore1),
+                           (TPriority)5,
                            &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_IRQ_NONE), "");
@@ -62,9 +62,9 @@ static TBitMask EvbKeyISR(TArgument data)
     else if (key == 2)
     {
         state = TclPostIRQ(&irq2,
-                           (TPriority)5,
                            IrqCallback,
                            (TArgument)(&LedSemaphore2),
+                           (TPriority)5,
                            &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_IRQ_NONE), "");
@@ -167,43 +167,43 @@ static void AppSetupEntry(void)
 
     /* 初始化Led1线程 */
     state = TclCreateThread(&ThreadLed1,
-	                        "thread led1",
-                          &ThreadLed1Entry,
-                          (TArgument)0,
-                          ThreadLed1Stack,
-                          THREAD_LED_STACK_BYTES,
-                          THREAD_LED_PRIORITY,
-                          THREAD_LED_SLICE,
-                          &error);
+                            "thread led1",
+                            &ThreadLed1Entry,
+                            (TArgument)0,
+                            ThreadLed1Stack,
+                            THREAD_LED_STACK_BYTES,
+                            THREAD_LED_PRIORITY,
+                            THREAD_LED_SLICE,
+                            &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化Led2线程 */
     state = TclCreateThread(&ThreadLed2,
-                          "thread led2",
-                          &ThreadLed2Entry,
-                          (TArgument)0,
-                          ThreadLed2Stack,
-                          THREAD_LED_STACK_BYTES,
-                          THREAD_LED_PRIORITY,
-                          THREAD_LED_SLICE,
-                          &error);
+                            "thread led2",
+                            &ThreadLed2Entry,
+                            (TArgument)0,
+                            ThreadLed2Stack,
+                            THREAD_LED_STACK_BYTES,
+                            THREAD_LED_PRIORITY,
+                            THREAD_LED_SLICE,
+                            &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
     /* 初始化Led3线程 */
     state = TclCreateThread(&ThreadLed3,
-                          "thread led3",
-                          &ThreadLed3Entry,
-                          (TArgument)0,
-                          ThreadLed3Stack,
-                          THREAD_LED_STACK_BYTES,
-                          THREAD_LED_PRIORITY,
-                          THREAD_LED_SLICE,
-                          &error);
+                            "thread led3",
+                            &ThreadLed3Entry,
+                            (TArgument)0,
+                            ThreadLed3Stack,
+                            THREAD_LED_STACK_BYTES,
+                            THREAD_LED_PRIORITY,
+                            THREAD_LED_SLICE,
+                            &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
-	
+
     /* 激活Led1线程 */
     state = TclActivateThread(&ThreadLed1, &error);
     TCLM_ASSERT((state == eSuccess), "");

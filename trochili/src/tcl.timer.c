@@ -137,8 +137,8 @@ void uTimerTickUpdate(void)
  *        (4) ticks    定时器滴答数目                                                            *
  *        (5) pRoutine 用户定时器回调函数                                                        *
  *        (6) pData    用户定时器回调函数参数                                                    *
- *        (7) pError   详细调用结果                                                              *
- *        (8) priority 定时器优先级                                                              *
+ *        (7) priority 定时器优先级                                                              *
+ *        (8) pError   详细调用结果                                                              *
  *  返回: (1) eSuccess 操作成功                                                                  *
  *        (2) eFailure 操作失败                                                                  *
  *  说明                                                                                         *
@@ -295,7 +295,6 @@ TState xTimerStart(TTimer* pTimer,TTimeTick lagticks, TError* pError)
  *        (2) pError   详细调用结果                                                              *
  *  返回: (1) eSuccess 操作成功                                                                  *
  *        (2) eFailure 操作失败                                                                  *
- *        (3) pError   详细调用结果                                                              *
  *  说明：                                                                                       *
  *************************************************************************************************/
 TState xTimerStop(TTimer* pTimer, TError* pError)
@@ -340,11 +339,13 @@ TState xTimerStop(TTimer* pTimer, TError* pError)
 
 
 /*************************************************************************************************
- *  功能：重置定时器类型和定时时间                                                               *
- *  参数：(1) pTimer 定时器结构地址                                                              *
- *        (2) ticks  定时器时钟节拍数目                                                          *
- *        (3) pError 详细调用结果                                                                *
- *  返回：无                                                                                     *
+ *  功能：重置定时器类型、定时时间和优先级                                                       *
+ *  参数：(1) pTimer   定时器结构地址                                                            *
+ *        (2) ticks    定时器时钟节拍数目                                                        *
+ *        (3) priority 定时器优先级                                                              *
+ *        (4) pError   详细调用结果                                                              *
+ *  返回: (1) eSuccess 操作成功                                                                  *
+ *        (2) eFailure 操作失败                                                                  *
  *  说明                                                                                         *
  *************************************************************************************************/
 TState xTimerConfig(TTimer* pTimer, TTimeTick ticks, TPriority priority, TError* pError)
