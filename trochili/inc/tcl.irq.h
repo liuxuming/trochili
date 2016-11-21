@@ -52,7 +52,7 @@ typedef struct IrqDef
     TPriority Priority;                              /* IRQ优先级                     */
     TIrqEntry Entry;                                 /* IRQ回调函数                   */
     TArgument Argument;                              /* IRQ回调参数                   */
-    TLinkNode  LinkNode;                               /* IRQ所在队列的链表指针         */
+    TLinkNode LinkNode;                              /* IRQ所在队列的链表指针         */
 } TIrq;
 #endif
 

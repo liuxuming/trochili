@@ -347,7 +347,7 @@ void xKernelStart(TUserEntry pUserEntry,
      */
     while (eTrue)
     {
-        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 }
 
@@ -383,7 +383,7 @@ static void xRootThreadEntry(TBase32 argument)
              */
             if(uKernelVariable.UserEntry == (TUserEntry)0)
             {
-                uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+                xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
             }
             uKernelVariable.UserEntry();
         }
@@ -418,7 +418,7 @@ static void CreateRootThread(void)
     /* 检查内核是否处于初始状态 */
     if(uKernelVariable.State != eOriginState)
     {
-        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
     /* 初始化内核ROOT线程 */

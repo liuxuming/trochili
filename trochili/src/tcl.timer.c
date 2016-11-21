@@ -473,7 +473,7 @@ void uTimerCreateDaemon(void)
     /* 检查内核是否处于初始状态 */
     if(uKernelVariable.State != eOriginState)
     {
-        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
     /* 初始化内核定时器服务线程 */
@@ -507,7 +507,7 @@ void uTimerModuleInit(void)
     /* 检查内核是否处于初始状态 */
     if(uKernelVariable.State != eOriginState)
     {
-        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
     memset(&TimerList, 0, sizeof(TimerList));

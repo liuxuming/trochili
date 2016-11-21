@@ -118,7 +118,7 @@ void uIpcBlockThread(TIpcContext* pContext, TIpcQueue* pQueue, TTimeTick ticks)
     {
         uKernelVariable.Diagnosis |= KERNEL_DIAG_THREAD_ERROR;
         pThread->Diagnosis |= THREAD_DIAG_INVALID_STATE;
-        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
     /* 将线程放入内核线程辅助队列 */
@@ -158,7 +158,7 @@ void uIpcUnblockThread(TIpcContext* pContext, TState state, TError error, TBool*
     {
         uKernelVariable.Diagnosis |= KERNEL_DIAG_THREAD_ERROR;
         pThread->Diagnosis |= THREAD_DIAG_INVALID_STATE;
-        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
     /*
@@ -336,13 +336,7 @@ void uIpcCleanContext(TIpcContext* pContext)
     pThread = (TThread*)(pContext->Owner);
     pThread->IpcContext = (TIpcContext*)0;
 
-    pContext->Object     = (void*)0;
-    pContext->Queue      = (TIpcQueue*)0;
-    pContext->Data.Value = 0U;
-    pContext->Length     = 0U;
-    pContext->Option     = IPC_OPT_DEFAULT;
-    pContext->State      = (TState*)0;
-    pContext->Error      = (TError*)0;
+    memset(pContext, 0U, sizeof(TIpcContext));
 }
 
 #endif

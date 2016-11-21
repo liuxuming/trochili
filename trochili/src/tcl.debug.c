@@ -18,9 +18,10 @@
  *  返回：无                                                                                     *
  *  说明：这是内核诊断到自身发生错误时采取的行动                                                 *
  *************************************************************************************************/
-void uDebugPanic(const char* pNote, const char* pFile, const char* pFunc, int line)
+void xDebugPanic(const char* pNote, const char* pFile, const char* pFunc, int line)
 {
     CpuDisableInt();
+	
     uKernelTrace(pNote);
     uKernelVariable.DBGLog.File = pFile;
     uKernelVariable.DBGLog.Func = pFunc;
@@ -37,6 +38,7 @@ void uDebugPanic(const char* pNote, const char* pFile, const char* pFunc, int li
         ;
     }
 }
+
 
 /*************************************************************************************************
  *  功能：内核出现非严重问题而进行警告                                                           *

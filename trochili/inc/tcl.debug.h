@@ -18,7 +18,7 @@ typedef struct DBGLogDef
     TBase32        Line;
 } TDBGLog;
 
-extern void uDebugPanic(const char* pNote, const char* pFile, const char* pFunc, int line);
+extern void xDebugPanic(const char* pNote, const char* pFile, const char* pFunc, int line);
 extern void uDebugAlarm(const char* pNote);
 
 /* ASSERT∫Í∂®“Â */
@@ -28,7 +28,7 @@ extern void uDebugAlarm(const char* pNote);
     do{\
         if (!(condition))\
         {\
-            uDebugPanic((note), __FILE__, __FUNCTION__, __LINE__);\
+            xDebugPanic((note), __FILE__, __FUNCTION__, __LINE__);\
         }\
     } while(0)
 #endif

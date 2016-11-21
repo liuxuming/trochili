@@ -45,11 +45,10 @@ static TAddr32 IrqMapTable[TCLC_CPU_IRQ_NUM];
 void xIrqEnterISR(TIndex irqn)
 {
     TReg32      imask;
-
     TIrqVector* pVector;
     TISR        pISR;
     TArgument   data;
-    TBitMask    retv = IRQ_ISR_DONE;
+    TBitMask    retv;
 
     KNL_ASSERT((irqn < TCLC_CPU_IRQ_NUM), "");
     CpuEnterCritical(&imask);
@@ -70,17 +69,19 @@ void xIrqEnterISR(TIndex irqn)
             CpuLeaveCritical(imask);
             retv = pISR(data);
             CpuEnterCritical(&imask);
-        }
 
-        /* 如果需要则调用中断处理线程DAEMON(用户中断处理线程或者内核中断守护线程),
-           注意此时DAEMON可能处于eThreadReady状态 */
+            /* 
+             * 如果需要则调用中断处理线程DAEMON(内核中断守护线程),
+             * 注意此时DAEMON可能处于eThreadReady状态
+             */
 #if (TCLC_IRQ_DAEMON_ENABLE)
-        if (retv & IRQ_CALL_DAEMON)
-        {
-            uThreadResumeFromISR(uKernelVariable.IrqDaemon);
+            if (retv & IRQ_CALL_DAEMON)
+            {
+                uThreadResumeFromISR(uKernelVariable.IrqDaemon);
 
-        }
+            }
 #endif
+        }
         pVector->Property &= (~IRQ_VECTOR_PROP_LOCKED);
     }
 
@@ -239,10 +240,10 @@ TState xIrqPostRequest(TIrq* pIRQ, TIrqEntry pEntry, TArgument data, TPriority p
 
     if (!(pIRQ->Property & IRQ_PROP_READY))
     {
-        pIRQ->Property       = IRQ_PROP_READY;
-        pIRQ->Entry          = pEntry;
-        pIRQ->Argument       = data;
-        pIRQ->Priority       = priority;
+        pIRQ->Property        = IRQ_PROP_READY;
+        pIRQ->Entry           = pEntry;
+        pIRQ->Argument        = data;
+        pIRQ->Priority        = priority;
         pIRQ->LinkNode.Next   = (TLinkNode*)0;
         pIRQ->LinkNode.Prev   = (TLinkNode*)0;
         pIRQ->LinkNode.Handle = (TLinkNode**)0;
@@ -342,7 +343,7 @@ void uIrqCreateDaemon(void)
     /* 检查内核是否处于初始状态 */
     if(uKernelVariable.State != eOriginState)
     {
-        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
     /* 初始化内核中断服务线程 */
@@ -378,7 +379,7 @@ void uIrqModuleInit(void)
     /* 检查内核是否处于初始状态 */
     if(uKernelVariable.State != eOriginState)
     {
-        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
     memset(IrqMapTable, 0, sizeof(IrqMapTable));

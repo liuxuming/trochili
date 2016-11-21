@@ -137,11 +137,7 @@ struct ThreadDef
 };
 typedef struct ThreadDef TThread;
 
-#define NODE2THREAD(NODE) ((TThread*)((TByte*)(NODE) - OFF_SET_OF(TThread, LinkNode)))
-
-
-extern TThreadQueue uThreadAuxiliaryQueue;   /* 内核线程辅助队列                                 */
-extern TThreadQueue SetThreadReadyQueue;     /* 内核进就绪队列结                                 */
+#define TCLM_NODE2THREAD(NODE) ((TThread*)((TByte*)(NODE) - OFF_SET_OF(TThread, LinkNode)))
 
 extern void uThreadLeaveQueue(TThreadQueue* pQueue, TThread* pThread);
 extern void uThreadEnterQueue(TThreadQueue* pQueue, TThread* pThread, TLinkPos pos);

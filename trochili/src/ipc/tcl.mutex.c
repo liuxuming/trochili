@@ -240,7 +240,7 @@ TState xMutexFree(TMutex* pMutex, TError* pError)
     if (uKernelVariable.State != eThreadState)
     {
         uKernelVariable.Diagnosis |= KERNEL_DIAG_IRQ_ERROR;
-        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
     if (pMutex->Property & IPC_PROP_READY)
@@ -298,7 +298,7 @@ TState xMutexLock(TMutex* pMutex, TOption option, TTimeTick timeo, TError* pErro
     if (uKernelVariable.State != eThreadState)
     {
         uKernelVariable.Diagnosis |= KERNEL_DIAG_IRQ_ERROR;
-        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
     if (pMutex->Property & IPC_PROP_READY)
@@ -371,7 +371,7 @@ TState xMutexCreate(TMutex* pMutex, TChar* pName, TPriority priority, TProperty 
     if (uKernelVariable.State != eThreadState)
     {
         uKernelVariable.Diagnosis |= KERNEL_DIAG_IRQ_ERROR;
-        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
     if (!(pMutex->Property & IPC_PROP_READY))
@@ -428,7 +428,7 @@ TState xMutexDelete(TMutex* pMutex, TError* pError)
     if (uKernelVariable.State != eThreadState)
     {
         uKernelVariable.Diagnosis |= KERNEL_DIAG_IRQ_ERROR;
-        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
     if (pMutex->Property & IPC_PROP_READY)
@@ -495,7 +495,7 @@ TState xMutexReset(TMutex* pMutex, TError* pError)
     if (uKernelVariable.State != eThreadState)
     {
         uKernelVariable.Diagnosis |= KERNEL_DIAG_IRQ_ERROR;
-        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
     if (pMutex->Property & IPC_PROP_READY)
@@ -570,7 +570,7 @@ TState xMutexFlush(TMutex* pMutex, TError* pError)
     if (uKernelVariable.State != eThreadState)
     {
         uKernelVariable.Diagnosis |= KERNEL_DIAG_IRQ_ERROR;
-        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
     if (pMutex->Property & IPC_PROP_READY)

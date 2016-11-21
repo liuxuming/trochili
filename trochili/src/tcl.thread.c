@@ -139,7 +139,7 @@ static void CalcThreadHiRP(TPriority* priority)
     /* 如果就绪优先级不存在则说明内核发生致命错误 */
     if (ThreadReadyQueue.PriorityMask == (TBitMask)0)
     {
-        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
     *priority = CpuCalcHiPRIO(ThreadReadyQueue.PriorityMask);
 }
@@ -159,7 +159,7 @@ static void CheckThreadStack(TThread* pThread)
     {
         uKernelVariable.Diagnosis |= KERNEL_DIAG_THREAD_ERROR;
         pThread->Diagnosis |= THREAD_DIAG_STACK_OVERFLOW;
-        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
     if (pThread->StackTop < pThread->StackAlarm)
@@ -185,7 +185,7 @@ static void xSuperviseThread(TThread* pThread)
 
     uKernelVariable.Diagnosis |= KERNEL_DIAG_THREAD_ERROR;
     pThread->Diagnosis |= THREAD_DIAG_INVALID_EXIT;
-    uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+    xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
 }
 
 
@@ -204,7 +204,7 @@ void uThreadModuleInit(void)
     /* 检查内核是否处于初始状态 */
     if (uKernelVariable.State != eOriginState)
     {
-        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
     memset(&ThreadReadyQueue, 0, sizeof(ThreadReadyQueue));
@@ -395,7 +395,7 @@ void uThreadTimerUpdate(void)
 #endif
             else
             {
-                uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+                xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
             }
 
             if (uKernelVariable.ThreadTimerList == (TLinkNode*)0)
@@ -440,7 +440,7 @@ void uThreadSchedule(void)
     /* 如果就绪优先级不存在则说明内核发生致命错误 */
     if (ThreadReadyQueue.PriorityMask == (TBitMask)0)
     {
-        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
     /* 查找最高就绪优先级，获得后继线程，如果后继线程指针为空则说明内核发生致命错误 */
@@ -448,10 +448,13 @@ void uThreadSchedule(void)
     uKernelVariable.NomineeThread = (TThread*)((ThreadReadyQueue.Handle[priority])->Owner);
     if (uKernelVariable.NomineeThread == (TThread*)0)
     {
-        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
-    /* 完成线程的优先级抢占或者时间片轮转 */
+    /*
+     * 此处代码逻辑复杂，涉及到很多种线程调度情景，特别是时间片，Yiled、
+     * 中断、中断抢占引起的当前线程的状态变化。
+     */
     if (uKernelVariable.NomineeThread != uKernelVariable.CurrentThread)
     {
 #if (TCLC_THREAD_STACK_CHECK_ENABLE)
@@ -459,7 +462,7 @@ void uThreadSchedule(void)
 #endif
         /*
          * 此时有两种可能，一是线程正常执行，然后有更高优先级的线程就绪。
-         * 二是当前线程短暂不就绪但是很快又返回运行状态，然后有更高优先级的线程就绪。
+         * 二是当前线程短暂不就绪但是很快又返回运行状态，(同时/然后)有更高优先级的线程就绪。
          * 不论哪种情况，都需要将当前线程设置为就绪状态。
          */
         if (uKernelVariable.CurrentThread->Status == eThreadRunning)
@@ -470,14 +473,17 @@ void uThreadSchedule(void)
     }
     else
     {
-        CpuCancelThreadSwitch();
         /*
-         * 在定时器、DAEMON、Deamon等相关操作时，有可能在当先线程尚未切换上下文的时候，
+         * 在定时器、DAEMON等相关操作时，有可能在当先线程尚未切换上下文的时候，
          * 重新放回就绪队列，此时在相关代码里已经将当前线程重新设置成运行状态。
          * 而在yeild、tick isr里，有可能将当前线程设置成就绪态，而此时当前线程所在
          * 队列又只有唯一一个线程就绪，所以这时需要将当前线程重新设置成运行状态。
          */
-        uKernelVariable.CurrentThread->Status = eThreadRunning;
+        if (uKernelVariable.CurrentThread->Status == eThreadReady)
+        {
+            uKernelVariable.CurrentThread->Status = eThreadRunning;
+        }
+        CpuCancelThreadSwitch();
     }
 }
 
@@ -781,7 +787,7 @@ void uThreadSuspendSelf(void)
     else
     {
         uKernelVariable.Diagnosis |= KERNEL_DIAG_SCHED_ERROR;
-        uDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 }
 
