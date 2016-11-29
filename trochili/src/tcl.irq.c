@@ -42,7 +42,7 @@ static TAddr32 IrqMapTable[TCLC_CPU_IRQ_NUM];
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void xIrqEnterISR(TIndex irqn)
+void OsIrqEnterISR(TIndex irqn)
 {
     TReg32      imask;
     TIrqVector* pVector;
@@ -50,8 +50,8 @@ void xIrqEnterISR(TIndex irqn)
     TArgument   data;
     TBitMask    retv;
 
-    KNL_ASSERT((irqn < TCLC_CPU_IRQ_NUM), "");
-    CpuEnterCritical(&imask);
+    OS_ASSERT((irqn < TCLC_CPU_IRQ_NUM), "");
+    OsCpuEnterCritical(&imask);
 
     /* 获得和中断号对应的中断向量 */
     pVector = (TIrqVector*)(IrqMapTable[irqn]);
@@ -66,18 +66,18 @@ void xIrqEnterISR(TIndex irqn)
         {
             pISR = pVector->ISR;
             data = pVector->Argument;
-            CpuLeaveCritical(imask);
+            OsCpuLeaveCritical(imask);
             retv = pISR(data);
-            CpuEnterCritical(&imask);
+            OsCpuEnterCritical(&imask);
 
-            /* 
+            /*
              * 如果需要则调用中断处理线程DAEMON(内核中断守护线程),
-             * 注意此时DAEMON可能处于eThreadReady状态
+             * 注意此时DAEMON可能处于OsThreadReady状态
              */
 #if (TCLC_IRQ_DAEMON_ENABLE)
-            if (retv & IRQ_CALL_DAEMON)
+            if (retv & OS_IRQ_DAEMON)
             {
-                uThreadResumeFromISR(uKernelVariable.IrqDaemon);
+                OsThreadResumeFromISR(OsKernelVariable.IrqDaemon);
 
             }
 #endif
@@ -85,7 +85,7 @@ void xIrqEnterISR(TIndex irqn)
         pVector->Property &= (~IRQ_VECTOR_PROP_LOCKED);
     }
 
-    CpuLeaveCritical(imask);
+    OsCpuLeaveCritical(imask);
 }
 
 
@@ -99,15 +99,18 @@ void xIrqEnterISR(TIndex irqn)
  *        (2) eSuccess 操作成功                                                                  *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState xIrqSetVector(TIndex irqn, TISR pISR, TArgument data, TError* pError)
+TState TclSetIrqVector(TIndex irqn, TISR pISR, TArgument data, TError* pError)
 {
     TState state = eFailure;
-    TError error = IRQ_ERR_FAULT;
+    TError error = OS_IRQ_ERR_FAULT;
     TReg32 imask;
     TIndex index;
     TIrqVector* pVector;
 
-    CpuEnterCritical(&imask);
+    OS_ASSERT((irqn < TCLC_CPU_IRQ_NUM), "");
+    OS_ASSERT((pISR != (TISR)0), "");
+
+    OsCpuEnterCritical(&imask);
 
     /* 如果指定的中断号已经注册过中断向量，那么直接更新 */
     if (IrqMapTable[irqn] != (TAddr32)0)
@@ -117,7 +120,7 @@ TState xIrqSetVector(TIndex irqn, TISR pISR, TArgument data, TError* pError)
         /* 更新之前确保没有被锁定 */
         if ((pVector->Property & IRQ_VECTOR_PROP_LOCKED))
         {
-            error = IRQ_ERR_LOCKED;
+            error = OS_IRQ_ERR_LOCKED;
         }
         else
         {
@@ -125,7 +128,7 @@ TState xIrqSetVector(TIndex irqn, TISR pISR, TArgument data, TError* pError)
             pVector->ISR      = pISR;
             pVector->Argument = data;
 
-            error = IRQ_ERR_NONE;
+            error = OS_IRQ_ERR_NONE;
             state = eSuccess;
         }
     }
@@ -147,14 +150,14 @@ TState xIrqSetVector(TIndex irqn, TISR pISR, TArgument data, TError* pError)
                 pVector->Argument = data;
                 pVector->Property = IRQ_VECTOR_PROP_READY;
 
-                error = IRQ_ERR_NONE;
+                error = OS_IRQ_ERR_NONE;
                 state = eSuccess;
                 break;
             }
         }
     }
 
-    CpuLeaveCritical(imask);
+    OsCpuLeaveCritical(imask);
 
     *pError = error;
     return state;
@@ -169,14 +172,16 @@ TState xIrqSetVector(TIndex irqn, TISR pISR, TArgument data, TError* pError)
  *        (2) eFailure 操作失败                                                                  *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState xIrqCleanVector(TIndex irqn, TError* pError)
+TState TclClearnIrqVector(TIndex irqn, TError* pError)
 {
     TState state = eFailure;
-    TError error = IRQ_ERR_FAULT;
+    TError error = OS_IRQ_ERR_FAULT;
     TReg32 imask;
     TIrqVector* pVector;
 
-    CpuEnterCritical(&imask);
+    OS_ASSERT((irqn < TCLC_CPU_IRQ_NUM), "");
+
+    OsCpuEnterCritical(&imask);
 
     /* 找到该中断向量并且清空相关信息 */
     if (IrqMapTable[irqn] != (TAddr32)0)
@@ -189,21 +194,23 @@ TState xIrqCleanVector(TIndex irqn, TError* pError)
             {
                 IrqMapTable[irqn] = (TAddr32)0;
                 memset(pVector, 0, sizeof(TIrqVector));
-                error = IRQ_ERR_NONE;
+                error = OS_IRQ_ERR_NONE;
                 state = eSuccess;
             }
             else
             {
-                error = IRQ_ERR_LOCKED;
+                error = OS_IRQ_ERR_LOCKED;
             }
         }
     }
 
-    CpuLeaveCritical(imask);
+    OsCpuLeaveCritical(imask);
 
     *pError = error;
     return state;
 }
+
+
 
 #if (TCLC_IRQ_DAEMON_ENABLE)
 
@@ -212,7 +219,7 @@ static TThread IrqDaemonThread;
 static TBase32 IrqDaemonStack[TCLC_IRQ_DAEMON_STACK_BYTES >> 2];
 
 /* IRQ守护线程不接受任何线程管理API操作 */
-#define IRQ_DAEMON_ACAPI (THREAD_ACAPI_NONE)
+#define IRQ_DAEMON_ACAPI (OS_THREAD_ACAPI_NONE)
 
 /* IRQ请求队列 */
 static TIrqList IrqReqList;
@@ -229,18 +236,20 @@ static TIrqList IrqReqList;
  *        (2) eSuccess  操作成功                                                                 *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState xIrqPostRequest(TIrq* pIRQ, TIrqEntry pEntry, TArgument data, TPriority priority,
-                       TError* pError)
+TState TclPostIRQ(TIrq* pIRQ, TIrqEntry pEntry, TArgument data, TPriority priority,
+                         TError* pError)
 {
     TState state = eFailure;
-    TError error = IRQ_ERR_FAULT;
+    TError error = OS_IRQ_ERR_FAULT;
     TReg32 imask;
 
-    CpuEnterCritical(&imask);
+    OS_ASSERT((pIRQ != (TIrq*)0), "");
 
-    if (!(pIRQ->Property & IRQ_PROP_READY))
+    OsCpuEnterCritical(&imask);
+
+    if (!(pIRQ->Property & OS_IRQ_PROP_READY))
     {
-        pIRQ->Property        = IRQ_PROP_READY;
+        pIRQ->Property        = OS_IRQ_PROP_READY;
         pIRQ->Entry           = pEntry;
         pIRQ->Argument        = data;
         pIRQ->Priority        = priority;
@@ -249,13 +258,13 @@ TState xIrqPostRequest(TIrq* pIRQ, TIrqEntry pEntry, TArgument data, TPriority p
         pIRQ->LinkNode.Handle = (TLinkNode**)0;
         pIRQ->LinkNode.Data   = (TBase32*)(&(pIRQ->Priority));
         pIRQ->LinkNode.Owner  = (void*)pIRQ;
-        uObjListAddPriorityNode(&(IrqReqList.Handle), &(pIRQ->LinkNode));
+        OsObjListAddPriorityNode(&(IrqReqList.Handle), &(pIRQ->LinkNode));
 
-        error = IRQ_ERR_NONE;
+        error = OS_IRQ_ERR_NONE;
         state = eSuccess;
     }
 
-    CpuLeaveCritical(imask);
+    OsCpuLeaveCritical(imask);
 
     *pError = error;
     return state;
@@ -270,22 +279,24 @@ TState xIrqPostRequest(TIrq* pIRQ, TIrqEntry pEntry, TArgument data, TPriority p
  *        (2) eSuccess  操作成功                                                                 *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState xIrqCancelRequest(TIrq* pIRQ, TError* pError)
+TState TclCancelIRQ(TIrq* pIRQ, TError* pError)
 {
     TState state = eFailure;
-    TError error = IRQ_ERR_UNREADY;
+    TError error = OS_IRQ_ERR_UNREADY;
     TReg32 imask;
 
-    CpuEnterCritical(&imask);
-    if (pIRQ->Property & IRQ_PROP_READY)
+    OS_ASSERT((pIRQ != (TIrq*)0), "");
+
+    OsCpuEnterCritical(&imask);
+    if (pIRQ->Property & OS_IRQ_PROP_READY)
     {
-        uObjListRemoveNode( pIRQ->LinkNode.Handle, &(pIRQ->LinkNode));
+        OsObjListRemoveNode( pIRQ->LinkNode.Handle, &(pIRQ->LinkNode));
         memset(pIRQ, 0, sizeof(TIrq));
 
-        error = IRQ_ERR_NONE;
+        error = OS_IRQ_ERR_NONE;
         state = eSuccess;
     }
-    CpuLeaveCritical(imask);
+    OsCpuLeaveCritical(imask);
 
     *pError = error;
     return state;
@@ -298,7 +309,7 @@ TState xIrqCancelRequest(TIrq* pIRQ, TError* pError)
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-static void xIrqDaemonEntry(TArgument argument)
+static void IrqDaemonEntry(TArgument argument)
 {
     TReg32    imask;
     TIrq*     pIRQ;
@@ -311,59 +322,26 @@ static void xIrqDaemonEntry(TArgument argument)
      */
     while(eTrue)
     {
-        CpuEnterCritical(&imask);
+        OsCpuEnterCritical(&imask);
         if (IrqReqList.Handle == (TLinkNode*)0)
         {
-            uThreadSuspendSelf();
-            CpuLeaveCritical(imask);
+            OsThreadSuspendSelf();
+            OsCpuLeaveCritical(imask);
         }
         else
         {
             pIRQ   = (TIrq*)(IrqReqList.Handle->Owner);
             pEntry = pIRQ->Entry;
             data   = pIRQ->Argument;
-            uObjListRemoveNode(pIRQ->LinkNode.Handle, &(pIRQ->LinkNode));
+            OsObjListRemoveNode(pIRQ->LinkNode.Handle, &(pIRQ->LinkNode));
             memset(pIRQ, 0, sizeof(TIrq));
-            CpuLeaveCritical(imask);
+            OsCpuLeaveCritical(imask);
 
             pEntry(data);
         }
     }
 }
 
-
-/*************************************************************************************************
- *  功能：初始化IRQ守护线程                                                                      *
- *  参数：无                                                                                     *
- *  返回：无                                                                                     *
- *  说明：                                                                                       *
- *************************************************************************************************/
-void uIrqCreateDaemon(void)
-{
-    /* 检查内核是否处于初始状态 */
-    if(uKernelVariable.State != eOriginState)
-    {
-        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
-    }
-
-    /* 初始化内核中断服务线程 */
-    uThreadCreate(&IrqDaemonThread,
-                  "irq daemon",
-                  eThreadSuspended,
-                  THREAD_PROP_PRIORITY_FIXED | \
-                  THREAD_PROP_CLEAN_STACK | \
-                  THREAD_PROP_KERNEL_DAEMON,
-                  IRQ_DAEMON_ACAPI,
-                  xIrqDaemonEntry,
-                  (TArgument)0,
-                  (void*)IrqDaemonStack,
-                  (TBase32)TCLC_IRQ_DAEMON_STACK_BYTES,
-                  (TPriority)TCLC_IRQ_DAEMON_PRIORITY,
-                  (TTimeTick)TCLC_IRQ_DAEMON_SLICE);
-
-    /* 初始化相关的内核变量 */
-    uKernelVariable.IrqDaemon = &IrqDaemonThread;
-}
 
 #endif
 
@@ -374,24 +352,42 @@ void uIrqCreateDaemon(void)
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void uIrqModuleInit(void)
+void OsIrqModuleInit(void)
 {
     /* 检查内核是否处于初始状态 */
-    if(uKernelVariable.State != eOriginState)
+    if(OsKernelVariable.State != OsOriginState)
     {
-        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+        OsDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
+
+    /* 初始化相关的内核变量 */
+    OsKernelVariable.IrqMapTable    = IrqMapTable;
+    OsKernelVariable.IrqVectorTable = IrqVectorTable;
 
     memset(IrqMapTable, 0, sizeof(IrqMapTable));
     memset(IrqVectorTable, 0, sizeof(IrqVectorTable));
 
 #if (TCLC_IRQ_DAEMON_ENABLE)
     memset(&IrqReqList, 0, sizeof(IrqReqList));
-#endif
+
+    /* 初始化内核中断服务线程 */
+    OsThreadCreate(&IrqDaemonThread,
+                   "kernel irq daemon",
+                   OsThreadSuspended,
+                   OS_THREAD_PROP_PRIORITY_FIXED | \
+                   OS_THREAD_PROP_CLEAN_STACK | \
+                   OS_THREAD_PROP_KERNEL_DAEMON,
+                   IRQ_DAEMON_ACAPI,
+                   IrqDaemonEntry,
+                   (TArgument)0,
+                   (void*)IrqDaemonStack,
+                   (TBase32)TCLC_IRQ_DAEMON_STACK_BYTES,
+                   (TPriority)TCLC_IRQ_DAEMON_PRIORITY,
+                   (TTimeTick)TCLC_IRQ_DAEMON_SLICE);
 
     /* 初始化相关的内核变量 */
-    uKernelVariable.IrqMapTable    = IrqMapTable;
-    uKernelVariable.IrqVectorTable = IrqVectorTable;
+    OsKernelVariable.IrqDaemon = &IrqDaemonThread;
+#endif
 }
 
 #endif

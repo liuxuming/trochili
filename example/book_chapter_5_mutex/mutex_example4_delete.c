@@ -35,14 +35,14 @@ static void ThreadLedEntry(TArgument data)
     while (eTrue)
     {
         /* Led线程以阻塞方式获取互斥量，当发现互斥量重置后点亮Led */
-        state = TclLockMutex(&LedMutex, TCLO_IPC_WAIT, 0, &error);
+        state = TclLockMutex(&LedMutex, TCLO_IPC_WAIT, (TTimeTick)0, &error);
         if ((state != eSuccess) && (error & TCLE_IPC_DELETE))
         {
             EvbLedControl(LED1, LED_ON);
         }
 
         /* Led线程以阻塞方式获取互斥量，当发现互斥量重置后熄灭Led */
-        state = TclLockMutex(&LedMutex, TCLO_IPC_WAIT, 0, &error);
+        state = TclLockMutex(&LedMutex, TCLO_IPC_WAIT, (TTimeTick)0, &error);
         if ((state != eSuccess) && (error & TCLE_IPC_DELETE))
         {
             EvbLedControl(LED1, LED_OFF);
@@ -60,7 +60,7 @@ static void ThreadCtrlEntry(TArgument data)
     while (eTrue)
     {
         /* CTRL线程初始化互斥量，然后提前获得互斥量 */
-        state = TclCreateMutex(&LedMutex, "mutex", 0, TCLP_IPC_DEFAULT, &error);
+        state = TclCreateMutex(&LedMutex, "mutex", TCLP_IPC_DEFAULT, LED_MUTEX_PRIORITY, &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
@@ -120,7 +120,7 @@ int main(void)
 {
     /* 注册各个内核函数,启动内核 */
     TclStartKernel(&AppSetupEntry,
-                   &CpuSetupEntry,
+                   &OsCpuSetupEntry,
                    &EvbSetupEntry,
                    &EvbTraceEntry);
     return 1;

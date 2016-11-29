@@ -12,8 +12,8 @@
 
 #if ((TCLC_MEMORY_ENABLE) && (TCLC_MEMORY_BUDDY_ENABLE))
 
-#define MEM_BUDDY_PAGE_TAGS  ((TCLC_MEMORY_BUDDY_PAGES + 31u) >> 5u)
-#define MEM_BUDDY_NODE_TAGS (TCLC_MEMORY_BUDDY_PAGES * 2u - 1u)
+#define OS_MEM_BUDDY_PAGE_TAGS  ((TCLC_MEMORY_BUDDY_PAGES + 31U) >> 5U)
+#define OS_MEM_BUDDY_NODE_TAGS (TCLC_MEMORY_BUDDY_PAGES * 2U - 1U)
 
 typedef struct MemBuddyDef
 {
@@ -22,15 +22,16 @@ typedef struct MemBuddyDef
     TBase32   PageSize;                       /* 内存页大小                        */
     TBase32   PageNbr;                        /* 内存页数目                        */
     TBase32   PageAvail;                      /* 可用内存页数目                    */
-    TBitMask  PageTags[MEM_BUDDY_PAGE_TAGS];  /* 内存页是否可用标记                */
+    TBitMask  PageTags[OS_MEM_BUDDY_PAGE_TAGS];  /* 内存页是否可用标记                */
     TBase32   NodeNbr;
-    TByte     NodeTags[MEM_BUDDY_NODE_TAGS];
+    TByte     NodeTags[OS_MEM_BUDDY_NODE_TAGS];
 } TMemBuddy;
 
-extern TState xBuddyCreate(TMemBuddy* pBuddy, TChar* pAddr, TBase32 pages, TBase32 pagesize, TError* pError);
-extern TState xBuddyDelete(TMemBuddy* pBuddy, TError* pError);
-extern TState xBuddyMemMalloc(TMemBuddy* pBuddy, TBase32 length, void** pAddr, TError* pError);
-extern TState xBuddyMemFree(TMemBuddy* pBuddy, void* pAddr, TError* pError);
+
+extern TState TclCreateMemoryBuddy(TMemBuddy* pBuddy, TChar* pAddr, TBase32 pages, TBase32 pagesize, TError* pError);
+extern TState TclDeleteMemoryBuddy(TMemBuddy* pBuddy, TError* pError);
+extern TState TclMallocBuddyMemory(TMemBuddy* pBuddy, TBase32 length, void** pAddr2, TError* pError);
+extern TState TclFreeBuddyMemory(TMemBuddy* pBuddy,  void* pAddr, TError* pError);
 
 #endif
 

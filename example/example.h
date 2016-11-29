@@ -63,7 +63,5 @@
 
 #define CH13_BOARD_TEST_EXAMPLE    (131)
 
-
-
 #define EVB_EXAMPLE       CH13_BOARD_TEST_EXAMPLE
 

@@ -119,7 +119,7 @@ static void ThreadCtrlEntry(TArgument data)
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
         /* CTRL线程延时1秒后RESET互斥量 */
-        state = TclDelayThread(&ThreadCTRL, TCLM_MLS2TICKS(1000), &error);
+        state = TclDelayThread(TCLM_MLS2TICKS(1000), &error);
         state = TclResetMutex(&LedMutex, &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
@@ -134,7 +134,7 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化互斥量 */
-    state = TclCreateMutex(&LedMutex, "mutex", LED_MUTEX_PRIORITY, TCLP_IPC_DEFAULT, &error);
+    state = TclCreateMutex(&LedMutex, "mutex", TCLP_IPC_DEFAULT, LED_MUTEX_PRIORITY, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
@@ -197,7 +197,7 @@ int main(void)
 {
     /* 注册各个内核函数,启动内核 */
     TclStartKernel(&AppSetupEntry,
-                   &CpuSetupEntry,
+                   &OsCpuSetupEntry,
                    &EvbSetupEntry,
                    &EvbTraceEntry);
     return 1;

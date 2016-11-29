@@ -6,11 +6,10 @@
 #ifndef _TCL_SEMAPHORE_H
 #define _TCL_SEMAPHORE_H
 
-#include "tcl.types.h"
 #include "tcl.config.h"
+#include "tcl.types.h"
 #include "tcl.object.h"
 #include "tcl.ipc.h"
-#include "tcl.thread.h"
 
 #if ((TCLC_IPC_ENABLE)&&(TCLC_IPC_SEMAPHORE_ENABLE))
 
@@ -26,13 +25,18 @@ struct SemaphoreDef
 };
 typedef struct SemaphoreDef TSemaphore;
 
-extern TState xSemaphoreRelease(TSemaphore* pSemaphore, TOption option, TTimeTick timeo, TError* pError);
-extern TState xSemaphoreObtain(TSemaphore* pSemaphore, TOption option, TTimeTick timeo, TError* pError);
-extern TState xSemaphoreCreate(TSemaphore* pSemaphore, TChar* pName, TBase32 value, TBase32 mvalue,
-	                                   TProperty property, TError* pError);
-extern TState xSemaphoreDelete(TSemaphore* pSemaphore, TError* pError);
-extern TState xSemaphoreReset(TSemaphore* pSemaphore, TError* pError);
-extern TState xSemaphoreFlush(TSemaphore* pSemaphore, TError* pError);
+extern TState TclCreateSemaphore(TSemaphore* pSemaphore, TChar* pName,
+                                 TBase32 value, TBase32 mvalue,
+                                 TProperty property, TError* pError);
+extern TState TclDeleteSemaphore(TSemaphore* pSemaphore, TError* pError);
+extern TState TclResetSemaphore(TSemaphore* pSemaphore, TError* pError);
+extern TState TclFlushSemaphore(TSemaphore* pSemaphore, TError* pError);
+extern TState TclObtainSemaphore(TSemaphore* pSemaphore, TOption option, TTimeTick timeo,
+                                 TError* pError);
+extern TState TclReleaseSemaphore(TSemaphore* pSemaphore, TOption option, TTimeTick timeo,
+                                  TError* pError);
+extern TState TclIsrReleaseSemaphore(TSemaphore* pSemaphore, TError* pError);
+
 #endif
 
 #endif /*_TCL_SEMAPHORE_H*/

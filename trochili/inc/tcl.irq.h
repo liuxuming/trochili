@@ -8,23 +8,21 @@
 
 #include "tcl.types.h"
 #include "tcl.config.h"
-#include "tcl.cpu.h"
-#include "tcl.debug.h"
-#include "tcl.thread.h"
+#include "tcl.object.h"
 
 #if (TCLC_IRQ_ENABLE)
 
 /* ISR返回值 */
-#define IRQ_ISR_DONE           (TBitMask)(0x0)       /* 中断处理程序结束              */
-#define IRQ_CALL_DAEMON        (TBitMask)(0x1<<0)    /* 请求调用高级异步中断处理线程  */
+#define OS_IRQ_DONE               (TBitMask)(0x0)              /* 中断处理程序结束              */
+#define OS_IRQ_DAEMON             (TBitMask)(0x1<<0)           /* 请求调用高级异步中断处理线程  */
 
-#define IRQ_ERR_NONE           (TError)(0x0)
-#define IRQ_ERR_FAULT          (TError)(0x1<<0)      /* 一般性错误                    */
-#define IRQ_ERR_UNREADY        (TError)(0x1<<1)      /* 中断请求对象未初始化          */
-#define IRQ_ERR_LOCKED         (TError)(0x1<<2)      /* 中断请求对象加锁              */
+#define OS_IRQ_ERR_NONE           (TError)(0x0)
+#define OS_IRQ_ERR_FAULT          (TError)(0x1<<0)             /* 一般性错误                    */
+#define OS_IRQ_ERR_UNREADY        (TError)(0x1<<1)             /* 中断请求对象未初始化          */
+#define OS_IRQ_ERR_LOCKED         (TError)(0x1<<2)             /* 中断请求对象加锁              */
 
-#define IRQ_PROP_NONE          (TProperty)(0x0)      /* IRQ就绪标记                   */
-#define IRQ_PROP_READY         (TProperty)(0x1<<0)   /* IRQ就绪标记                   */
+#define OS_IRQ_PROP_NONE          (TProperty)(0x0)             /* IRQ就绪标记                   */
+#define OS_IRQ_PROP_READY         (TProperty)(0x1<<0)          /* IRQ就绪标记                   */
 
 /* ISR函数类型定义 */
 typedef TBitMask (*TISR)(TArgument data);
@@ -33,9 +31,9 @@ typedef TBitMask (*TISR)(TArgument data);
 typedef struct
 {
     TProperty  Property;
-    TIndex     IRQn;                                 /* 物理中断号                    */
-    TISR       ISR;                                  /* 同步中断处理函数              */
-    TArgument  Argument;                             /* 中断向量参数                  */
+    TIndex     IRQn;                                           /* 物理中断号                    */
+    TISR       ISR;                                            /* 同步中断处理函数              */
+    TArgument  Argument;                                       /* 中断向量参数                  */
 } TIrqVector;
 
 /* ISR函数类型定义 */
@@ -49,23 +47,23 @@ typedef void(*TIrqEntry)(TArgument data);
 typedef struct IrqDef
 {
     TProperty Property;
-    TPriority Priority;                              /* IRQ优先级                     */
-    TIrqEntry Entry;                                 /* IRQ回调函数                   */
-    TArgument Argument;                              /* IRQ回调参数                   */
-    TLinkNode LinkNode;                              /* IRQ所在队列的链表指针         */
+    TPriority Priority;                                        /* IRQ优先级                     */
+    TIrqEntry Entry;                                           /* IRQ回调函数                   */
+    TArgument Argument;                                        /* IRQ回调参数                   */
+    TLinkNode LinkNode;                                        /* IRQ所在队列的链表指针         */
 } TIrq;
 #endif
 
-extern void uIrqModuleInit(void);
-extern void xIrqEnterISR(TIndex irqn);
-extern TState xIrqSetVector(TIndex irqn, TISR pISR, TArgument data, TError* pError);
-extern TState xIrqCleanVector(TIndex irqn, TError* pError);
+extern void OsIrqModuleInit(void);
+extern void OsIrqEnterISR(TIndex irqn);
+
+extern TState TclSetIrqVector(TIndex irqn, TISR pISR, TArgument data, TError* pError);
+extern TState TclCleanIrqVector(TIndex vector, TError* pError);
 
 #if (TCLC_IRQ_DAEMON_ENABLE)
-extern TState xIrqPostRequest(TIrq* pIRQ, TIrqEntry pEntry, TArgument data,
-                              TPriority priority, TError* pError);
-extern TState xIrqCancelRequest(TIrq* pIRQ, TError* pError);
-extern void uIrqCreateDaemon(void);
+extern TState TclPostIRQ(TIrq* pIRQ, TIrqEntry pEntry, TArgument data, TPriority priority,
+                         TError* pError);
+extern TState TclCancelIRQ(TIrq* pIRQ, TError* pError);
 #endif
 
 #endif

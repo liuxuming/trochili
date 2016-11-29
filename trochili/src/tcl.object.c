@@ -16,9 +16,9 @@
  *  返回：无                                                                                     *
  *  说明：无                                                                                     *
  *************************************************************************************************/
-void uObjQueueAddFifoNode(TLinkNode** pHandle2, TLinkNode* pNode, TLinkPos pos)
+void OsObjQueueAddFifoNode(TLinkNode** pHandle2, TLinkNode* pNode, TLinkPos pos)
 {
-    KNL_ASSERT((pNode->Handle == (TLinkNode**)0), "");
+    OS_ASSERT((pNode->Handle == (TLinkNode**)0), "");
 
     if (*pHandle2)
     {
@@ -27,7 +27,7 @@ void uObjQueueAddFifoNode(TLinkNode** pHandle2, TLinkNode* pNode, TLinkPos pos)
         pNode->Prev->Next = pNode;
         pNode->Next = *pHandle2;
         pNode->Next->Prev = pNode;
-        if (pos == eLinkPosHead)
+        if (pos == OsLinkHead)
         {
             (*pHandle2) = (*pHandle2)->Prev;
         }
@@ -50,11 +50,11 @@ void uObjQueueAddFifoNode(TLinkNode** pHandle2, TLinkNode* pNode, TLinkPos pos)
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void uObjQueueAddPriorityNode(TLinkNode** pHandle2, TLinkNode* pNode)
+void OsObjQueueAddPriorityNode(TLinkNode** pHandle2, TLinkNode* pNode)
 {
     TLinkNode* pTemp = (TLinkNode*)0;
 
-    KNL_ASSERT((pNode->Handle == (TLinkNode**)0), "");
+    OS_ASSERT((pNode->Handle == (TLinkNode**)0), "");
 
     /* 检查队列是否为空 */
     if (*pHandle2)
@@ -79,7 +79,7 @@ void uObjQueueAddPriorityNode(TLinkNode** pHandle2, TLinkNode* pNode)
             }
         }
 
-        /* 插入新节点到队列  */
+        /* 插入新节点到队列 */
         pNode->Prev = pTemp->Prev;
         pNode->Prev->Next = pNode;
         pNode->Next = pTemp;
@@ -103,9 +103,9 @@ void uObjQueueAddPriorityNode(TLinkNode** pHandle2, TLinkNode* pNode)
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void uObjQueueRemoveNode(TLinkNode** pHandle2, TLinkNode* pNode)
+void OsObjQueueRemoveNode(TLinkNode** pHandle2, TLinkNode* pNode)
 {
-    KNL_ASSERT((pNode->Handle == pHandle2), "");
+    OS_ASSERT((pNode->Handle == pHandle2), "");
 
     /* 检查是否队列中只有一个节点，如果是就把头结点指针清空 */
     if (pNode->Prev == pNode)
@@ -140,15 +140,15 @@ void uObjQueueRemoveNode(TLinkNode** pHandle2, TLinkNode* pNode)
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void uObjListAddNode(TLinkNode** pHandle2, TLinkNode* pNode, TLinkPos pos)
+void OsObjListAddNode(TLinkNode** pHandle2, TLinkNode* pNode, TLinkPos pos)
 {
     TLinkNode* pTail;
-    KNL_ASSERT((pNode->Handle == (TLinkNode**)0), "");
+    OS_ASSERT((pNode->Handle == (TLinkNode**)0), "");
 
     /* 如果队列中有个节点 */
     if (*pHandle2)
     {
-        if (pos == eLinkPosHead)
+        if (pos == OsLinkHead)
         {
             pNode->Next = *pHandle2;
             pNode->Prev = (TLinkNode*)0;
@@ -186,7 +186,7 @@ void uObjListAddNode(TLinkNode** pHandle2, TLinkNode* pNode, TLinkPos pos)
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void uObjListAddPriorityNode(TLinkNode** pHandle2, TLinkNode* pNode)
+void OsObjListAddPriorityNode(TLinkNode** pHandle2, TLinkNode* pNode)
 {
     TLinkNode* pCursor = (TLinkNode*)0;
     TLinkNode* pTail = (TLinkNode*)0;
@@ -255,9 +255,9 @@ void uObjListAddPriorityNode(TLinkNode** pHandle2, TLinkNode* pNode)
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void uObjListRemoveNode(TLinkNode** pHandle2, TLinkNode* pNode)
+void OsObjListRemoveNode(TLinkNode** pHandle2, TLinkNode* pNode)
 {
-    KNL_ASSERT((pNode->Handle == pHandle2), "");
+    OS_ASSERT((pNode->Handle == pHandle2), "");
 
     /* 如果队列中只有一个节点 */
     if ((pNode->Prev == (TLinkNode*)0) && (pNode->Next == (TLinkNode*)0))
@@ -297,11 +297,11 @@ void uObjListRemoveNode(TLinkNode** pHandle2, TLinkNode* pNode)
  *  返回：无                                                                                     *
  *  说明：双向非循环链表                                                                         *
  *************************************************************************************************/
-void uObjListAddDiffNode(TLinkNode** pHandle2, TLinkNode* pNode)
+void OsObjListAddDiffNode(TLinkNode** pHandle2, TLinkNode* pNode)
 {
     TLinkNode* pCursor = (TLinkNode*)0;
     TLinkNode* pTail = (TLinkNode*)0;
-    KNL_ASSERT((pNode->Handle == (TLinkNode**)0), "");
+    OS_ASSERT((pNode->Handle == (TLinkNode**)0), "");
 
     /* 如果差分链表为空，则将新节点设为头结点 */
     if ((*pHandle2) == (TLinkNode*)0)
@@ -369,9 +369,9 @@ void uObjListAddDiffNode(TLinkNode** pHandle2, TLinkNode* pNode)
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void uObjListRemoveDiffNode(TLinkNode** pHandle2, TLinkNode* pNode)
+void OsObjListRemoveDiffNode(TLinkNode** pHandle2, TLinkNode* pNode)
 {
-    KNL_ASSERT((pNode->Handle == pHandle2), "");
+    OS_ASSERT((pNode->Handle == pHandle2), "");
 
     /* 如果差分链表中只有一个节点 */
     if ((pNode->Next == (TLinkNode*)0) && (pNode->Prev == (TLinkNode*)0))

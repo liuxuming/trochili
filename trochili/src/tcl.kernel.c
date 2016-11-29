@@ -13,36 +13,20 @@
 #include "tcl.kernel.h"
 
 /* 内核关键参数集合 */
-TKernelVariable uKernelVariable;
+TKernelVariable OsKernelVariable;
 
 static void CreateRootThread(void);
-
-/*************************************************************************************************
- *  功能：板级字符串打印函数                                                                     *
- *  参数：(1) pStr 待打印的字符串                                                                *
- *  返回：无                                                                                     *
- *  说明：                                                                                       *
- *************************************************************************************************/
-void uKernelTrace(const char* pStr)
-{
-    if (uKernelVariable.TraceEntry != (TTraceEntry)0)
-    {
-        uKernelVariable.TraceEntry(pStr);
-    }
-}
-
 
 /*************************************************************************************************
  *  功能：将内核对象加入系统中                                                                   *
  *  参数：(1) pObject 内核对象地址                                                               *
  *        (2) pName   内核对象名称                                                               *
  *        (3) type    内核对象类型                                                               *
-
  *        (4) pOwner  内核对象宿主地址                                                           *
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void uKernelAddObject(TObject* pObject, TChar* pName, TObjectType type, void* pOwner)
+void OsKernelAddObject(TObject* pObject, TChar* pName, TObjectType type, void* pOwner)
 {
     TBase32 len;
 
@@ -51,9 +35,9 @@ void uKernelAddObject(TObject* pObject, TChar* pName, TObjectType type, void* pO
     strncpy(pObject->Name, pName, len);
     pObject->Type  = type;
     pObject->Owner = pOwner;
-    pObject->ID = uKernelVariable.ObjectID;
-    uKernelVariable.ObjectID++;
-    uObjListAddNode(&(uKernelVariable.ObjectList), &(pObject->LinkNode), eLinkPosHead);
+    pObject->ID = OsKernelVariable.ObjectID;
+    OsKernelVariable.ObjectID++;
+    OsObjListAddNode(&(OsKernelVariable.ObjectList), &(pObject->LinkNode), OsLinkTail);
 }
 
 
@@ -63,29 +47,10 @@ void uKernelAddObject(TObject* pObject, TChar* pName, TObjectType type, void* pO
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void uKernelRemoveObject(TObject* pObject)
+void OsKernelRemoveObject(TObject* pObject)
 {
-    uObjListRemoveNode(&(uKernelVariable.ObjectList), &(pObject->LinkNode));
-    memset(pObject, 0u, sizeof(TObject));
-}
-
-
-/*************************************************************************************************
- *  功能：板级字符串打印函数                                                                     *
- *  参数：(1) pStr 待打印的字符串                                                                *
- *  返回：无                                                                                     *
- *  说明：                                                                                       *
- *************************************************************************************************/
-void xKernelTrace(const char* pNote)
-{
-    TReg32 imask;
-
-    CpuEnterCritical(&imask);
-    if (uKernelVariable.TraceEntry != (TTraceEntry)0)
-    {
-        uKernelVariable.TraceEntry(pNote);
-    }
-    CpuLeaveCritical(imask);
+    OsObjListRemoveNode(&(OsKernelVariable.ObjectList), &(pObject->LinkNode));
+    memset(pObject, 0U, sizeof(TObject));
 }
 
 
@@ -95,15 +60,15 @@ void xKernelTrace(const char* pNote)
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void xKernelEnterIntrState(void)
+void OsKernelEnterIntrState(void)
 {
     TReg32 imask;
-    CpuEnterCritical(&imask);
+    OsCpuEnterCritical(&imask);
 
-    uKernelVariable.IntrNestTimes++;
-    uKernelVariable.State = eIntrState;
+    OsKernelVariable.IntrNestTimes++;
+    OsKernelVariable.State = OsExtremeState;
 
-    CpuLeaveCritical(imask);
+    OsCpuLeaveCritical(imask);
 }
 
 
@@ -113,15 +78,15 @@ void xKernelEnterIntrState(void)
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void xKernelLeaveIntrState(void)
+void OsKernelLeaveIntrState(void)
 {
     TReg32 imask;
 
-    CpuEnterCritical(&imask);
+    OsCpuEnterCritical(&imask);
 
-    KNL_ASSERT((uKernelVariable.IntrNestTimes > 0U), "");
-    uKernelVariable.IntrNestTimes--;
-    if (uKernelVariable.IntrNestTimes == 0U)
+    OS_ASSERT((OsKernelVariable.IntrNestTimes > 0U), "");
+    OsKernelVariable.IntrNestTimes--;
+    if (OsKernelVariable.IntrNestTimes == 0U)
     {
         /*
          * 如果还有其它中断标记在挂起或激活，说明当前中断是最高优先级中断，虽然没有发生嵌套，
@@ -129,14 +94,14 @@ void xKernelLeaveIntrState(void)
          * 最低级别的那个中断在退出中断时来完成。
          * 此处的线程调度体现的是"抢占"
          */
-        if (uKernelVariable.SchedLockTimes == 0U)
+        if (OsKernelVariable.SchedLockTimes == 0U)
         {
-            uThreadSchedule();
+            OsThreadSchedule();
         }
-        uKernelVariable.State = eThreadState;
+        OsKernelVariable.State = OsThreadState;
     }
 
-    CpuLeaveCritical(imask);
+    OsCpuLeaveCritical(imask);
 }
 
 
@@ -146,27 +111,50 @@ void xKernelLeaveIntrState(void)
  *  返回：无                                                                                     *
  *  说明：定时器处理函数首先运行，随后进行线程调度处理                                           *
  *************************************************************************************************/
-void xKernelTickISR(void)
+void OsKernelTickISR(void)
 {
     TReg32 imask;
 
-    CpuEnterCritical(&imask);
+    OsCpuEnterCritical(&imask);
 
     /* 内核总运行时间节拍数增加1次 */
-    uKernelVariable.Jiffies++;
-
+    OsKernelVariable.Jiffies++;
+    if (OsKernelVariable.Jiffies == 0U)
+    {
+        OsKernelVariable.JiffyCycles++;
+    }
+	
     /* 处理线程时钟节拍 */
-    uThreadTickUpdate();
+    OsThreadTickUpdate();
 
     /* 处理线程定时器时钟节拍 */
-    uThreadTimerUpdate();
+    OsThreadTimerUpdate();
 
     /* 处理用户定时器时钟节拍 */
 #if (TCLC_TIMER_ENABLE)
-    uTimerTickUpdate();
+    OsTimerTickUpdate();
 #endif
 
-    CpuLeaveCritical(imask);
+    OsCpuLeaveCritical(imask);
+}
+
+
+/*************************************************************************************************
+ *  功能：板级字符串打印函数                                                                     *
+ *  参数：(1) pStr 待打印的字符串                                                                *
+ *  返回：无                                                                                     *
+ *  说明：                                                                                       *
+ *************************************************************************************************/
+void TclTrace(const char* pNote)
+{
+    TReg32 imask;
+    OS_ASSERT((pNote != (char*)0), "");
+    OsCpuEnterCritical(&imask);
+    if (OsKernelVariable.TraceEntry != (TTraceEntry)0)
+    {
+        OsKernelVariable.TraceEntry(pNote);
+    }
+    OsCpuLeaveCritical(imask);
 }
 
 
@@ -176,18 +164,18 @@ void xKernelTickISR(void)
  *  返回：无                                                                                     *
  *  说明：本函数只能被线程调用                                                                   *
  *************************************************************************************************/
-TState xKernelLockSched(void)
+TState TclLockScheduler(void)
 {
     TState state = eFailure;
     TReg32 imask;
 
-    CpuEnterCritical(&imask);
-    if (uKernelVariable.State == eThreadState)
+    OsCpuEnterCritical(&imask);
+    if (OsKernelVariable.State == OsThreadState)
     {
-        uKernelVariable.SchedLockTimes++;
+        OsKernelVariable.SchedLockTimes++;
         state = eSuccess;
     }
-    CpuLeaveCritical(imask);
+    OsCpuLeaveCritical(imask);
     return state;
 }
 
@@ -198,30 +186,30 @@ TState xKernelLockSched(void)
  *  返回：无                                                                                     *
  *  说明：本函数只能被线程调用                                                                   *
  *************************************************************************************************/
-TState xKernelUnlockSched(void)
+TState TclUnlockScheduler(void)
 {
     TState state = eFailure;
     TReg32 imask;
 
-    CpuEnterCritical(&imask);
-    if (uKernelVariable.State == eThreadState)
+    OsCpuEnterCritical(&imask);
+    if (OsKernelVariable.State == OsThreadState)
     {
-        if (uKernelVariable.SchedLockTimes > 0U)
+        if (OsKernelVariable.SchedLockTimes > 0U)
         {
-            uKernelVariable.SchedLockTimes--;
+            OsKernelVariable.SchedLockTimes--;
             /*
              * 在关闭调度器的阶段，当前线程有可能使得其他更高优先级的线程就绪，ISR也可能将
              * 一些高优先级的线程解除阻塞。所以在打开调度器的时候，需要做一次线程调度检查，
              * 和系统从中断返回时类似
              */
-            if (uKernelVariable.SchedLockTimes == 0U)
+            if (OsKernelVariable.SchedLockTimes == 0U)
             {
-                uThreadSchedule();
+                OsThreadSchedule();
             }
             state = eSuccess;
         }
     }
-    CpuLeaveCritical(imask);
+    OsCpuLeaveCritical(imask);
     return state;
 }
 
@@ -232,13 +220,14 @@ TState xKernelUnlockSched(void)
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void xKernelSetIdleEntry(TSysIdleEntry pEntry)
+void TclSetSysIdleEntry(TSysIdleEntry pEntry)
 {
     TReg32 imask;
+    OS_ASSERT((pEntry != (TSysIdleEntry)0), "");
 
-    CpuEnterCritical(&imask);
-    uKernelVariable.SysIdleEntry = pEntry;
-    CpuLeaveCritical(imask);
+    OsCpuEnterCritical(&imask);
+    OsKernelVariable.SysIdleEntry = pEntry;
+    OsCpuLeaveCritical(imask);
 }
 
 
@@ -248,13 +237,31 @@ void xKernelSetIdleEntry(TSysIdleEntry pEntry)
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void xKernelSetFaultEntry(TSysFaultEntry pEntry)
+void TclSetSysFaultEntry(TSysFaultEntry pEntry)
 {
     TReg32 imask;
+    OS_ASSERT((pEntry != (TSysFaultEntry)0), "");
 
-    CpuEnterCritical(&imask);
-    uKernelVariable.SysFaultEntry = pEntry;
-    CpuLeaveCritical(imask);
+    OsCpuEnterCritical(&imask);
+    OsKernelVariable.SysFaultEntry = pEntry;
+    OsCpuLeaveCritical(imask);
+}
+
+
+/*************************************************************************************************
+ *  功能：设置系统Warning函数                                                                    *
+ *  参数：(1) pEntry 系统Warning函数                                                             *
+ *  返回：无                                                                                     *
+ *  说明：                                                                                       *
+ *************************************************************************************************/
+void TclSetSysWarningEntry(TSysWarningEntry pEntry)
+{
+    TReg32 imask;
+    OS_ASSERT((pEntry != (TSysWarningEntry)0), "");
+
+    OsCpuEnterCritical(&imask);
+    OsKernelVariable.SysWarningEntry = pEntry;
+    OsCpuLeaveCritical(imask);
 }
 
 
@@ -264,29 +271,33 @@ void xKernelSetFaultEntry(TSysFaultEntry pEntry)
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void xKernelGetCurrentThread(TThread** pThread2)
+void TclGetCurrentThread(TThread** pThread2)
 {
     TReg32 imask;
+    OS_ASSERT((pThread2 != (TThread**)0), "");
 
-    CpuEnterCritical(&imask);
-    *pThread2 = uKernelVariable.CurrentThread;
-    CpuLeaveCritical(imask);
+    OsCpuEnterCritical(&imask);
+    *pThread2 = OsKernelVariable.CurrentThread;
+    OsCpuLeaveCritical(imask);
 }
 
 
 /*************************************************************************************************
  *  功能：获得系统已运行时钟节拍数                                                               *
  *  参数：(1) pJiffies 返回系统已运行时钟节拍数                                                  *
+ *        (2) pCycles  返回系统已运行时钟轮回数                                                  *
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void xKernelGetJiffies(TTimeTick* pJiffies)
+void TclGetTimeStamp(TBase32* pCycles, TTimeTick* pJiffies)
 {
     TReg32 imask;
+    OS_ASSERT((pJiffies != (TTimeTick*)0), "");
 
-    CpuEnterCritical(&imask);
-    *pJiffies = uKernelVariable.Jiffies;
-    CpuLeaveCritical(imask);
+    OsCpuEnterCritical(&imask);
+    *pJiffies = OsKernelVariable.Jiffies;
+    *pCycles  = OsKernelVariable.JiffyCycles;
+    OsCpuLeaveCritical(imask);
 }
 
 
@@ -299,47 +310,54 @@ void xKernelGetJiffies(TTimeTick* pJiffies)
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void xKernelStart(TUserEntry pUserEntry,
-                  TCpuSetupEntry pCpuEntry,
-                  TBoardSetupEntry pBoardEntry,
-                  TTraceEntry pTraceEntry)
+void TclStartKernel(TUserEntry pUserEntry,
+                    TCpuSetupEntry pCpuEntry,
+                    TBoardSetupEntry pBoardEntry,
+                    TTraceEntry pTraceEntry)
 {
+    OS_ASSERT((pUserEntry  != (TUserEntry)0), "");
+    OS_ASSERT((pCpuEntry   != (TCpuSetupEntry)0), "");
+    OS_ASSERT((pBoardEntry != (TBoardSetupEntry)0), "");
+    OS_ASSERT((pTraceEntry != (TTraceEntry)0), "");
+
+
     /* 关闭处理器中断 */
-    CpuDisableInt();
+    OsCpuDisableInt();
 
     /* 初始化基本内核参数 */
-    memset(&uKernelVariable, 0U, sizeof(uKernelVariable));
-    uKernelVariable.UserEntry       = pUserEntry;
-    uKernelVariable.CpuSetupEntry   = pCpuEntry;
-    uKernelVariable.BoardSetupEntry = pBoardEntry;
-    uKernelVariable.TraceEntry      = pTraceEntry;
-    uKernelVariable.SchedLockTimes  = 0U;
-    uKernelVariable.State           = eOriginState;
+    memset(&OsKernelVariable, 0U, sizeof(OsKernelVariable));
+    OsKernelVariable.UserEntry       = pUserEntry;
+    OsKernelVariable.CpuSetupEntry   = pCpuEntry;
+    OsKernelVariable.BoardSetupEntry = pBoardEntry;
+    OsKernelVariable.TraceEntry      = pTraceEntry;
+    OsKernelVariable.SchedLockTimes  = 0U;
+    OsKernelVariable.State           = OsOriginState;
 
-    /* 初始化所有内核模块 */
-    uThreadModuleInit();                    /* 初始化线程管理模块           */
+    /* 初始化线程管理模块 */
+    OsThreadModuleInit();
+
+    /* 初始化内核ROOT线程并且激活 */
+    CreateRootThread();
+
+    /* 初始化定时器模块和定时器线程 */
 #if (TCLC_TIMER_ENABLE)
-    uTimerModuleInit();                     /* 初始化定时器模块             */
+    OsTimerModuleInit();
 #endif
+
+    /* 初始化中断管理模块和中断守护线程 */
 #if (TCLC_IRQ_ENABLE)
-    uIrqModuleInit();                       /* 初始化中断管理模块           */
+    OsIrqModuleInit();
 #endif
 
-    CreateRootThread();                     /* 初始化内核ROOT线程并且激活   */
-#if (TCLC_TIMER_ENABLE)
-    uTimerCreateDaemon();                   /* 初始化内核定时器线程并且激活 */
-#endif
-#if ((TCLC_IRQ_ENABLE) && (TCLC_IRQ_DAEMON_ENABLE))
-    uIrqCreateDaemon();                     /* 初始化内核IRQ线程并且激活    */
-#endif
+    /* 调用处理器和板级初始化函数 */
+    OsKernelVariable.CpuSetupEntry();
+    OsKernelVariable.BoardSetupEntry();
 
-    uKernelVariable.CpuSetupEntry();        /* 调用处理器和板级初始化函数   */
-    uKernelVariable.BoardSetupEntry();      /* 调用处理器和板级初始化函数   */
-
-    CpuLoadRootThread();                    /* 启动内核ROOT线程             */
+    /* 启动内核ROOT线程 */
+    OsCpuLoadRootThread();
 
     /* 打开处理器中断 */
-    CpuEnableInt();
+    OsCpuEnableInt();
 
     /*
      * 本段代码应该永远不会被执行，若运行到此，说明移植时出现问题。
@@ -347,7 +365,7 @@ void xKernelStart(TUserEntry pUserEntry,
      */
     while (eTrue)
     {
-        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+        OsDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 }
 
@@ -357,7 +375,7 @@ static TThread RootThread;
 static TBase32 RootThreadStack[TCLC_ROOT_THREAD_STACK_BYTES >> 2];
 
 /* 内核ROOT线程不接受任何线程管理API操作 */
-#define THREAD_ACAPI_ROOT (THREAD_ACAPI_NONE)
+#define OS_THREAD_ACAPI_ROOT (OS_THREAD_ACAPI_NONE)
 
 /*************************************************************************************************
  *  功能：内核ROOT线程函数                                                                       *
@@ -366,42 +384,42 @@ static TBase32 RootThreadStack[TCLC_ROOT_THREAD_STACK_BYTES >> 2];
  *  说明：该函数首先开启多任务机制，然后调度其它线程运行                                         *
  *        注意线程栈容量大小的问题，这个线程函数不要做太多工作                                   *
  *************************************************************************************************/
-static void xRootThreadEntry(TBase32 argument)
+static void RootThreadEntry(TBase32 argument)
 {
     /* 关闭处理器中断 */
-    CpuDisableInt();
+    OsCpuDisableInt();
     {
         /* 标记内核进入多线程模式 */
-        uKernelVariable.State = eThreadState;
+        OsKernelVariable.State = OsThreadState;
 
         /* 临时关闭线程调度功能 */
-        uKernelVariable.SchedLockTimes = 1U;
+        OsKernelVariable.SchedLockTimes = 1U;
         {
             /*
              * 调用用户入口函数，初始化用户程序。
-             * 该函数运行在eThreadState,但是禁止Schedulable的状态下
+             * 该函数运行在OsThreadState,但是禁止Schedulable的状态下
              */
-            if(uKernelVariable.UserEntry == (TUserEntry)0)
+            if(OsKernelVariable.UserEntry == (TUserEntry)0)
             {
-                xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+                OsDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
             }
-            uKernelVariable.UserEntry();
+            OsKernelVariable.UserEntry();
         }
         /* 开启线程调度功能 */
-        uKernelVariable.SchedLockTimes = 0U;
+        OsKernelVariable.SchedLockTimes = 0U;
 
         /* 打开系统时钟节拍 */
-        CpuStartTickClock();
+        OsCpuStartTickClock();
     }
     /* 打开处理器中断 */
-    CpuEnableInt();
+    OsCpuEnableInt();
 
     /* 调用IDLE Hook函数，此时多线程机制已经打开 */
     while (eTrue)
     {
-        if (uKernelVariable.SysIdleEntry != (TSysIdleEntry)0)
+        if (OsKernelVariable.SysIdleEntry != (TSysIdleEntry)0)
         {
-            uKernelVariable.SysIdleEntry();
+            OsKernelVariable.SysIdleEntry();
         }
     }
 }
@@ -416,28 +434,29 @@ static void xRootThreadEntry(TBase32 argument)
 static void CreateRootThread(void)
 {
     /* 检查内核是否处于初始状态 */
-    if(uKernelVariable.State != eOriginState)
+    if(OsKernelVariable.State != OsOriginState)
     {
-        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+        OsDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
     /* 初始化内核ROOT线程 */
-    uThreadCreate(&RootThread,
-                  "kernel root thread",
-                  eThreadReady,
-                  THREAD_PROP_PRIORITY_FIXED|\
-                  THREAD_PROP_CLEAN_STACK|\
-                  THREAD_PROP_KERNEL_ROOT,
-                  THREAD_ACAPI_ROOT,
-                  xRootThreadEntry,
-                  (TArgument)0,
-                  (void*)RootThreadStack,
-                  (TBase32)TCLC_ROOT_THREAD_STACK_BYTES,
-                  (TPriority)TCLC_ROOT_THREAD_PRIORITY,
-                  (TTimeTick)TCLC_ROOT_THREAD_SLICE);
+    OsThreadCreate(&RootThread,
+                   "kernel root thread",
+                   OsThreadReady,
+                   OS_THREAD_PROP_PRIORITY_FIXED|\
+                   OS_THREAD_PROP_CLEAN_STACK|\
+                   OS_THREAD_PROP_KERNEL_ROOT,
+                   OS_THREAD_ACAPI_ROOT,
+                   RootThreadEntry,
+                   (TArgument)0,
+                   (void*)RootThreadStack,
+                   (TBase32)TCLC_ROOT_THREAD_STACK_BYTES,
+                   (TPriority)TCLC_ROOT_THREAD_PRIORITY,
+                   (TTimeTick)TCLC_ROOT_THREAD_SLICE);
 
     /* 初始化相关的内核变量 */
-    uKernelVariable.RootThread    = &RootThread;
-    uKernelVariable.NomineeThread = &RootThread;
-    uKernelVariable.CurrentThread = &RootThread;
+    OsKernelVariable.RootThread    = &RootThread;
+    OsKernelVariable.NomineeThread  = &RootThread;
+    OsKernelVariable.CurrentThread = &RootThread;
 }
+

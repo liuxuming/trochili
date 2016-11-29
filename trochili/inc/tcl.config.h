@@ -45,7 +45,7 @@
 
 /* 中断管理配置 */
 #define TCLC_IRQ_ENABLE                 (1)           /* 使能中断管理功能               */
-#define TCLC_IRQ_VECTOR_NUM             (8U)          /* 配置中断向量表表项数目         */
+#define TCLC_IRQ_VECTOR_NUM             (32U)         /* 配置中断向量表表项数目         */
 #define TCLC_IRQ_DAEMON_ENABLE          (1)           /* 使能异步中断处理线程           */
 
 /* 动态内存管理配置 */
@@ -67,12 +67,13 @@
 
 /* 内核ROOT线程优先级、时间片和栈大小 */
 #define TCLC_ROOT_THREAD_PRIORITY       (TCLC_LOWEST_PRIORITY)
-#define TCLC_ROOT_THREAD_SLICE          (0xFFFFFFFF)
+#define TCLC_ROOT_THREAD_SLICE          (10U)
 #define TCLC_ROOT_THREAD_STACK_BYTES    (512U)
 
 /* 处理器参数配置 */
 #define TCLC_CPU_MINIMAL_STACK          (256U)
-#define TCLC_CPU_IRQ_NUM                (73)
+#define TCLC_CPU_STACK_ALIGNED          (4U)
+#define TCLC_CPU_IRQ_NUM                (73U)
 #define TCLC_CPU_CLOCK_FREQ             (72U*1024U*1024U)
 
 #endif /* _TCL_CONFIG_H */

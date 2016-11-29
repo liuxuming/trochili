@@ -6,9 +6,10 @@
 #ifndef _TCL_MUTEX_H
 #define _TCL_MUTEX_H
 
+#include "tcl.config.h"
 #include "tcl.types.h"
 #include "tcl.object.h"
-#include "tcl.thread.h"
+#include "tcl.ipc.h"
 
 #if ((TCLC_IPC_ENABLE)&&(TCLC_IPC_MUTEX_ENABLE))
 
@@ -20,18 +21,17 @@ struct MutexDef
     TBase32   Nest;          /* 互斥信号量嵌套加锁深度         */
     TPriority Priority;      /* ceiling value                  */
     TIpcQueue Queue;         /* 互斥信号量的线程阻塞队列       */
-    TLinkNode LockNode;      /* 用来组成互斥量链表             */   
+    TLinkNode LockNode;      /* 用来组成互斥量链表             */
     TObject   Object;
 };
 typedef struct MutexDef TMutex;
 
-extern TState xMutexCreate(TMutex* pMutex, TChar* pName, TPriority priority, TProperty property, TError* pError);
-extern TState xMutexDelete(TMutex* pMutex, TError* pError);
-extern TState xMutexLock(TMutex* pMutex, TOption option, TTimeTick timeo, TError* pError);
-extern TState xMutexFree(TMutex* pMutex, TError* pError);
-extern TState xMutexReset(TMutex* pMutex, TError* pError);
-extern TState xMutexFlush(TMutex* pMutex, TError* pError);
-
+extern TState TclCreateMutex(TMutex* pMutex, TChar* pName, TProperty property, TPriority priority, TError* pError);
+extern TState TclDeleteMutex(TMutex* pMutex, TError* pError);
+extern TState TclLockMutex(TMutex* pMutex, TOption option, TTimeTick timeo, TError* pError);
+extern TState TclFreeMutex(TMutex* pMutex, TError* pError);
+extern TState TclResetMutex(TMutex* pMutex, TError* pError);
+extern TState TclFlushMutex(TMutex* pMutex, TError* pError);
 #endif
 
 #endif /*_TCL_MUTEX_H*/

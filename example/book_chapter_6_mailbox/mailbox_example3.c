@@ -29,7 +29,7 @@ typedef struct
 
 
 /* 用户邮箱、邮件和信号量定义 */
-static TMailBox LedMailbox;
+static TMailbox LedMailbox;
 static TLedMail LedMail;
 static TSemaphore LedSemaphore;
 
@@ -106,7 +106,7 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化信号量和邮箱 */
-    state = TclCreateMailBox(&LedMailbox, "mbox", TCLP_IPC_DEFAULT, &error);
+    state = TclCreateMailbox(&LedMailbox, "mbox", TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
@@ -155,7 +155,7 @@ int main(void)
 {
     /* 注册各个内核函数,启动内核 */
     TclStartKernel(&AppSetupEntry,
-                   &CpuSetupEntry,
+                   &OsCpuSetupEntry,
                    &EvbSetupEntry,
                    &EvbTraceEntry);
     return 1;

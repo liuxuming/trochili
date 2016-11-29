@@ -18,7 +18,6 @@ typedef unsigned int       TBitMask;
 typedef unsigned int       TOption;
 typedef unsigned int       TProperty;
 typedef unsigned long long TTimeTick;
-typedef unsigned long long TTimeStamp;
 typedef unsigned int       TError;
 typedef unsigned int       TArgument;
 
@@ -32,9 +31,9 @@ typedef enum
 /* API与各函数返回值的统一定义  */
 typedef enum
 {
-    eFailure,                            /* 函数调用失败                                         */
-    eSuccess,                            /* 函数调用成功                                         */
-    eError,                              /* 函数调用发生错误                                     */
+    eFailure,                            /* 函数调用失败         */
+    eSuccess,                            /* 函数调用成功         */
+    eError,                              /* 函数调用发生错误     */
 } TState;
 
 #define TCLM_OFFSET_OF(TYPE, MEMBER) ((TBase32)(&(((TYPE *)0)->MEMBER)))

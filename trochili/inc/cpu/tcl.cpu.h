@@ -8,18 +8,18 @@
 
 #include "tcl.types.h"
 
-extern void CpuSetupEntry(void);
-extern void CpuStartTickClock(void);
-extern void CpuBuildThreadStack(TAddr32* pTop, void* pStack, TBase32 bytes,
+extern void OsCpuSetupEntry(void);
+extern void OsCpuStartTickClock(void);
+extern void OsCpuBuildThreadStack(TAddr32* pTop, void* pStack, TBase32 bytes,
                                 void* pEntry, TArgument argument);
-extern void CpuConfirmThreadSwitch(void);
-extern void CpuCancelThreadSwitch(void);
-extern void CpuDisableInt(void);
-extern void CpuEnableInt(void);
-extern void CpuEnterCritical(TReg32* pValue);
-extern void CpuLeaveCritical(TReg32 value);
-extern void CpuLoadRootThread(void);
-extern TPriority CpuCalcHiPRIO(TBase32 data);
+extern void OsCpuConfirmThreadSwitch(void);
+extern void OsCpuCancelThreadSwitch(void);
+extern void OsCpuDisableInt(void);
+extern void OsCpuEnableInt(void);
+extern void OsCpuEnterCritical(TReg32* pValue);
+extern void OsCpuLeaveCritical(TReg32 value);
+extern void OsCpuLoadRootThread(void);
+extern TPriority OsCpuCalcHiPRIO(TBase32 data);
 
 #endif /* _TCLC_CPU_H */
 

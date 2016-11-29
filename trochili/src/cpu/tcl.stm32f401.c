@@ -42,11 +42,11 @@
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void CpuStartTickClock(void)
+void OsCpuStartTickClock(void)
 {
     /* 初始化systick定时器 */
     TBase32 value = TCLC_CPU_CLOCK_FREQ / TCLC_TIME_TICK_RATE;
-    TCLM_SET_REG32(CM3_SYSTICK_RELOAD, value - 1u);
+    TCLM_SET_REG32(CM3_SYSTICK_RELOAD, value - 1U);
     TCLM_SET_REG32(CM3_SYSTICK_CTRL, CM3_SYSTICK_CLKSRC|CM3_SYSTICK_INTEN|CM3_SYSTICK_ENABLE);
 }
 
@@ -56,7 +56,7 @@ void CpuStartTickClock(void)
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void CpuLoadRootThread()
+void OsCpuLoadRootThread()
 {
     TCLM_SET_REG32(CM3_ICSR, CM3_ICSR_PENDSVSET);
 }
@@ -68,7 +68,7 @@ void CpuLoadRootThread()
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void CpuConfirmThreadSwitch(void)
+void OsCpuConfirmThreadSwitch(void)
 {
     TCLM_SET_REG32(CM3_ICSR, CM3_ICSR_PENDSVSET);
 }
@@ -80,7 +80,7 @@ void CpuConfirmThreadSwitch(void)
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void CpuCancelThreadSwitch(void)
+void OsCpuCancelThreadSwitch(void)
 {
     TCLM_SET_REG32(CM3_ICSR, CM3_ICSR_PENDSVCLR);
 }
@@ -96,7 +96,7 @@ void CpuCancelThreadSwitch(void)
  *  返回：无                                                                                     *
  *  说明：线程栈起始地址必须4字节对齐                                                            *
  *************************************************************************************************/
-void CpuBuildThreadStack(TAddr32* pTop, void* pStack, TBase32 bytes,
+void OsCpuBuildThreadStack(TAddr32* pTop, void* pStack, TBase32 bytes,
                          void* pEntry, TArgument argument)
 {
     TReg32* pTemp;
@@ -134,7 +134,7 @@ void CpuBuildThreadStack(TAddr32* pTop, void* pStack, TBase32 bytes,
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void CpuSetupEntry(void)
+void OsCpuSetupEntry(void)
 {
     /* 配置PENDSV中断优先级 */
     TCLM_SET_REG32(CM3_PRIO_PENDSV, CM3_PENDSV_PRIORITY);
@@ -144,18 +144,18 @@ void CpuSetupEntry(void)
 /* 重写库函数 */
 void SysTick_Handler(void)
 {
-    xKernelEnterIntrState();
-    xKernelTickISR();
-    xKernelLeaveIntrState();
+    OsKernelEnterIntrState();
+    OsKernelTickISR();
+    OsKernelLeaveIntrState();
 }
 
 /* 重写库函数 */
 void EXTI15_10_IRQHandler(void)
 {
 #if (TCLC_IRQ_ENABLE)
-    xKernelEnterIntrState();
-    xIrqEnterISR(EXTI15_10_IRQ_ID);
-    xKernelLeaveIntrState();
+    OsKernelEnterIntrState();
+    OsIrqEnterISR(EXTI15_10_IRQ_ID);
+    OsKernelLeaveIntrState();
 #else
     return;
 #endif
@@ -166,9 +166,9 @@ void EXTI15_10_IRQHandler(void)
 void TIM2_IRQHandler(void)
 {
 #if (TCLC_IRQ_ENABLE)
-    xKernelEnterIntrState();
-    xIrqEnterISR(TIM2_IRQ_ID);
-    xKernelLeaveIntrState();
+    OsKernelEnterIntrState();
+    OsIrqEnterISR(TIM2_IRQ_ID);
+    OsKernelLeaveIntrState();
 #else
     return;
 #endif
@@ -178,9 +178,9 @@ void TIM2_IRQHandler(void)
 void USART1_IRQHandler(void)	
 {
 #if (TCLC_IRQ_ENABLE)
-    xKernelEnterIntrState();
-    xIrqEnterISR(USART1_IRQ_ID);
-    xKernelLeaveIntrState();
+    OsKernelEnterIntrState();
+    OsIrqEnterISR(USART1_IRQ_ID);
+    OsKernelLeaveIntrState();
 #else
     return;
 #endif    

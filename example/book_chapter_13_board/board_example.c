@@ -4,7 +4,7 @@
 #if (EVB_EXAMPLE == CH13_BOARD_TEST_EXAMPLE)
 
 /* 用户线程参数 */
-#define THREAD_LED_STACK_BYTES         (512)
+#define THREAD_LED_STACK_BYTES         (515)
 #define THREAD_LED_PRIORITY            (5)
 #define THREAD_LED_SLICE               (20)
 
@@ -20,7 +20,7 @@ static TTimer LedTimer1;
 static TTimer LedTimer2;
 
 /* 用户定时器1的回调函数，间隔1秒，点亮或熄灭Led1 */
-static void Blink1(TArgument data, TTimeTick ticks)
+static void Blink1(TArgument data, TBase32 cycles, TTimeTick ticks)
 {
     static int index = 0;
 
@@ -38,7 +38,7 @@ static void Blink1(TArgument data, TTimeTick ticks)
 }
 
 /* 用户定时器1的回调函数，间隔1秒，点亮或熄灭Led1 */
-static void Blink2(TArgument data, TTimeTick ticks)
+static void Blink2(TArgument data, TBase32 cycles, TTimeTick ticks)
 {
     static int index = 0;
 
@@ -176,7 +176,7 @@ int main(void)
 {
     /* 注册各个内核函数，启动内核 */
     TclStartKernel(&AppSetupEntry,
-                   &CpuSetupEntry,
+                   &OsCpuSetupEntry,
                    &EvbSetupEntry,
                    &EvbTraceEntry);
 

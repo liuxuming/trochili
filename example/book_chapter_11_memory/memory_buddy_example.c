@@ -572,7 +572,7 @@ int main(void)
 {
     /* 注册各个内核函数,启动内核 */
     TclStartKernel(&AppSetupEntry,
-                   &CpuSetupEntry,
+                   &OsCpuSetupEntry,
                    &EvbSetupEntry,
                    &EvbTraceEntry);
     return 1;
@@ -1288,7 +1288,7 @@ int main(void)
 {
     /* 注册各个内核函数 */
     TclStartKernel(&EVB_AppEntry,
-                   &CpuSetupEntry,
+                   &OsCpuSetupEntry,
                    &EvbSetupEntry,
                    &EvbTraceEntry);
 

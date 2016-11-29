@@ -21,53 +21,67 @@
  * 内核定时器分为2种，分别用于线程延时、时限方式访问资源的线程定时器和用户定时器
  * 本模块只负责用户定时器。
  */
-static TTimerList TimerList;
-
+static TTimerList TimerActiveListA;
+static TTimerList TimerActiveListB;
+static TLinkNode* TimerDormantList;
+static TLinkNode* TimerExpiredList;
 
 /*************************************************************************************************
  *  功能：定时器执行处理函数                                                                     *
  *  参数：(1) pTimer 定时器                                                                      *
  *  返回：无                                                                                     *
- *  说明: (1)线程延时的时候，线程被放入内核线程辅助队列中                                        *
- *        (2)线程以时限方式访问资源的时候，如果得不到资源，则线程会被同时放入资源的线程阻塞队列  *
+ *  说明: (1)线程以时限方式访问资源的时候，如果得不到资源，则线程会被同时放入资源的线程阻塞队列  *
  *           和内核线程辅助队列中。                                                              *
- *        (3)用户周期性定时器期满后，会立刻进入下一轮计时。同时也会进入期满队列。所有用户定时器  *
+ *        (2)用户周期性定时器期满后，会立刻进入下一轮计时。同时也会进入期满队列。所有用户定时器  *
  *           都将由系统定时器守护线程处理。也就是说，用户定时器的回调函数是在线程态执行的。      *
- *        (4)这里虽然有线程队列操作但是不进行调度，是因为这个函数是在中断中调用的，              *
- *           在最后一层中断返回后，会尝试进行一次线程切换，所以在这里做切换的话是白白浪费时间    *
  *************************************************************************************************/
 static void DispatchExpiredTimer(TTimer* pTimer)
 {
     TIndex spoke;
+    TTimerList *pList;
 
     /*
      * 将定时器放入内核定时器期满列表，
      * 最后由定时器守护线程处理。紧急的定时器优先处理;
      */
-    if (!(pTimer->Property & TIMER_PROP_EXPIRED))
+    if (!(pTimer->Property & OS_TIMER_PROP_EXPIRED))
     {
-        uObjListAddPriorityNode(&(TimerList.ExpiredHandle), &(pTimer->ExpiredNode));
+        OsObjListAddPriorityNode(&TimerExpiredList, &(pTimer->ExpiredNode));
         pTimer->ExpiredTicks = pTimer->MatchTicks;
-        pTimer->Property |= TIMER_PROP_EXPIRED;
+        pTimer->ExpiredTicksCycles = OsKernelVariable.JiffyCycles;
+        pTimer->Property |= OS_TIMER_PROP_EXPIRED;
     }
 
     /* 将定时器从活动队列中移出 */
-    uObjListRemoveNode(pTimer->LinkNode.Handle, &(pTimer->LinkNode));
+    OsObjListRemoveNode(pTimer->LinkNode.Handle, &(pTimer->LinkNode));
 
     /* 将周期类型的用户定时器重新放回活动定时器队列里 */
-    if (pTimer->Property & TIMER_PROP_PERIODIC)
+    if (pTimer->Property & OS_TIMER_PROP_PERIODIC)
     {
-      	pTimer->ExpiredTimes++;
+        /* 定时器期满次数加1 */
+        pTimer->ExpiredTimes++;
+
+        /* 计算下次期满时间，如果定时器时间溢出，则将定时器放入另一个定时器队列里 */
         pTimer->MatchTicks += pTimer->PeriodTicks;
+        if (pTimer->MatchTicks <= OsKernelVariable.Jiffies)
+        {
+            pList = (OsKernelVariable.TimerList == &TimerActiveListA)?\
+                    (&TimerActiveListB): (&TimerActiveListA);
+        }
+        else
+        {
+            pList = OsKernelVariable.TimerList;
+        }
+
         spoke = (TBase32)(pTimer->MatchTicks % TCLC_TIMER_WHEEL_SIZE);
-        uObjListAddPriorityNode(&(TimerList.ActiveHandle[spoke]), &(pTimer->LinkNode));
-        pTimer->Status = eTimerActive;
+        OsObjListAddPriorityNode(&(pList->Handle[spoke]), &(pTimer->LinkNode));
+        pTimer->Status = OsTimerActive;
     }
     else
     {
         /* 将单次回调定时器放到休眠队列里 */
-        uObjListAddNode(&(TimerList.DormantHandle), &(pTimer->LinkNode), eLinkPosHead);
-        pTimer->Status = eTimerDormant;
+        OsObjListAddNode(&TimerDormantList, &(pTimer->LinkNode), OsLinkTail);
+        pTimer->Status = OsTimerDormant;
     }
 }
 
@@ -78,22 +92,32 @@ static void DispatchExpiredTimer(TTimer* pTimer)
  *  返回：无                                                                                     *
  *  说明:                                                                                        *
  *************************************************************************************************/
-void uTimerTickUpdate(void)
+void OsTimerTickUpdate(void)
 {
-    TTimer*   pTimer;
-    TIndex    spoke;
+    TTimer* pTimer;
+    TIndex  spoke;
     TLinkNode* pNode;
     TLinkNode* pNext;
+    TTimerList* pList;
+
+    /* 如果系统Jiffes达到0说明Jiffes计数溢出，此时需要切换用户定时器队列 */
+    if (OsKernelVariable.Jiffies == 0U)
+    {
+        OsKernelVariable.TimerList =
+            (OsKernelVariable.TimerList == &TimerActiveListA)?\
+            (&TimerActiveListB): (&TimerActiveListA);
+    }
+    pList = OsKernelVariable.TimerList;
 
     /* 根据当前系统时钟节拍计数计算出当前活动定时器队列 */
-    spoke = (TIndex)(uKernelVariable.Jiffies % TCLC_TIMER_WHEEL_SIZE);
-    pNode = TimerList.ActiveHandle[spoke];
+    spoke = (TIndex)(OsKernelVariable.Jiffies % TCLC_TIMER_WHEEL_SIZE);
+    pNode = pList->Handle[spoke];
 
     /*
      * 检查当前活动定时器队列里的定时器。队列里的定时器按照期满节拍值由小到大排列。
-     * 如果某个队列队首定时器计数小于当前系统时钟节拍计数，这说明有定时器计数发生溢出，
-     * 不过在本系统中，系统时钟节拍计数为64Bits,同时强制要求定时器延时计数必须小于63Bits，
-     * 这样即使定时器计数发生溢出，也不会丢失计数。
+     * 队列队首定时器计数一定不会小于当前系统时钟节拍计数。
+     * 在本系统中，系统时钟节拍计数默认为64Bits。
+     * 因为双定时器队列互为缓冲，所以即使定时器计数发生溢出，也不会丢失计数。
      */
     while (pNode != (TLinkNode*)0)
     {
@@ -102,15 +126,10 @@ void uTimerTickUpdate(void)
 
         /*
          * 比较定时器的延时节拍数和此时系统时钟节拍数，
-         * 如果小于则跳过该定时器;
          * 如果等于则处理该定时器;
          * 如果大于则退出整个流程;
          */
-        if (pTimer->MatchTicks < uKernelVariable.Jiffies)
-        {
-            pNode = pNext;
-        }
-        else if (pTimer->MatchTicks == uKernelVariable.Jiffies)
+        if (pTimer->MatchTicks == OsKernelVariable.Jiffies)
         {
             DispatchExpiredTimer(pTimer);
             pNode = pNext;
@@ -122,9 +141,9 @@ void uTimerTickUpdate(void)
     }
 
     /* 如果需要则唤醒内核内置的用户定时器守护线程 */
-    if (TimerList.ExpiredHandle != (TLinkNode*)0)
+    if (TimerExpiredList != (TLinkNode*)0)
     {
-        uThreadResumeFromISR(uKernelVariable.TimerDaemon);
+        OsThreadResumeFromISR(OsKernelVariable.TimerDaemon);
     }
 }
 
@@ -143,32 +162,41 @@ void uTimerTickUpdate(void)
  *        (2) eFailure 操作失败                                                                  *
  *  说明                                                                                         *
  *************************************************************************************************/
-TState xTimerCreate(TTimer* pTimer, TChar* pName, TProperty property, TTimeTick ticks,
-                    TTimerRoutine pRoutine, TArgument data, TPriority priority, TError* pError)
+TState TclCreateTimer(TTimer* pTimer, TChar* pName, TProperty property, TTimeTick ticks,
+                      TTimerRoutine pRoutine, TArgument data, TPriority priority, TError* pError)
 {
     TState state = eFailure;
-    TError error = TIMER_ERR_FAULT;
+    TError error = OS_TIMER_ERR_FAULT;
     TReg32 imask;
 
-    CpuEnterCritical(&imask);
+    OS_ASSERT((pTimer != (TTimer*)0), "");
+    OS_ASSERT((pName != (TChar*)0), "");
+    OS_ASSERT((pRoutine != (TTimerRoutine)0), "");
+    OS_ASSERT((ticks > 0U), "");
+    OS_ASSERT((pError != (TError*)0), "");
+
+    property &= OS_TIMER_USER_PROPERTY;
+
+    OsCpuEnterCritical(&imask);
 
     /* 检查定时器就绪属性 */
-    if (!(pTimer->Property & TIMER_PROP_READY))
+    if (!(pTimer->Property & OS_TIMER_PROP_READY))
     {
         /* 将定时器加入到内核对象队列中 */
-        uKernelAddObject(&(pTimer->Object), pName, eTimer, (void*)pTimer);
+        OsKernelAddObject(&(pTimer->Object), pName, OsTimerObject, (void*)pTimer);
 
         /* 初始化定时器，设置定时器信息 */
-        pTimer->Status       = eTimerDormant;
-        pTimer->Property     = (property | TIMER_PROP_READY);
+        pTimer->Status       = OsTimerDormant;
+        pTimer->Property     = (property | OS_TIMER_PROP_READY);
         pTimer->PeriodTicks  = ticks;
         pTimer->MatchTicks   = (TTimeTick)0;
         pTimer->Routine      = pRoutine;
         pTimer->Argument     = data;
         pTimer->Priority     = priority;
         pTimer->ExpiredTicks = (TTimeTick)0;
-  	    pTimer->ExpiredTimes = 0U;
-		
+        pTimer->ExpiredTicksCycles  = 0U;
+        pTimer->ExpiredTimes = 0U;
+
         /* 设置定时器期满链表节点信息 */
         pTimer->ExpiredNode.Next   = (TLinkNode*)0;
         pTimer->ExpiredNode.Prev   = (TLinkNode*)0;
@@ -182,14 +210,13 @@ TState xTimerCreate(TTimer* pTimer, TChar* pName, TProperty property, TTimeTick 
         pTimer->LinkNode.Handle = (TLinkNode**)0;
         pTimer->LinkNode.Data   = (TBase32*)(&(pTimer->MatchTicks));
         pTimer->LinkNode.Owner  = (void*)pTimer;
-        uObjListAddNode(&(TimerList.DormantHandle), &(pTimer->LinkNode), eLinkPosHead);
+        OsObjListAddNode(&TimerDormantList, &(pTimer->LinkNode), OsLinkTail);
 
-        error = TIMER_ERR_NONE;
+        error = OS_TIMER_ERR_NONE;
         state = eSuccess;
-
     }
 
-    CpuLeaveCritical(imask);
+    OsCpuLeaveCritical(imask);
 
     *pError = error;
     return state;
@@ -204,37 +231,40 @@ TState xTimerCreate(TTimer* pTimer, TChar* pName, TProperty property, TTimeTick 
  *        (2) eFailure 操作失败                                                                  *
  *  说明                                                                                         *
  *************************************************************************************************/
-TState xTimerDelete(TTimer* pTimer, TError* pError)
+TState TclDeleteTimer(TTimer* pTimer, TError* pError)
 {
     TState state = eFailure;
-    TError error = TIMER_ERR_UNREADY;
+    TError error = OS_TIMER_ERR_UNREADY;
     TReg32 imask;
 
-    CpuEnterCritical(&imask);
+    OS_ASSERT((pTimer != (TTimer*)0), "");
+    OS_ASSERT((pError != (TError*)0), "");
+
+    OsCpuEnterCritical(&imask);
 
     /* 检查定时器就绪属性 */
-    if (pTimer->Property & TIMER_PROP_READY)
+    if (pTimer->Property & OS_TIMER_PROP_READY)
     {
-        if (pTimer->Status == eTimerDormant)
+        if (pTimer->Status == OsTimerDormant)
         {
             /* 将定时器从内核对象列表中移出 */
-            uKernelRemoveObject(&(pTimer->Object));
+            OsKernelRemoveObject(&(pTimer->Object));
 
             /* 将定时器从所属定时器队列中移出 */
-            uObjListRemoveNode(pTimer->LinkNode.Handle, &(pTimer->LinkNode));
+            OsObjListRemoveNode(pTimer->LinkNode.Handle, &(pTimer->LinkNode));
 
             /* 清空定时器数据 */
             memset(pTimer, 0U, sizeof(TTimer));
-            error = TIMER_ERR_NONE;
+            error = OS_TIMER_ERR_NONE;
             state = eSuccess;
         }
         else
         {
-            error = TIMER_ERR_STATUS;
+            error = OS_TIMER_ERR_STATUS;
         }
     }
 
-    CpuLeaveCritical(imask);
+    OsCpuLeaveCritical(imask);
 
     *pError = error;
     return state;
@@ -250,39 +280,52 @@ TState xTimerDelete(TTimer* pTimer, TError* pError)
  *        (2) eFailure   操作失败                                                                *
  *  说明：无                                                                                     *
  *************************************************************************************************/
-TState xTimerStart(TTimer* pTimer,TTimeTick lagticks, TError* pError)
+TState TclStartTimer(TTimer* pTimer,TTimeTick lagticks, TError* pError)
 {
     TState state = eFailure;
-    TError error = TIMER_ERR_UNREADY;
+    TError error = OS_TIMER_ERR_UNREADY;
     TReg32 imask;
     TIndex spoke;
+    TTimerList* pList;
 
-    CpuEnterCritical(&imask);
+    OS_ASSERT((pTimer != (TTimer*)0), "");
+    OS_ASSERT((pError != (TError*)0), "");
+
+    OsCpuEnterCritical(&imask);
 
     /* 检查定时器就绪属性 */
-    if (pTimer->Property & TIMER_PROP_READY)
+    if (pTimer->Property & OS_TIMER_PROP_READY)
     {
-        if (pTimer->Status == eTimerDormant)
+        if (pTimer->Status == OsTimerDormant)
         {
             /* 将定时器从休眠队列中移出 */
-            uObjListRemoveNode(pTimer->LinkNode.Handle, &(pTimer->LinkNode));
+            OsObjListRemoveNode(pTimer->LinkNode.Handle, &(pTimer->LinkNode));
 
             /* 将定时器加入活动队列里 */
-            pTimer->MatchTicks  = uKernelVariable.Jiffies + pTimer->PeriodTicks + lagticks;
+            pTimer->MatchTicks  = OsKernelVariable.Jiffies + pTimer->PeriodTicks + lagticks;
+            if (pTimer->MatchTicks <= OsKernelVariable.Jiffies)
+            {
+                pList = (OsKernelVariable.TimerList == &TimerActiveListA)?\
+                        (&TimerActiveListB): (&TimerActiveListA);
+            }
+            else
+            {
+                pList = OsKernelVariable.TimerList;
+            }
+
             spoke = (TBase32)(pTimer->MatchTicks % TCLC_TIMER_WHEEL_SIZE);
-            uObjListAddPriorityNode(&(TimerList.ActiveHandle[spoke]), &(pTimer->LinkNode));
-            pTimer->Status = eTimerActive;
-            error = TIMER_ERR_NONE;
+            OsObjListAddPriorityNode(&(pList->Handle[spoke]), &(pTimer->LinkNode));
+            pTimer->Status = OsTimerActive;
+            error = OS_TIMER_ERR_NONE;
             state = eSuccess;
         }
         else
         {
-            error = TIMER_ERR_STATUS;
+            error = OS_TIMER_ERR_STATUS;
         }
-
     }
 
-    CpuLeaveCritical(imask);
+    OsCpuLeaveCritical(imask);
 
     *pError = error;
     return state;
@@ -297,41 +340,43 @@ TState xTimerStart(TTimer* pTimer,TTimeTick lagticks, TError* pError)
  *        (2) eFailure 操作失败                                                                  *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState xTimerStop(TTimer* pTimer, TError* pError)
+TState TclStopTimer(TTimer* pTimer, TError* pError)
 {
     TState state = eFailure;
-    TError error = TIMER_ERR_UNREADY;
+    TError error = OS_TIMER_ERR_UNREADY;
     TReg32 imask;
 
-    CpuEnterCritical(&imask);
+    OS_ASSERT((pTimer != (TTimer*)0), "");
+    OS_ASSERT((pError != (TError*)0), "");
+
+    OsCpuEnterCritical(&imask);
 
     /* 检查定时器就绪属性 */
-    if (pTimer->Property & TIMER_PROP_READY)
+    if (pTimer->Property & OS_TIMER_PROP_READY)
     {
         /* 将定时器从活动队列/期满队列中移出，放到休眠队列里 */
-        if (pTimer->Status == eTimerActive)
+        if (pTimer->Status == OsTimerActive)
         {
-            if (pTimer->Property & TIMER_PROP_EXPIRED)
+            if (pTimer->Property & OS_TIMER_PROP_EXPIRED)
             {
-                uObjListRemoveNode(pTimer->ExpiredNode.Handle, &(pTimer->ExpiredNode));
-                pTimer->Property &= ~TIMER_PROP_EXPIRED;
+                OsObjListRemoveNode(pTimer->ExpiredNode.Handle, &(pTimer->ExpiredNode));
+                pTimer->Property &= ~OS_TIMER_PROP_EXPIRED;
             }
 
-            uObjListRemoveNode(pTimer->LinkNode.Handle, &(pTimer->LinkNode));
-            uObjListAddNode(&(TimerList.DormantHandle), &(pTimer->LinkNode), eLinkPosHead);
-            pTimer->Status = eTimerDormant;
+            OsObjListRemoveNode(pTimer->LinkNode.Handle, &(pTimer->LinkNode));
+            OsObjListAddNode(&TimerDormantList, &(pTimer->LinkNode), OsLinkTail);
+            pTimer->Status = OsTimerDormant;
 
-            error = TIMER_ERR_NONE;
+            error = OS_TIMER_ERR_NONE;
             state = eSuccess;
         }
         else
         {
-            error = TIMER_ERR_STATUS;
+            error = OS_TIMER_ERR_STATUS;
         }
-
     }
 
-    CpuLeaveCritical(imask);
+    OsCpuLeaveCritical(imask);
 
     *pError = error;
     return state;
@@ -348,31 +393,35 @@ TState xTimerStop(TTimer* pTimer, TError* pError)
  *        (2) eFailure 操作失败                                                                  *
  *  说明                                                                                         *
  *************************************************************************************************/
-TState xTimerConfig(TTimer* pTimer, TTimeTick ticks, TPriority priority, TError* pError)
+TState TclConfigTimer(TTimer* pTimer, TTimeTick ticks, TPriority priority, TError* pError)
 {
     TState state = eFailure;
-    TError error = TIMER_ERR_UNREADY;
+    TError error = OS_TIMER_ERR_UNREADY;
     TReg32 imask;
 
-    CpuEnterCritical(&imask);
+    OS_ASSERT((pTimer != (TTimer*)0), "");
+    OS_ASSERT((ticks > 0U), "");
+    OS_ASSERT((pError != (TError*)0), "");
+
+    OsCpuEnterCritical(&imask);
 
     /* 检查定时器就绪属性 */
-    if (pTimer->Property & TIMER_PROP_READY)
+    if (pTimer->Property & OS_TIMER_PROP_READY)
     {
-        if (pTimer->Status == eTimerDormant)
+        if (pTimer->Status == OsTimerDormant)
         {
             pTimer->PeriodTicks = ticks;
             pTimer->Priority    = priority;
-            error = TIMER_ERR_NONE;
+            error = OS_TIMER_ERR_NONE;
             state = eSuccess;
         }
         else
         {
-            error = TIMER_ERR_STATUS;
+            error = OS_TIMER_ERR_STATUS;
         }
     }
 
-    CpuLeaveCritical(imask);
+    OsCpuLeaveCritical(imask);
 
     *pError = error;
     return state;
@@ -384,7 +433,7 @@ static TBase32 TimerDaemonStack[TCLC_TIMER_DAEMON_STACK_BYTES >> 2];
 static TThread TimerDaemonThread;
 
 /* 内核定时器守护线程不接受任何线程管理API操作 */
-#define TIMER_DAEMON_ACAPI (THREAD_ACAPI_NONE)
+#define TIMER_DAEMON_ACAPI (OS_THREAD_ACAPI_NONE)
 
 /*************************************************************************************************
  *  功能：内核中的定时器守护线程函数                                                             *
@@ -392,13 +441,14 @@ static TThread TimerDaemonThread;
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-static void xTimerDaemonEntry(TArgument argument)
+static void TimerDaemonEntry(TArgument argument)
 {
     TBase32       imask;
     TTimer*       pTimer;
     TTimerRoutine pRoutine;
     TArgument     data;
     TTimeTick     ticks;
+    TBase32       cycles;
 
     /*
      * 逐个处理用户定时器，在线程环境下处理定时器回调事务
@@ -406,93 +456,49 @@ static void xTimerDaemonEntry(TArgument argument)
      */
     while(eTrue)
     {
-        CpuEnterCritical(&imask);
+        OsCpuEnterCritical(&imask);
 
-        if (TimerList.ExpiredHandle == (TLinkNode*)0)
+        if (TimerExpiredList == (TLinkNode*)0)
         {
-            uThreadSuspendSelf();
-            CpuLeaveCritical(imask);
+            OsThreadSuspendSelf();
+            OsCpuLeaveCritical(imask);
         }
         else
         {
             /* 从期满队列中取得一个定时器 */
-            pTimer = (TTimer*)(TimerList.ExpiredHandle->Owner);
-
-            /*
-             * 计算定时器的漂移时间,如果精准定时器的漂移时间大于等于定时周期，
-             * 说明定时器被耽搁的实在太长了~,一定是哪里有问题。
-             */
-            if (uKernelVariable.Jiffies == pTimer->ExpiredTicks)
-            {
-                ticks = 0U;
-            }
-            else if (uKernelVariable.Jiffies > pTimer->ExpiredTicks)
-            {
-                ticks = uKernelVariable.Jiffies - pTimer->ExpiredTicks;
-            }
-            else
-            {
-                ticks = TCLM_MAX_VALUE64 - pTimer->ExpiredTicks + uKernelVariable.Jiffies;
-            }
-
-            if (pTimer->Property & TIMER_PROP_ACCURATE)
-            {
-                if (ticks >= pTimer->PeriodTicks)
-                {
-                    uKernelVariable.Diagnosis |= KERNEL_DIAG_TIMER_ERROR;
-                    pTimer->Diagnosis |= TIMER_DIAG_OVERFLOW;
-                    uDebugAlarm("");
-                }
-            }
+            pTimer = (TTimer*)(TimerExpiredList->Owner);
 
             /* 将定时器从期满队列中移出 */
-            uObjListRemoveNode(pTimer->ExpiredNode.Handle, &(pTimer->ExpiredNode));
-            pTimer->Property &= ~TIMER_PROP_EXPIRED;
+            OsObjListRemoveNode(pTimer->ExpiredNode.Handle, &(pTimer->ExpiredNode));
+            pTimer->Property &= ~OS_TIMER_PROP_EXPIRED;
 
             /* 复制定时器函数和函数参数 */
             pRoutine = pTimer->Routine;
-            data = pTimer->Argument;
+            data     = pTimer->Argument;
+            ticks    = 0U;
+            cycles   = 0U;
+					
+            /* 如果是精准定时器则计算定时器的漂移时间 */
+            if (pTimer->Property & OS_TIMER_PROP_ACCURATE)
+            {
+                if (OsKernelVariable.Jiffies >= pTimer->ExpiredTicks)
+                {
+                    ticks = OsKernelVariable.Jiffies - pTimer->ExpiredTicks;
+                    cycles = OsKernelVariable.JiffyCycles - pTimer->ExpiredTicksCycles;
+                }
+                else
+                {
+                    ticks = (~(TTimeTick)(0U)) - pTimer->ExpiredTicks + OsKernelVariable.Jiffies;
+                    cycles = OsKernelVariable.JiffyCycles - pTimer->ExpiredTicksCycles - 1U;
+                }
+            }
 
-            CpuLeaveCritical(imask);
+            OsCpuLeaveCritical(imask);
 
             /* 在线程环境下执行定时器函数 */
-            pRoutine(data, ticks);
+            pRoutine(data, cycles, ticks);
         }
     }
-}
-
-
-/*************************************************************************************************
- *  功能：初始化用户定时器守护线程                                                               *
- *  参数：无                                                                                     *
- *  返回：无                                                                                     *
- *  说明：                                                                                       *
- *************************************************************************************************/
-void uTimerCreateDaemon(void)
-{
-    /* 检查内核是否处于初始状态 */
-    if(uKernelVariable.State != eOriginState)
-    {
-        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
-    }
-
-    /* 初始化内核定时器服务线程 */
-    uThreadCreate(&TimerDaemonThread,
-                  "timer daemon",
-                  eThreadSuspended,
-                  THREAD_PROP_PRIORITY_FIXED|\
-                  THREAD_PROP_CLEAN_STACK|\
-                  THREAD_PROP_KERNEL_DAEMON,
-                  TIMER_DAEMON_ACAPI,
-                  xTimerDaemonEntry,
-                  (TArgument)(0U),
-                  (void*)TimerDaemonStack,
-                  (TBase32)TCLC_TIMER_DAEMON_STACK_BYTES,
-                  (TPriority)TCLC_TIMER_DAEMON_PRIORITY,
-                  (TTimeTick)TCLC_TIMER_DAEMON_SLICE);
-
-    /* 初始化相关的内核变量 */
-    uKernelVariable.TimerDaemon = &TimerDaemonThread;
 }
 
 
@@ -502,18 +508,37 @@ void uTimerCreateDaemon(void)
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void uTimerModuleInit(void)
+void OsTimerModuleInit(void)
 {
     /* 检查内核是否处于初始状态 */
-    if(uKernelVariable.State != eOriginState)
+    if(OsKernelVariable.State != OsOriginState)
     {
-        xDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+        OsDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
-    memset(&TimerList, 0, sizeof(TimerList));
+    memset(&TimerActiveListA, 0U, sizeof(TimerActiveListA));
+    memset(&TimerActiveListB, 0U, sizeof(TimerActiveListB));
 
     /* 初始化相关的内核变量 */
-    uKernelVariable.TimerList = &TimerList;
+    OsKernelVariable.TimerList = &TimerActiveListA;
+
+    /* 初始化内核定时器服务线程 */
+    OsThreadCreate(&TimerDaemonThread,
+                   "kernel timer daemon",
+                   OsThreadSuspended,
+                   OS_THREAD_PROP_PRIORITY_FIXED|\
+                   OS_THREAD_PROP_CLEAN_STACK|\
+                   OS_THREAD_PROP_KERNEL_DAEMON,
+                   TIMER_DAEMON_ACAPI,
+                   TimerDaemonEntry,
+                   (TArgument)(0U),
+                   (void*)TimerDaemonStack,
+                   (TBase32)TCLC_TIMER_DAEMON_STACK_BYTES,
+                   (TPriority)TCLC_TIMER_DAEMON_PRIORITY,
+                   (TTimeTick)TCLC_TIMER_DAEMON_SLICE);
+
+    /* 初始化相关的内核变量 */
+    OsKernelVariable.TimerDaemon = &TimerDaemonThread;
 }
 #endif
 

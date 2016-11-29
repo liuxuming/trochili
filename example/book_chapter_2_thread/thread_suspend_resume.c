@@ -64,7 +64,7 @@ static void ThreadCtrlEntry(TArgument data)
         TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
         /* 控制线程休眠1秒 */
-        state = TclDelayThread(&CLM_SEC2TICKS(1), &error);
+        state = TclDelayThread(TCLM_SEC2TICKS(1), &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
@@ -146,7 +146,7 @@ int main(void)
 {
     /* 注册各个内核函数,启动内核 */
     TclStartKernel(&AppSetupEntry,
-                   &CpuSetupEntry,
+                   &OsCpuSetupEntry,
                    &EvbSetupEntry,
                    &EvbTraceEntry);
     return 1;

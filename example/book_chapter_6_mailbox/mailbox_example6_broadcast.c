@@ -32,7 +32,7 @@ typedef struct
 } TLedMail;
 
 /* 用户邮箱和邮件定义 */
-static TMailBox LedMailbox;
+static TMailbox LedMailbox;
 static TLedMail LedMail;
 
 
@@ -136,7 +136,7 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化邮箱 */
-    state =  TclCreateMailBox(&LedMailbox, "mbox", TCLP_IPC_DEFAULT, &error);
+    state =  TclCreateMailbox(&LedMailbox, "mbox", TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
@@ -203,7 +203,7 @@ int main(void)
 {
     /* 注册各个内核函数,启动内核 */
     TclStartKernel(&AppSetupEntry,
-                   &CpuSetupEntry,
+                   &OsCpuSetupEntry,
                    &EvbSetupEntry,
                    &EvbTraceEntry);
     return 1;

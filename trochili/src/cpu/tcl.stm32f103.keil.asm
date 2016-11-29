@@ -1,10 +1,10 @@
-	    IMPORT  uKernelVariable
+	    IMPORT  OsKernelVariable
 
-        EXPORT  CpuDisableInt
-        EXPORT  CpuEnableInt
-        EXPORT  CpuEnterCritical
-        EXPORT  CpuLeaveCritical
-        EXPORT  CpuCalcHiPRIO
+        EXPORT  OsCpuDisableInt
+        EXPORT  OsCpuEnableInt
+        EXPORT  OsCpuEnterCritical
+        EXPORT  OsCpuLeaveCritical
+        EXPORT  OsCpuCalcHiPRIO
         EXPORT  PendSV_Handler
 
         AREA |.text|, CODE, READONLY, ALIGN=2
@@ -12,26 +12,26 @@
         REQUIRE8
         PRESERVE8
 
-CpuCalcHiPRIO
+OsCpuCalcHiPRIO
         RBIT    R0, R0
         CLZ     R0, R0
         BX      LR
 
-CpuDisableInt
+OsCpuDisableInt
         CPSID   I
         BX      LR
 
-CpuEnableInt
+OsCpuEnableInt
         CPSIE   I
         BX      LR
 
-CpuEnterCritical
+OsCpuEnterCritical
     MRS     R1, PRIMASK
     STR     R1, [R0]
     CPSID   I
     BX      LR
 
-CpuLeaveCritical
+OsCpuLeaveCritical
     MSR     PRIMASK, R0
     BX      LR
 
@@ -43,7 +43,7 @@ PendSV_Handler
     CPSID   I
 
 ; 取得线程内容
-	LDR     R0,  =uKernelVariable
+	LDR     R0,  =OsKernelVariable
 	ADD     R1, R0, #4;Nominee
 	ADD     R0, R0, #8;Current
 	

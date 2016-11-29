@@ -28,7 +28,7 @@ typedef struct
 } TLedMail;
 
 /* 用户邮箱定义 */
-static TMailBox LedMailbox;
+static TMailbox LedMailbox;
 
 
 /* Led线程的主函数 */
@@ -72,11 +72,11 @@ static void ThreadCtrlEntry(TArgument data)
         TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
         /* CTRL线程重置邮箱，然后再次初始化邮箱 */
-        state = TclDeleteMailBox(&LedMailbox, &error);
+        state = TclDeleteMailbox(&LedMailbox, &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
-        state = TclCreateMailBox(&LedMailbox, "mbox renewal", TCLP_IPC_DEFAULT, &error);
+        state = TclCreateMailbox(&LedMailbox, "mbox renewal", TCLP_IPC_DEFAULT, &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
     }
@@ -90,7 +90,7 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化邮箱 */
-    state = TclCreateMailBox(&LedMailbox, "mbox", TCLP_IPC_DEFAULT, &error);
+    state = TclCreateMailbox(&LedMailbox, "mbox", TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
@@ -129,7 +129,7 @@ int main(void)
 {
     /* 注册各个内核函数,启动内核 */
     TclStartKernel(&AppSetupEntry,
-                   &CpuSetupEntry,
+                   &OsCpuSetupEntry,
                    &EvbSetupEntry,
                    &EvbTraceEntry);
     return 1;

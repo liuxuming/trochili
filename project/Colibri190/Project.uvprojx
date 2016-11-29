@@ -570,11 +570,6 @@
               <FilePath>..\..\trochili\src\tcl.timer.c</FilePath>
             </File>
             <File>
-              <FileName>trochili.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\trochili\src\trochili.c</FilePath>
-            </File>
-            <File>
               <FileName>tcl.mem.buddy.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\trochili\src\mem\tcl.mem.buddy.c</FilePath>

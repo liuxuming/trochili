@@ -78,7 +78,7 @@ static void ThreadCtrlEntry(TArgument data)
     {
         i = 0xfffff;
         while (i--);
-        state = TclUnDelayThread(&ThreadLed2, &error);
+        state = TclUndelayThread(&ThreadLed2, &error);
         state = state;
     }
 }
@@ -152,7 +152,7 @@ int main(void)
 {
     /* 注册各个内核函数，启动内核 */
     TclStartKernel(&AppSetupEntry,
-                   &CpuSetupEntry,
+                   &OsCpuSetupEntry,
                    &EvbSetupEntry,
                    &EvbTraceEntry);
 

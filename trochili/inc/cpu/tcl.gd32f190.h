@@ -6,17 +6,17 @@
 #ifndef _TCL_GD32_F190_H
 #define _TCL_GD32_F190_H
 
-/* External Interrupts */                
+/* External Interrupts */
 #define     WWDG_IRQID                   (00) /* Vector Number 16,Window Watchdog                             */
-#define     LVD_IRQID                    (01) /* Vector Number 17,LVD through EXTI Line detect                */  
+#define     LVD_IRQID                    (01) /* Vector Number 17,LVD through EXTI Line detect                */
 #define     RTC_IRQID                    (02) /* Vector Number 18,RTC through EXTI Line                       */
 #define     FMC_IRQID                    (03) /* Vector Number 19,FMC                                         */
 #define     RCC_IRQID                    (04) /* Vector Number 20,RCC                                         */
 #define     EXTI0_1_IRQID                (05) /* Vector Number 21,EXTI Line 0 and EXTI Line 1                 */
 #define     EXTI2_3_IRQID                (06) /* Vector Number 22,EXTI Line 2 and EXTI Line 3                 */
-#define     EXTI4_15_IRQID               (07) /* Vector Number 23,EXTI Line 4 to EXTI Line 15                 */     
+#define     EXTI4_15_IRQID               (07) /* Vector Number 23,EXTI Line 4 to EXTI Line 15                 */
 #define     TSI_IRQID                    (08) /* Vector Number 24,TSI                                         */
-#define     DMA1_Channel1_IRQID          (09) /* Vector Number 25,DMA1 Channel 1                              */ 
+#define     DMA1_Channel1_IRQID          (09) /* Vector Number 25,DMA1 Channel 1                              */
 #define     DMA1_Channel2_3_IRQID        (10) /* Vector Number 26,DMA1 Channel 2 and DMA1 Channel 3           */
 #define     DMA1_Channel4_5_IRQID        (11) /* Vector Number 27,DMA1 Channel 4 and DMA1 Channel 5           */
 #define     ADC1_CMP_IRQID               (12) /* Vector Number 28,ADC1 and Comparator 1-2                     */

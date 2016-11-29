@@ -36,7 +36,7 @@ static void ThreadLedOnEntry(TArgument data)
         EvbLedControl(LED1, LED_ON);
 
         /* Led点亮线程延时1秒 */
-        state = TclDelayThread(&ThreadLedOn, TCLM_MLS2TICKS(1000), &error);
+        state = TclDelayThread(TCLM_MLS2TICKS(1000), &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
@@ -63,7 +63,7 @@ static void ThreadLedOffEntry(TArgument data)
         EvbLedControl(LED1, LED_OFF);
 
         /* Led熄灭线程延时1秒 */
-        state = TclDelayThread(&ThreadLedOff, TCLM_MLS2TICKS(1000), &error);
+        state = TclDelayThread(TCLM_MLS2TICKS(1000), &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
@@ -81,7 +81,7 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化互斥量 */
-    state = TclCreateMutex(&LedMutex, "mutex", LED_MUTEX_PRIORITY, TCLP_IPC_DEFAULT, &error);
+    state = TclCreateMutex(&LedMutex, "mutex", TCLP_IPC_DEFAULT, LED_MUTEX_PRIORITY, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
@@ -120,7 +120,7 @@ int main(void)
 {
     /* 注册各个内核函数,启动内核 */
     TclStartKernel(&AppSetupEntry,
-                   &CpuSetupEntry,
+                   &OsCpuSetupEntry,
                    &EvbSetupEntry,
                    &EvbTraceEntry);
     return 1;

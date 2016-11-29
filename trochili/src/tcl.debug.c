@@ -18,25 +18,25 @@
  *  返回：无                                                                                     *
  *  说明：这是内核诊断到自身发生错误时采取的行动                                                 *
  *************************************************************************************************/
-void xDebugPanic(const char* pNote, const char* pFile, const char* pFunc, int line)
+void OsDebugPanic(const char* pNote, const char* pFile, const char* pFunc, int line)
 {
-    CpuDisableInt();
-	
-    uKernelTrace(pNote);
-    uKernelVariable.DBGLog.File = pFile;
-    uKernelVariable.DBGLog.Func = pFunc;
-    uKernelVariable.DBGLog.Line = line;
-    uKernelVariable.DBGLog.Note = pNote;
+    OsCpuDisableInt();
 
-    if (uKernelVariable.SysFaultEntry != (TSysFaultEntry)0)
+    OsKernelVariable.DBGLog.File = pFile;
+    OsKernelVariable.DBGLog.Func = pFunc;
+    OsKernelVariable.DBGLog.Line = line;
+    OsKernelVariable.DBGLog.Note = pNote;
+
+    if (OsKernelVariable.TraceEntry != (TTraceEntry)0)
     {
-        uKernelVariable.SysFaultEntry(&uKernelVariable);
+        OsKernelVariable.TraceEntry(pNote);
     }
-	
-    while (eTrue)
+    if (OsKernelVariable.SysFaultEntry != (TSysFaultEntry)0)
     {
-        ;
+        OsKernelVariable.SysFaultEntry(&OsKernelVariable);
     }
+
+    while (eTrue);
 }
 
 
@@ -46,7 +46,20 @@ void xDebugPanic(const char* pNote, const char* pFile, const char* pFunc, int li
  *  返回：无                                                                                     *
  *  说明：这是内核诊断到自身发生错误时采取的行动                                                 *
  *************************************************************************************************/
-void uDebugAlarm(const char* pNote)
+void OsDebugWarning(const char* pNote)
 {
-    uKernelTrace(pNote);
+    TReg32 imask;
+
+    OsCpuEnterCritical(&imask);
+    if (OsKernelVariable.TraceEntry != (TTraceEntry)0)
+    {
+        OsKernelVariable.TraceEntry(pNote);
+    }
+    OsCpuLeaveCritical(imask);
+
+    if (OsKernelVariable.SysWarningEntry != (TSysWarningEntry)0)
+    {
+        OsKernelVariable.SysWarningEntry(&OsKernelVariable);
+    }
+
 }

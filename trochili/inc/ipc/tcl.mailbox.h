@@ -6,48 +6,45 @@
 #ifndef _TCL_MAILBOX_H
 #define _TCL_MAILBOX_H
 
-#include "tcl.types.h"
 #include "tcl.config.h"
+#include "tcl.types.h"
+#include "tcl.object.h"
 #include "tcl.ipc.h"
-#include "tcl.thread.h"
 
 #if ((TCLC_IPC_ENABLE)&&(TCLC_IPC_MAILBOX_ENABLE))
-
-/* 邮件类型定义 */
-typedef enum
-{
-    eNormalMail,  /* 普通邮件  */
-    eUrgentMail   /* 紧急邮件  */
-} TMailType;
 
 /* 邮箱状态定义 */
 typedef enum
 {
-    eMailBoxEmpty,  /* 邮箱数据空 */
-    eMailBoxFull    /* 邮箱数据满 */
-} TMailBoxStatus;
+    OsMailboxEmpty,                  /* 邮箱数据空              */
+    OsMailboxFull                    /* 邮箱数据满              */
+} TMailboxStatus;
 
 /* 邮件结构定义 */
 typedef void* TMail;
 
 /* 邮箱结构定义 */
-struct MailBoxDef
+struct MailboxDef
 {
     TProperty      Property;         /* 线程的调度策略等属性配置 */
     TMail          Mail;             /* 邮箱的邮件对象           */
-    TMailBoxStatus Status;           /* 邮箱的状态               */
+    TMailboxStatus Status;           /* 邮箱的状态               */
     TIpcQueue      Queue;            /* 邮箱的线程阻塞队列       */
-    TObject        Object;	
+    TObject        Object;
 };
-typedef struct MailBoxDef TMailBox;
+typedef struct MailboxDef TMailbox;
 
-extern TState xMailBoxSend(TMailBox* pMailbox, TMail* pMail2, TOption option, TTimeTick timeo, TError* pError);
-extern TState xMailBoxReceive(TMailBox* pMailbox, TMail* pMail2, TOption option, TTimeTick timeo, TError* pError);
-extern TState xMailBoxCreate(TMailBox* pMailbox, TChar* pName, TProperty property, TError* pError);
-extern TState xMailBoxDelete(TMailBox* pMailbox, TError* pError);
-extern TState xMailBoxFlush(TMailBox* pMailbox, TError* pError);
-extern TState xMailboxReset(TMailBox* pMailbox, TError* pError);
-extern TState xMailBoxBroadcast(TMailBox* pMailbox, TMail* pMail2, TError* pError);
+
+extern TState TclCreateMailbox(TMailbox* pMailbox, TChar* pName, TProperty property, TError* pError);
+extern TState TclDeleteMailbox(TMailbox* pMailbox, TError* pError);
+extern TState TclReceiveMail(TMailbox* pMailbox, TMail* pMail2, TOption option,
+                             TTimeTick timeo, TError* pError);
+extern TState TclSendMail(TMailbox* pMailbox, TMail* pMail2, TOption option, TTimeTick timeo,
+                          TError* pError);
+extern TState TclIsrSendMail(TMailbox* pMailbox, TMail* pMail2, TOption option, TError* pError);
+extern TState TclBroadcastMail(TMailbox* pMailbox, TMail* pMail2, TError* pError);
+extern TState TclResetMailbox(TMailbox* pMailbox, TError* pError);
+extern TState TclFlushMailbox(TMailbox* pMailbox, TError* pError);
 
 #endif
 

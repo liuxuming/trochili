@@ -24,8 +24,8 @@ typedef struct
 } TLedMail;
 
 
-static TMailBox Led1MailBox;
-static TMailBox Led2MailBox;
+static TMailbox Led1Mailbox;
+static TMailbox Led2Mailbox;
 static TLedMail Led1Mail;
 static TLedMail Led2Mail;
 
@@ -43,7 +43,7 @@ static void ThreadLed1Entry(TArgument data)
     while (eTrue)
     {
         /* Led1线程以阻塞方式接收Led1控制邮件 */
-        state = TclReceiveMail(&Led1MailBox, (TMail*)(&pMail1), TCLO_IPC_WAIT, 0, &error);
+        state = TclReceiveMail(&Led1Mailbox, (TMail*)(&pMail1), TCLO_IPC_WAIT, 0, &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
@@ -58,12 +58,12 @@ static void ThreadLed1Entry(TArgument data)
         /* Led1线程以阻塞方式发送Led2点亮邮件 */
         pMail2->Index = LED2;
         pMail2->Value = LED_ON;
-        state = TclSendMail(&Led2MailBox, (TMail*)(&pMail2), TCLO_IPC_WAIT, 0, &error);
+        state = TclSendMail(&Led2Mailbox, (TMail*)(&pMail2), TCLO_IPC_WAIT, 0, &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
         /* Led1线程以阻塞方式接收Led1控制邮件 */
-        state = TclReceiveMail(&Led1MailBox, (TMail*)(&pMail1), TCLO_IPC_WAIT, 0, &error);
+        state = TclReceiveMail(&Led1Mailbox, (TMail*)(&pMail1), TCLO_IPC_WAIT, 0, &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
@@ -78,7 +78,7 @@ static void ThreadLed1Entry(TArgument data)
         /* Led1线程以阻塞方式发送Led2熄灭邮件 */
         pMail2->Index = LED2;
         pMail2->Value = LED_OFF;
-        state = TclSendMail(&Led2MailBox, (TMail*)(&pMail2), TCLO_IPC_WAIT, 0, &error);
+        state = TclSendMail(&Led2Mailbox, (TMail*)(&pMail2), TCLO_IPC_WAIT, 0, &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
     }
@@ -99,12 +99,12 @@ static void ThreadLed2Entry(TArgument data)
         /* Led2线程以阻塞方式发送Led1点亮邮件 */
         pMail1->Index = LED1;
         pMail1->Value = LED_ON;
-        state = TclSendMail(&Led1MailBox, (TMail*)(&pMail1), TCLO_IPC_WAIT, 0, &error);
+        state = TclSendMail(&Led1Mailbox, (TMail*)(&pMail1), TCLO_IPC_WAIT, 0, &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
         /* Led2线程以阻塞方式接收Led2控制邮件 */
-        state = TclReceiveMail(&Led2MailBox, (TMail*)(&pMail2), TCLO_IPC_WAIT, 0, &error);
+        state = TclReceiveMail(&Led2Mailbox, (TMail*)(&pMail2), TCLO_IPC_WAIT, 0, &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
@@ -114,12 +114,12 @@ static void ThreadLed2Entry(TArgument data)
         /* Led2线程以阻塞方式发送Led1熄灭邮件 */
         pMail1->Index = LED1;
         pMail1->Value = LED_OFF;
-        state = TclSendMail(&Led1MailBox, (TMail*)(&pMail1), TCLO_IPC_WAIT, 0, &error);
+        state = TclSendMail(&Led1Mailbox, (TMail*)(&pMail1), TCLO_IPC_WAIT, 0, &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
         /* Led2线程以阻塞方式接收Led2控制邮件 */
-        state = TclReceiveMail(&Led2MailBox, (TMail*)(&pMail2), TCLO_IPC_WAIT, 0, &error);
+        state = TclReceiveMail(&Led2Mailbox, (TMail*)(&pMail2), TCLO_IPC_WAIT, 0, &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
@@ -135,12 +135,12 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化Led1邮箱 */	
-	  state = TclCreateMailBox(&Led1MailBox, "mbox1", TCLP_IPC_DEFAULT, &error);
+	  state = TclCreateMailbox(&Led1Mailbox, "mbox1", TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 	
   	/* 初始化Led2邮箱 */
-    state = TclCreateMailBox(&Led2MailBox, "mbox2", TCLP_IPC_DEFAULT, &error);
+    state = TclCreateMailbox(&Led2Mailbox, "mbox2", TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
@@ -178,7 +178,7 @@ int main(void)
 {
     /* 注册各个内核函数,启动内核 */
     TclStartKernel(&AppSetupEntry,
-                   &CpuSetupEntry,
+                   &OsCpuSetupEntry,
                    &EvbSetupEntry,
                    &EvbTraceEntry);
     return 1;

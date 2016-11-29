@@ -41,7 +41,7 @@
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void CpuStartTickClock(void)
+void OsCpuStartTickClock(void)
 {
     CM0_SYSTICK_CTRL |= (CM0_SYSTICK_CTRL_CLK_SRC | CM0_SYSTICK_CTRL_ENABLE);
     CM0_SYSTICK_CTRL |= CM0_SYSTICK_CTRL_INTEN;
@@ -54,7 +54,7 @@ void CpuStartTickClock(void)
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void CpuConfirmThreadSwitch(void)
+void OsCpuConfirmThreadSwitch(void)
 {
     TCLM_SET_REG32(CM0_NVIC_INT_CTRL, CM0_NVIC_INT_CTRL_PENDSVSET);
 }
@@ -66,7 +66,7 @@ void CpuConfirmThreadSwitch(void)
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void CpuCancelThreadSwitch(void)
+void OsCpuCancelThreadSwitch(void)
 {
     TCLM_SET_REG32(CM0_NVIC_INT_CTRL, CM0_NVIC_INT_CTRL_PENDSVCLR);
 }
@@ -82,7 +82,7 @@ void CpuCancelThreadSwitch(void)
  *  返回：无                                                                                     *
  *  说明：线程栈起始地址必须4字节对齐                                                            *
  *************************************************************************************************/
-void CpuBuildThreadStack(TAddr32* pTop, void* pStack, TBase32 bytes,
+void OsCpuBuildThreadStack(TAddr32* pTop, void* pStack, TBase32 bytes,
                          void* pEntry, TArgument argument)
 {
     TReg32* pTemp;
@@ -120,7 +120,7 @@ void CpuBuildThreadStack(TAddr32* pTop, void* pStack, TBase32 bytes,
  *  返回：无                                                                                     *
  *  说明：                                                                                       *
  *************************************************************************************************/
-void CpuSetupEntry(void)
+void OsCpuSetupEntry(void)
 {
     /* 初始化systick定时器 */
     TBase32 value = TCLC_CPU_CLOCK_FREQ / TCLC_TIME_TICK_RATE;
@@ -130,7 +130,7 @@ void CpuSetupEntry(void)
     // TCLM_SET_REG32(CM0_NVIC_SHPR_PENDSV, CM0_NVIC_PENDSV_PRIORITY);
 }
 
-TPriority CpuCalcHiPRIO(TBase32 data)
+TPriority OsCpuCalcHiPRIO(TBase32 data)
 {
     int i = 0;
     while(!(data & 0x1))
@@ -145,18 +145,18 @@ TPriority CpuCalcHiPRIO(TBase32 data)
 /* 重写库函数 */
 void SysTick_Handler(void)
 {
-    xKernelEnterIntrState();
-    xKernelTickISR();
-    xKernelLeaveIntrState();
+    OsKernelEnterIntrState();
+    OsKernelTickISR();
+    OsKernelLeaveIntrState();
 }
 
 /* 重写库函数 */
 void EXTI4_15_IRQHandler(void)
 {
 #if (TCLC_IRQ_ENABLE)
-    xKernelEnterIntrState();
-    xIrqEnterISR(EXTI4_15_IRQ_ID);
-    xKernelLeaveIntrState();
+    OsKernelEnterIntrState();
+    OsIrqEnterISR(EXTI4_15_IRQ_ID);
+    OsKernelLeaveIntrState();
 #else
     return;
 #endif
@@ -167,9 +167,9 @@ void EXTI4_15_IRQHandler(void)
 void TIM2_IRQHandler(void)
 {
 #if (TCLC_IRQ_ENABLE)
-    xKernelEnterIntrState();
-    xIrqEnterISR(TIM2_IRQ_ID);
-    xKernelLeaveIntrState();
+    OsKernelEnterIntrState();
+    OsIrqEnterISR(TIM2_IRQ_ID);
+    OsKernelLeaveIntrState();
 #else
     return;
 #endif
@@ -179,9 +179,9 @@ void TIM2_IRQHandler(void)
 void USART1_IRQHandler(void)
 {
 #if (TCLC_IRQ_ENABLE)
-    xKernelEnterIntrState();
-    xIrqEnterISR(USART1_IRQ_ID);
-    xKernelLeaveIntrState();
+    OsKernelEnterIntrState();
+    OsIrqEnterISR(USART1_IRQ_ID);
+    OsKernelLeaveIntrState();
 #else
     return;
 #endif

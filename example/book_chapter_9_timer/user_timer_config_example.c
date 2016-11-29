@@ -20,7 +20,7 @@ static TBase32 mls1 = 1000;
 static TBase32 mls2 = 1000;
 
 /* 用户定时器1的回调函数，间隔1秒，点亮或熄灭Led1 */
-static void BlinkLed1(TArgument data, TTimeTick ticks)
+static void BlinkLed1(TArgument data, TBase32 cycles, TTimeTick ticks)
 {
     static TIndex index = 0;
     if (index % 2)
@@ -35,7 +35,7 @@ static void BlinkLed1(TArgument data, TTimeTick ticks)
 }
 
 /* 用户定时器2的回调函数，间隔1秒，点亮或熄灭Led2 */
-static void BlinkLed2(TArgument data, TTimeTick ticks)
+static void BlinkLed2(TArgument data, TBase32 cycles, TTimeTick ticks)
 {
     static TIndex index = 0;
     if (index % 2)
@@ -219,7 +219,7 @@ int main(void)
 {
     /* 注册各个内核函数,启动内核 */
     TclStartKernel(&AppSetupEntry,
-                   &CpuSetupEntry,
+                   &OsCpuSetupEntry,
                    &EvbSetupEntry,
                    &EvbTraceEntry);
 

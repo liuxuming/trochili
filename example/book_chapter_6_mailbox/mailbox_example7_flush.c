@@ -32,7 +32,7 @@ typedef struct
 } TLedMail;
 
 /* 用户邮箱定义 */
-static TMailBox LedMailbox;
+static TMailbox LedMailbox;
 
 
 /* Led线程1的主函数 */
@@ -131,7 +131,7 @@ static void ThreadCtrlEntry(TArgument data)
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 
-        state = TclFlushMailBox(&LedMailbox, &error);
+        state = TclFlushMailbox(&LedMailbox, &error);
         TCLM_ASSERT((state == eSuccess), "");
         TCLM_ASSERT((error == TCLE_IPC_NONE), "");
     }
@@ -145,7 +145,7 @@ static void AppSetupEntry(void)
     TError error;
 
     /* 初始化邮箱 */
-    state = TclCreateMailBox(&LedMailbox, "mbox", TCLP_IPC_DEFAULT, &error);
+    state = TclCreateMailbox(&LedMailbox, "mbox", TCLP_IPC_DEFAULT, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_IPC_NONE), "");
 
@@ -210,7 +210,7 @@ int main(void)
 {
     /* 注册各个内核函数,启动内核 */
     TclStartKernel(&AppSetupEntry,
-                   &CpuSetupEntry,
+                   &OsCpuSetupEntry,
                    &EvbSetupEntry,
                    &EvbTraceEntry);
     return 1;

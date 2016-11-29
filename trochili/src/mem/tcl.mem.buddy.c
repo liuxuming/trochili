@@ -19,8 +19,8 @@
 
 #define PAGES_AVAIL (0x1<<7u)
 
-#define PARENT_NODE(x) (((x) - 1u) / 2u)
-#define LEFT_NODE(x) ((x) * 2u + 1u)
+#define PARENT_NODE(x) (((x) - 1U) / 2u)
+#define LEFT_NODE(x) ((x) * 2u + 1U)
 #define RIGHT_NODE(x) ((x) * 2u + 2u)
 
 /* 调整x到和它最相近且不小于它的2的幂数 */
@@ -87,7 +87,7 @@ static void BuildPageTree(TMemBuddy* pBuddy)
     TBase32 y;
 
     /* 计算树的节点总数 */
-    pBuddy->NodeNbr  = pBuddy->PageNbr * 2u  - 1u;
+    pBuddy->NodeNbr  = pBuddy->PageNbr * 2u  - 1U;
 
     /* 计算每个节点管理的页数(采用以2为底的对数来表示) */
     logn = log2(pBuddy->PageNbr) & 0x3f;
@@ -161,7 +161,7 @@ static TBase32 MallocPages(TMemBuddy* pBuddy, TBase32 pages)
     pBuddy->NodeTags[node] = 0U;
 
     /* 通过节点编号计算内存页编号 */
-    index = (node + 1u) * pages - pBuddy->PageNbr;
+    index = (node + 1U) * pages - pBuddy->PageNbr;
 
     /* 回溯调整到根节点路径上的所有节点的可分配内存页数(注意是路径上的全部节点) */
     while (node)
@@ -220,7 +220,7 @@ static TBase32 FreePages(TMemBuddy* pBuddy, TBase32 index)
     lvl = log2(pBuddy->PageNbr);
 
     /* 通过内存页编号获得叶子节点编号 */
-    node = index + pBuddy->PageNbr - 1u;
+    node = index + pBuddy->PageNbr - 1U;
 
     /* 通过该叶子节点向上回溯查找分配该起始内存页的节点, 比对次数最多为树的深度 */
     for (logn = 0; logn <= lvl; logn++)
@@ -286,15 +286,22 @@ static TBase32 FreePages(TMemBuddy* pBuddy, TBase32 index)
  *        (2) eFailure  操作失败                                                                 *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState xBuddyCreate(TMemBuddy* pBuddy, TChar* pAddr, TBase32 pages, TBase32 pagesize, TError* pError)
+TState TclCreateMemoryBuddy(TMemBuddy* pBuddy, TChar* pAddr, TBase32 pages, TBase32 pagesize, TError* pError)
 {
     TState state = eFailure;
-    TError error = MEM_ERR_FAULT;
+    TError error = OS_MEM_ERR_FAULT;
     TIndex index;
 
     TReg32 imask;
 
-    CpuEnterCritical(&imask);
+    OS_ASSERT((pBuddy != (TMemBuddy*)0), "");
+    OS_ASSERT((pAddr  != (TChar*)0), "");
+    OS_ASSERT((pages  > 0U), "");
+    OS_ASSERT((pages  <= TCLC_MEMORY_BUDDY_PAGES), "");
+    OS_ASSERT((pagesize > 0U), "");
+    OS_ASSERT((pError != (TError*)0), "");
+
+    OsCpuEnterCritical(&imask);
     if (!(pBuddy->Property & BUDDY_PROP_READY))
     {
         /* 调整pages到和它最相近且不大于它的2的幂数 */
@@ -308,7 +315,7 @@ TState xBuddyCreate(TMemBuddy* pBuddy, TChar* pAddr, TBase32 pages, TBase32 page
             pBuddy->PageAvail = pages;
 
             /* 设置所有内存都处于可分配状态 */
-            for (index = 0; index < MEM_BUDDY_PAGE_TAGS; index++)
+            for (index = 0U; index < OS_MEM_BUDDY_PAGE_TAGS; index++)
             {
                 pBuddy->PageTags[index] = ~0U;
             }
@@ -316,11 +323,11 @@ TState xBuddyCreate(TMemBuddy* pBuddy, TChar* pAddr, TBase32 pages, TBase32 page
             /* 创建二叉树控制结构 */
             BuildPageTree(pBuddy);
 
-            error = MEM_ERR_NONE;
+            error = OS_MEM_ERR_NONE;
             state = eSuccess;
         }
     }
-    CpuLeaveCritical(imask);
+    OsCpuLeaveCritical(imask);
 
     *pError = error;
     return state;
@@ -335,21 +342,24 @@ TState xBuddyCreate(TMemBuddy* pBuddy, TChar* pAddr, TBase32 pages, TBase32 page
  *        (2) eFailure   操作失败                                                                *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState xBuddyDelete(TMemBuddy* pBuddy, TError* pError)
+TState TclDeleteMemoryBuddy(TMemBuddy* pBuddy, TError* pError)
 {
     TReg32 imask;
     TState state = eFailure;
-    TError error = MEM_ERR_UNREADY;
+    TError error = OS_MEM_ERR_UNREADY;
 
-    CpuEnterCritical(&imask);
-    if (pBuddy->Property & MEM_PROP_READY)
+    OS_ASSERT((pBuddy != (TMemBuddy*)0), "");
+    OS_ASSERT((pError != (TError*)0), "");
+
+    OsCpuEnterCritical(&imask);
+    if (pBuddy->Property & OS_MEM_PROP_READY)
     {
         memset(pBuddy->PageAddr, 0U, pBuddy->PageSize * pBuddy->PageNbr);
         memset(pBuddy, 0U, sizeof(TMemBuddy));
-        error = MEM_ERR_NONE;
+        error = OS_MEM_ERR_NONE;
         state = eSuccess;
     }
-    CpuLeaveCritical(imask);
+    OsCpuLeaveCritical(imask);
 
     *pError = error;
     return state;
@@ -366,10 +376,10 @@ TState xBuddyDelete(TMemBuddy* pBuddy, TError* pError)
  *        (2) eFailure  操作失败                                                                 *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState xBuddyMemMalloc(TMemBuddy* pBuddy, TBase32 length, void** pAddr2, TError* pError)
+TState TclMallocBuddyMemory(TMemBuddy* pBuddy, TBase32 length, void** pAddr2, TError* pError)
 {
     TState state = eFailure;
-    TError error = MEM_ERR_UNREADY;
+    TError error = OS_MEM_ERR_UNREADY;
     TReg32 imask;
     TBase32 pages;
     TBase32 index;
@@ -378,15 +388,20 @@ TState xBuddyMemMalloc(TMemBuddy* pBuddy, TBase32 length, void** pAddr2, TError*
     TIndex y;
     TIndex i;
 
-    CpuEnterCritical(&imask);
+    OS_ASSERT((pBuddy != (TMemBuddy*)0), "");
+    OS_ASSERT((length > 0U), "");
+    OS_ASSERT((pAddr2 != (void**)0), "");
+    OS_ASSERT((pError != (TError*)0), "");
 
-    if (pBuddy->Property &BUDDY_PROP_READY)
+    OsCpuEnterCritical(&imask);
+
+    if (pBuddy->Property & BUDDY_PROP_READY)
     {
         /* 如果申请的内存长度没有超过BUDDY的范围 */
         if (length <= (pBuddy->PageNbr * pBuddy->PageSize))
         {
             /* 计算需要分配多少内存页 */
-            pages = (length + pBuddy->PageSize - 1u) / (pBuddy->PageSize);
+            pages = (length + pBuddy->PageSize - 1U) / (pBuddy->PageSize);
 
             /* 调整pages到和它最相近且不小于它的2的幂数 */
             pages = clp2(pages);
@@ -408,22 +423,22 @@ TState xBuddyMemMalloc(TMemBuddy* pBuddy, TBase32 length, void** pAddr2, TError*
 
                 /* 通过内存页编号获得内存地址 */
                 *pAddr2 = (void*)(pBuddy->PageAddr + index * pBuddy->PageSize);
-                
-                error = MEM_ERR_NONE;
+
+                error = OS_MEM_ERR_NONE;
                 state = eSuccess;
             }
             else
             {
                 *pAddr2 = (void*)0;
-                error = MEM_ERR_NO_MEM;
+                error = OS_MEM_ERR_NO_MEM;
             }
         }
         else
         {
-            error = MEM_ERR_NO_MEM;
+            error = OS_MEM_ERR_NO_MEM;
         }
     }
-    CpuLeaveCritical(imask);
+    OsCpuLeaveCritical(imask);
 
     *pError = error;
     return state;
@@ -439,10 +454,10 @@ TState xBuddyMemMalloc(TMemBuddy* pBuddy, TBase32 length, void** pAddr2, TError*
  *        (2) eFailure  操作失败                                                                 *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState xBuddyMemFree(TMemBuddy* pBuddy, void* pAddr, TError* pError)
+TState TclFreeBuddyMemory(TMemBuddy* pBuddy, void* pAddr, TError* pError)
 {
     TState state = eFailure;
-    TError error = MEM_ERR_UNREADY;
+    TError error = OS_MEM_ERR_UNREADY;
     TReg32 imask;
     TBase32 index;
     TIndex x;
@@ -451,18 +466,22 @@ TState xBuddyMemFree(TMemBuddy* pBuddy, void* pAddr, TError* pError)
     TBase32 pages;
     TIndex i;
 
-    CpuEnterCritical(&imask);
+    OS_ASSERT((pBuddy != (TMemBuddy*)0), "");
+    OS_ASSERT((pAddr  != (char*)0), "");
+    OS_ASSERT((pError != (TError*)0), "");
+
+    OsCpuEnterCritical(&imask);
     if ((pBuddy->Property &BUDDY_PROP_READY))
     {
         /* 检查被释放的地址是否在伙伴系统管理的内存范围内 */
         if (((char*)pAddr >= (char*)(pBuddy->PageAddr)) &&
-            ((char*)pAddr < ((char*)(pBuddy->PageAddr) + pBuddy->PageSize* pBuddy->PageNbr)))
+                ((char*)pAddr < ((char*)(pBuddy->PageAddr) + pBuddy->PageSize* pBuddy->PageNbr)))
         {
             /* 通过内存地址计算起始页编号 */
             index = ((char*)pAddr - (char*)(pBuddy->PageAddr)) / pBuddy->PageSize;
 
             /* 检查内存页管理标记，避免再次释放已经释放过的内存页地址 */
-            y = (index >> 5);
+            y = (index >> 5U);
             x = (index & 0x1f);
             tag = pBuddy->PageTags[y] & (0x1 << x);
             if (tag == 0)
@@ -479,20 +498,20 @@ TState xBuddyMemFree(TMemBuddy* pBuddy, void* pAddr, TError* pError)
                 }
 
                 pBuddy->PageAvail += pages;
-                error = MEM_ERR_NONE;
+                error = OS_MEM_ERR_NONE;
                 state = eSuccess;
             }
             else
             {
-                error = MEM_ERR_DBL_FREE;
+                error = OS_MEM_ERR_DBL_FREE;
             }
         }
         else
         {
-            error = MEM_ERR_BAD_ADDR;
+            error = OS_MEM_ERR_BAD_ADDR;
         }
     }
-    CpuLeaveCritical(imask);
+    OsCpuLeaveCritical(imask);
 
     *pError = error;
     return state;

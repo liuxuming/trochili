@@ -15,25 +15,25 @@ typedef struct DBGLogDef
     const TChar* Note;
     const TChar* File;
     const TChar* Func;
-    TBase32        Line;
+    TBase32      Line;
 } TDBGLog;
 
-extern void xDebugPanic(const char* pNote, const char* pFile, const char* pFunc, int line);
-extern void uDebugAlarm(const char* pNote);
+extern void OsDebugPanic(const char* pNote, const char* pFile, const char* pFunc, int line);
+extern void OsDebugWarning(const char* pNote);
 
 /* ASSERT∫Í∂®“Â */
 #if (TCLC_ASSERT_ENABLE)
-#ifndef KNL_ASSERT
-#define KNL_ASSERT(condition, note)\
+#ifndef OS_ASSERT
+#define OS_ASSERT(condition, note)\
     do{\
         if (!(condition))\
         {\
-            xDebugPanic((note), __FILE__, __FUNCTION__, __LINE__);\
+            OsDebugPanic((note), __FILE__, __FUNCTION__, __LINE__);\
         }\
     } while(0)
 #endif
 #else
-#define KNL_ASSERT
+#define OS_ASSERT
 #endif
 
 #endif /* _TCL_DEBUG_H */
