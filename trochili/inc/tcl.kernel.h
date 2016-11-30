@@ -43,12 +43,11 @@ typedef enum
     OsThreadState  = 2,                               /* 代码运行在线程态                      */
 } TKernelState;
 
-#define KERNEL_DIAG_ERROR_NONE      (0U)              /* 线程栈溢出                            */
-#define KERNEL_DIAG_THREAD_ERROR    (0x1<<0U)         /* 线程错误                              */
-#define KERNEL_DIAG_SCHED_ERROR     (0x1<<1U)         /* 内核禁止线程调度                      */
-#define KERNEL_DIAG_TIMER_ERROR     (0x1<<2U)         /* 定时器错误                            */
-#define KERNEL_DIAG_IRQ_ERROR       (0x1<<3U)         /* 在中断里操作了互斥量                  */
-#define KERNEL_DIAG_TIMER_WARNING   (0x1<<16U)        /* 用户定时器溢出警告                    */
+#define OS_KERNEL_DIAG_ERROR_NONE      (0U)           /* 线程栈溢出                            */
+#define OS_KERNEL_DIAG_THREAD_ERROR    (0x1<<0U)      /* 线程错误                              */
+#define OS_KERNEL_DIAG_SCHED_ERROR     (0x1<<1U)      /* 内核禁止线程调度                      */
+#define OS_KERNEL_DIAG_TIMER_ERROR     (0x1<<2U)      /* 定时器错误                            */
+#define OS_KERNEL_DIAG_IPC_ERROR       (0x1<<3U)      /* 在中断里操作了互斥量                  */
 
 /* 内核变量结构定义，记录了内核运行时的各种数据 */
 struct KernelVariableDef
@@ -74,7 +73,7 @@ struct KernelVariableDef
 
 #if (TCLC_TIMER_ENABLE)
     TThread*         TimerDaemon;                     /* 用户定时器线程指针                    */
-    TTimerList*      TimerList;                   /* 用户定时器链表指针                    */
+    TTimerList*      TimerList;                       /* 用户定时器链表指针                    */
 #endif
 
 #if (TCLC_IRQ_ENABLE)

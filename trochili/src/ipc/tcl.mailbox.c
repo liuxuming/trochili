@@ -43,13 +43,13 @@ static TState ReceiveMail(TMailbox* pMailbox, void** pMail2, TBool* pHiRP, TErro
          * 如果此时在邮箱的线程阻塞队列中有线程存在,即该线程等待发送邮件,
          * 则从中将一个合适的线程解除阻塞。此时紧急邮件优先
          */
-        if (pMailbox->Property &OS_IPC_PROP_AUXIQ_AVAIL)
+        if (pMailbox->Property & OS_IPC_PROP_AUXIQ_AVAIL)
         {
             pContext = (TIpcContext*)(pMailbox->Queue.AuxiliaryHandle->Owner);
         }
         else
         {
-            if (pMailbox->Property &OS_IPC_PROP_PRIMQ_AVAIL)
+            if (pMailbox->Property & OS_IPC_PROP_PRIMQ_AVAIL)
             {
                 pContext = (TIpcContext*)(pMailbox->Queue.PrimaryHandle->Owner);
             }
@@ -102,7 +102,7 @@ static TState SendMail(TMailbox* pMailbox, void** pMail2, TBool* pHiRP, TError* 
          * 邮件读取队列, 这时需要从邮箱的阻塞队列中找到一个合适的线程,并直接使得它读取邮件成功。
          * 同时邮箱的状态不变
          */
-        if (pMailbox->Property &OS_IPC_PROP_PRIMQ_AVAIL)
+        if (pMailbox->Property & OS_IPC_PROP_PRIMQ_AVAIL)
         {
             pContext = (TIpcContext*)(pMailbox->Queue.PrimaryHandle->Owner);
         }
@@ -160,7 +160,7 @@ TState TclReceiveMail(TMailbox* pMailbox, TMail* pMail2, TOption option, TTimeTi
     option &= OS_USER_MBOX_OPTION;
 
     OsCpuEnterCritical(&imask);
-    if (pMailbox->Property &OS_IPC_PROP_READY)
+    if (pMailbox->Property & OS_IPC_PROP_READY)
     {
         /*
          * 如果是中断程序调用本函数则只能以非阻塞方式从邮箱中读取邮件,
@@ -256,7 +256,7 @@ TState TclSendMail(TMailbox* pMailbox, TMail* pMail2, TOption option, TTimeTick 
     option &= OS_USER_MBOX_OPTION;
 
     OsCpuEnterCritical(&imask);
-    if (pMailbox->Property &OS_IPC_PROP_READY)
+    if (pMailbox->Property & OS_IPC_PROP_READY)
     {
         /*
          * 如果是中断程序调用本函数则只能以非阻塞方式向邮箱中发送邮件,
@@ -354,7 +354,7 @@ TState TclIsrSendMail(TMailbox* pMailbox, TMail* pMail2, TOption option, TError*
     option &= OS_ISR_MBOX_OPTION;
 
     OsCpuEnterCritical(&imask);
-    if (pMailbox->Property &OS_IPC_PROP_READY)
+    if (pMailbox->Property & OS_IPC_PROP_READY)
     {
         /*
          * 如果是中断程序调用本函数则只能以非阻塞方式向邮箱中发送邮件,
@@ -394,7 +394,7 @@ TState TclCreateMailbox(TMailbox* pMailbox, TChar* pName, TProperty property, TE
 
     OsCpuEnterCritical(&imask);
 
-    if (!(pMailbox->Property &OS_IPC_PROP_READY))
+    if (!(pMailbox->Property & OS_IPC_PROP_READY))
     {
         /* 初始化邮箱对象信息 */
         OsKernelAddObject(&(pMailbox->Object), pName, OsMailboxObject, (void*)pMailbox);
@@ -440,7 +440,7 @@ TState TclDeleteMailbox(TMailbox* pMailbox, TError* pError)
 
     OsCpuEnterCritical(&imask);
 
-    if (pMailbox->Property &OS_IPC_PROP_READY)
+    if (pMailbox->Property & OS_IPC_PROP_READY)
     {
         /* 将邮箱阻塞队列上的所有等待线程都释放,所有线程的等待结果都是OS_IPC_ERR_DELETE  */
         OsIpcUnblockAll(&(pMailbox->Queue), eFailure, OS_IPC_ERR_DELETE, (void**)0, &HiRP);
@@ -491,7 +491,7 @@ TState TclResetMailbox(TMailbox* pMailbox, TError* pError)
     OS_ASSERT((pError != (TError*)0), "");
 
     OsCpuEnterCritical(&imask);
-    if (pMailbox->Property &OS_IPC_PROP_READY)
+    if (pMailbox->Property & OS_IPC_PROP_READY)
     {
         /* 将阻塞队列上的所有等待线程都释放,所有线程的等待结果都是OS_IPC_ERR_RESET */
         OsIpcUnblockAll(&(pMailbox->Queue), eFailure, OS_IPC_ERR_RESET, (void**)0, &HiRP);
@@ -543,7 +543,7 @@ TState TclFlushMailbox(TMailbox* pMailbox, TError* pError)
 
     OsCpuEnterCritical(&imask);
 
-    if (pMailbox->Property &OS_IPC_PROP_READY)
+    if (pMailbox->Property & OS_IPC_PROP_READY)
     {
         /* 将邮箱阻塞队列上的所有等待线程都释放，所有线程的等待结果都是OS_IPC_ERR_FLUSH  */
         OsIpcUnblockAll(&(pMailbox->Queue), eFailure, OS_IPC_ERR_FLUSH, (void**)0, &HiRP);
@@ -590,7 +590,7 @@ TState TclBroadcastMail(TMailbox* pMailbox, TMail* pMail2, TError* pError)
 
     OsCpuEnterCritical(&imask);
 
-    if (pMailbox->Property &OS_IPC_PROP_READY)
+    if (pMailbox->Property & OS_IPC_PROP_READY)
     {
         /* 只有邮箱空并且有线程等待读取邮件的时候才能进行广播 */
         if (pMailbox->Status == OsMailboxEmpty)

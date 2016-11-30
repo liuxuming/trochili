@@ -193,7 +193,7 @@ TState TclClearnIrqVector(TIndex irqn, TError* pError)
             if (!(pVector->Property & IRQ_VECTOR_PROP_LOCKED))
             {
                 IrqMapTable[irqn] = (TAddr32)0;
-                memset(pVector, 0, sizeof(TIrqVector));
+                memset(pVector, 0U, sizeof(TIrqVector));
                 error = OS_IRQ_ERR_NONE;
                 state = eSuccess;
             }
@@ -291,7 +291,7 @@ TState TclCancelIRQ(TIrq* pIRQ, TError* pError)
     if (pIRQ->Property & OS_IRQ_PROP_READY)
     {
         OsObjListRemoveNode( pIRQ->LinkNode.Handle, &(pIRQ->LinkNode));
-        memset(pIRQ, 0, sizeof(TIrq));
+        memset(pIRQ, 0U, sizeof(TIrq));
 
         error = OS_IRQ_ERR_NONE;
         state = eSuccess;
@@ -334,7 +334,7 @@ static void IrqDaemonEntry(TArgument argument)
             pEntry = pIRQ->Entry;
             data   = pIRQ->Argument;
             OsObjListRemoveNode(pIRQ->LinkNode.Handle, &(pIRQ->LinkNode));
-            memset(pIRQ, 0, sizeof(TIrq));
+            memset(pIRQ, 0U, sizeof(TIrq));
             OsCpuLeaveCritical(imask);
 
             pEntry(data);
@@ -361,14 +361,14 @@ void OsIrqModuleInit(void)
     }
 
     /* 初始化相关的内核变量 */
-    OsKernelVariable.IrqMapTable    = IrqMapTable;
+    OsKernelVariable.IrqMapTable = IrqMapTable;
     OsKernelVariable.IrqVectorTable = IrqVectorTable;
 
-    memset(IrqMapTable, 0, sizeof(IrqMapTable));
-    memset(IrqVectorTable, 0, sizeof(IrqVectorTable));
+    memset(IrqMapTable, 0U, sizeof(IrqMapTable));
+    memset(IrqVectorTable, 0U, sizeof(IrqVectorTable));
 
 #if (TCLC_IRQ_DAEMON_ENABLE)
-    memset(&IrqReqList, 0, sizeof(IrqReqList));
+    memset(&IrqReqList, 0U, sizeof(TIrqList));
 
     /* 初始化内核中断服务线程 */
     OsThreadCreate(&IrqDaemonThread,

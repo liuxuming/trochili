@@ -242,7 +242,7 @@ TState TclFreeMutex(TMutex* pMutex, TError* pError)
     /* 只允许在线程代码里调用本函数 */
     if (OsKernelVariable.State != OsThreadState)
     {
-        OsKernelVariable.Diagnosis |= KERNEL_DIAG_IRQ_ERROR;
+        OsKernelVariable.Diagnosis |= OS_KERNEL_DIAG_IPC_ERROR;
         OsDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
@@ -306,7 +306,7 @@ TState TclLockMutex(TMutex* pMutex, TOption option, TTimeTick timeo, TError* pEr
     /* 只允许在线程代码里调用本函数 */
     if (OsKernelVariable.State != OsThreadState)
     {
-        OsKernelVariable.Diagnosis |= KERNEL_DIAG_IRQ_ERROR;
+        OsKernelVariable.Diagnosis |= OS_KERNEL_DIAG_IPC_ERROR;
         OsDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
@@ -323,10 +323,13 @@ TState TclLockMutex(TMutex* pMutex, TOption option, TTimeTick timeo, TError* pEr
                     if (OsKernelVariable.CurrentThread->ACAPI & OS_THREAD_ACAPI_BLOCK)
                     {
                         /* 设定线程正在等待的资源的信息 */
-                        OsIpcInitContext(&context, (void*)pMutex, 0U, 0U, 
-                        (option | OS_IPC_OPT_MUTEX), timeo, &state, &error);
+                        OsIpcInitContext(&context, (void*)pMutex, 0U, 0U,
+                                         (option | OS_IPC_OPT_MUTEX), timeo, &state, &error);
 
-                        /* 当前线程阻塞在该互斥量的阻塞队列，时限或者无限等待，由OS_IPC_OPT_TIMEO参数决定 */
+                        /*
+                        						 * 当前线程阻塞在该互斥量的阻塞队列，时限或者无限等待，
+                        						 * 由OS_IPC_OPT_TIMEO参数决定
+                        						*/
                         OsIpcBlockThread(&context, &(pMutex->Queue));
 
                         /* 当前线程被阻塞，其它线程得以执行 */
@@ -369,7 +372,8 @@ TState TclLockMutex(TMutex* pMutex, TOption option, TTimeTick timeo, TError* pEr
  *        (2) eFailure 操作失败                                                                  *
  *  说明：                                                                                       *
  *************************************************************************************************/
-TState TclCreateMutex(TMutex* pMutex, TChar* pName, TProperty property, TPriority priority, TError* pError)
+TState TclCreateMutex(TMutex* pMutex, TChar* pName, TProperty property, TPriority priority,
+                      TError* pError)
 {
     TState state = eFailure;
     TError error = OS_IPC_ERR_FAULT;
@@ -388,7 +392,7 @@ TState TclCreateMutex(TMutex* pMutex, TChar* pName, TProperty property, TPriorit
     /* 只允许在线程代码里调用本函数 */
     if (OsKernelVariable.State != OsThreadState)
     {
-        OsKernelVariable.Diagnosis |= KERNEL_DIAG_IRQ_ERROR;
+        OsKernelVariable.Diagnosis |= OS_KERNEL_DIAG_IPC_ERROR;
         OsDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
@@ -448,7 +452,7 @@ TState TclDeleteMutex(TMutex* pMutex, TError* pError)
     /* 只允许在线程代码里调用本函数 */
     if (OsKernelVariable.State != OsThreadState)
     {
-        OsKernelVariable.Diagnosis |= KERNEL_DIAG_IRQ_ERROR;
+        OsKernelVariable.Diagnosis |= OS_KERNEL_DIAG_IPC_ERROR;
         OsDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
@@ -518,7 +522,7 @@ TState TclResetMutex(TMutex* pMutex, TError* pError)
     /* 只允许在线程代码里调用本函数 */
     if (OsKernelVariable.State != OsThreadState)
     {
-        OsKernelVariable.Diagnosis |= KERNEL_DIAG_IRQ_ERROR;
+        OsKernelVariable.Diagnosis |= OS_KERNEL_DIAG_IPC_ERROR;
         OsDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
@@ -574,8 +578,6 @@ TState TclResetMutex(TMutex* pMutex, TError* pError)
 /*************************************************************************************************
  *  功能：互斥量阻塞终止函数,将指定的线程从互斥量的线程阻塞队列中终止阻塞并唤醒                  *
  *  参数：(1) pMutex   互斥量结构地址                                                            *
- *        (2) option   参数选项                                                                  *
- *        (3) pThread  线程地址                                                                  *
  *        (4) pError   详细调用结果                                                              *
  *  返回: (1) eSuccess 操作成功                                                                  *
  *        (2) eFailure 操作失败                                                                  *
@@ -596,7 +598,7 @@ TState TclFlushMutex(TMutex* pMutex, TError* pError)
     /* 只允许在线程代码里调用本函数 */
     if (OsKernelVariable.State != OsThreadState)
     {
-        OsKernelVariable.Diagnosis |= KERNEL_DIAG_IRQ_ERROR;
+        OsKernelVariable.Diagnosis |= OS_KERNEL_DIAG_IPC_ERROR;
         OsDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 

@@ -34,7 +34,7 @@ static void SuperviseThread(TThread* pThread)
     OS_ASSERT((pThread == OsKernelVariable.CurrentThread), "");
     pThread->Entry(pThread->Argument);
 
-    OsKernelVariable.Diagnosis |= KERNEL_DIAG_THREAD_ERROR;
+    OsKernelVariable.Diagnosis |= OS_KERNEL_DIAG_THREAD_ERROR;
     pThread->Diagnosis |= OS_THREAD_DIAG_INVALID_EXIT;
     OsDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
 }
@@ -175,7 +175,7 @@ static void CheckThreadStack(TThread* pThread)
     if ((pThread->StackTop < pThread->StackBarrier) ||
             (*(TBase32*)(pThread->StackBarrier) != TCLC_THREAD_STACK_BARRIER_VALUE))
     {
-        OsKernelVariable.Diagnosis |= KERNEL_DIAG_THREAD_ERROR;
+        OsKernelVariable.Diagnosis |= OS_KERNEL_DIAG_THREAD_ERROR;
         pThread->Diagnosis |= OS_THREAD_DIAG_STACK_OVERFLOW;
         OsDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
@@ -188,31 +188,6 @@ static void CheckThreadStack(TThread* pThread)
 
 #endif
 
-
-/*************************************************************************************************
- *  功能：初始化内核线程管理模块                                                                 *
- *  参数：无                                                                                     *
- *  返回：无                                                                                     *
- *  说明：内核中的线程队列主要有一下几种：                                                       *
- *        (1) 线程就绪队列,用于存储所有的就绪线和运行线程。内核中只有一个就绪队列。              *
- *        (2) 线程辅助队列, 所有挂起状态、延时状态和休眠状态的线程都存储在这个队列中。           *
- *            同样内核中只有一个休眠队列                                                         *
- *        (3) IPC对象的线程阻塞队列，数量不定。所有阻塞状态的线程都保存在相应的线程阻塞队列里。  *
- *************************************************************************************************/
-void OsThreadModuleInit(void)
-{
-    /* 检查内核是否处于初始状态 */
-    if (OsKernelVariable.State != OsOriginState)
-    {
-        OsDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
-    }
-
-    memset(&ThreadReadyQueue, 0, sizeof(ThreadReadyQueue));
-    memset(&ThreadAuxiliaryQueue, 0, sizeof(ThreadAuxiliaryQueue));
-
-    OsKernelVariable.ThreadReadyQueue = &ThreadReadyQueue;
-    OsKernelVariable.ThreadAuxiliaryQueue = &ThreadAuxiliaryQueue;
-}
 
 /* RULE
  * 1 当前线程离开就绪队列后，再次加入就绪队列时，
@@ -518,7 +493,7 @@ void OsThreadCreate(TThread* pThread, TChar* pName, TThreadStatus status, TPrope
     pThread->StackBase = (TBase32)pStack + bytes;
 
     /* 清空线程栈空间 */
-    if (property &OS_THREAD_PROP_CLEAN_STACK)
+    if (property & OS_THREAD_PROP_CLEAN_STACK)
     {
         memset(pStack, 0U, bytes);
     }
@@ -620,7 +595,7 @@ TState OsThreadDelete(TThread* pThread, TError* pError)
         {
             OsKernelRemoveObject(&(pThread->Object));
             OsThreadLeaveQueue(&ThreadAuxiliaryQueue, pThread);
-            memset(pThread, 0U, sizeof(pThread));
+            memset(pThread, 0U, sizeof(TThread));
             error = OS_THREAD_ERR_NONE;
             state = eSuccess;
         }
@@ -783,10 +758,111 @@ void OsThreadSuspendSelf(void)
     }
     else
     {
-        OsKernelVariable.Diagnosis |= KERNEL_DIAG_SCHED_ERROR;
+        OsKernelVariable.Diagnosis |= OS_KERNEL_DIAG_SCHED_ERROR;
 
         OsDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
+}
+
+
+/* 内核ROOT线程定义和栈定义 */
+static TThread RootThread;
+static TBase32 RootThreadStack[TCLC_ROOT_THREAD_STACK_BYTES >> 2];
+
+/* 内核ROOT线程不接受任何线程管理API操作 */
+#define OS_THREAD_ACAPI_ROOT (OS_THREAD_ACAPI_NONE)
+
+/*************************************************************************************************
+ *  功能：内核ROOT线程函数                                                                       *
+ *  参数：(1) argument 线程的参数                                                                *
+ *  返回：无                                                                                     *
+ *  说明：该函数首先开启多任务机制，然后调度其它线程运行                                         *
+ *        注意线程栈容量大小的问题，这个线程函数不要做太多工作                                   *
+ *************************************************************************************************/
+static void RootThreadEntry(TBase32 argument)
+{
+    /* 关闭处理器中断 */
+    OsCpuDisableInt();
+
+    /* 标记内核进入多线程模式 */
+    OsKernelVariable.State = OsThreadState;
+
+    /* 临时关闭线程调度功能 */
+    OsKernelVariable.SchedLockTimes = 1U;
+
+    /*
+     * 调用用户入口函数，初始化用户程序。
+     * 该函数运行在OsThreadState,但是禁止Schedulable的状态下
+     */
+    if(OsKernelVariable.UserEntry == (TUserEntry)0)
+    {
+        OsDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+    }
+    OsKernelVariable.UserEntry();
+
+    /* 开启线程调度功能 */
+    OsKernelVariable.SchedLockTimes = 0U;
+
+    /* 打开系统时钟节拍 */
+    OsCpuStartTickClock();
+
+    /* 打开处理器中断 */
+    OsCpuEnableInt();
+
+    /* 调用IDLE Hook函数，此时多线程机制已经打开 */
+    while (eTrue)
+    {
+        if (OsKernelVariable.SysIdleEntry != (TSysIdleEntry)0)
+        {
+            OsKernelVariable.SysIdleEntry();
+        }
+    }
+}
+
+
+/*************************************************************************************************
+ *  功能：初始化内核线程管理模块                                                                 *
+ *  参数：无                                                                                     *
+ *  返回：无                                                                                     *
+ *  说明：内核中的线程队列主要有一下几种：                                                       *
+ *        (1) 线程就绪队列,用于存储所有的就绪线和运行线程。内核中只有一个就绪队列。              *
+ *        (2) 线程辅助队列, 所有挂起状态、延时状态和休眠状态的线程都存储在这个队列中。           *
+ *            同样内核中只有一个休眠队列                                                         *
+ *        (3) IPC对象的线程阻塞队列，数量不定。所有阻塞状态的线程都保存在相应的线程阻塞队列里。  *
+ *************************************************************************************************/
+void OsThreadModuleInit(void)
+{
+    /* 检查内核是否处于初始状态 */
+    if (OsKernelVariable.State != OsOriginState)
+    {
+        OsDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
+    }
+
+    memset(&ThreadReadyQueue, 0U, sizeof(ThreadReadyQueue));
+    memset(&ThreadAuxiliaryQueue, 0U, sizeof(ThreadAuxiliaryQueue));
+
+    OsKernelVariable.ThreadReadyQueue = &ThreadReadyQueue;
+    OsKernelVariable.ThreadAuxiliaryQueue = &ThreadAuxiliaryQueue;
+
+    /* 初始化内核ROOT线程 */
+    OsThreadCreate(&RootThread,
+                   "kernel root thread",
+                   OsThreadReady,
+                   OS_THREAD_PROP_PRIORITY_FIXED|\
+                   OS_THREAD_PROP_CLEAN_STACK|\
+                   OS_THREAD_PROP_KERNEL_ROOT,
+                   OS_THREAD_ACAPI_ROOT,
+                   RootThreadEntry,
+                   (TArgument)0,
+                   (void*)RootThreadStack,
+                   (TBase32)TCLC_ROOT_THREAD_STACK_BYTES,
+                   (TPriority)TCLC_ROOT_THREAD_PRIORITY,
+                   (TTimeTick)TCLC_ROOT_THREAD_SLICE);
+
+    /* 初始化相关的内核变量 */
+    OsKernelVariable.RootThread    = &RootThread;
+    OsKernelVariable.NomineeThread  = &RootThread;
+    OsKernelVariable.CurrentThread = &RootThread;
 }
 
 
@@ -893,10 +969,10 @@ TState TclDeleteThread(TThread* pThread, TError* pError)
         }
 
         /* 检查线程是否已经被初始化 */
-        if (pThread->Property &OS_THREAD_PROP_READY)
+        if (pThread->Property & OS_THREAD_PROP_READY)
         {
             /* 检查线程是否接收相关API调用 */
-            if (pThread->ACAPI &OS_THREAD_ACAPI_DELETE)
+            if (pThread->ACAPI & OS_THREAD_ACAPI_DELETE)
             {
                 state = OsThreadDelete(pThread, &error);
             }
@@ -950,10 +1026,10 @@ TState TclSetThreadPriority(TThread* pThread, TPriority priority, TError* pError
         }
 
         /* 检查线程是否已经被初始化 */
-        if (pThread->Property &OS_THREAD_PROP_READY)
+        if (pThread->Property & OS_THREAD_PROP_READY)
         {
             /* 检查线程是否接收相关API调用 */
-            if (pThread->ACAPI &OS_THREAD_ACAPI_PRIORITY)
+            if (pThread->ACAPI & OS_THREAD_ACAPI_PRIORITY)
             {
                 if ((!(pThread->Property & OS_THREAD_PROP_PRIORITY_FIXED)) &&
                         (pThread->Property & OS_THREAD_PROP_PRIORITY_SAFE))
@@ -1017,10 +1093,10 @@ TState TclSetThreadSlice(TThread* pThread, TTimeTick ticks, TError* pError)
         }
 
         /* 检查线程是否已经被初始化 */
-        if (pThread->Property &OS_THREAD_PROP_READY)
+        if (pThread->Property & OS_THREAD_PROP_READY)
         {
             /* 检查线程是否接收相关API调用 */
-            if (pThread->ACAPI &OS_THREAD_ACAPI_SLICE)
+            if (pThread->ACAPI & OS_THREAD_ACAPI_SLICE)
             {
                 /* 调整线程时间片长度 */
                 if (pThread->BaseTicks > ticks)
@@ -1081,10 +1157,10 @@ TState TclYieldThread(TError* pError)
         pThread = OsKernelVariable.CurrentThread;
 
         /* 检查线程是否已经被初始化 */
-        if (pThread->Property &OS_THREAD_PROP_READY)
+        if (pThread->Property & OS_THREAD_PROP_READY)
         {
             /* 检查线程是否接收相关API调用 */
-            if (pThread->ACAPI &OS_THREAD_ACAPI_YIELD)
+            if (pThread->ACAPI & OS_THREAD_ACAPI_YIELD)
             {
                 /* 只能在内核允许线程调度的条件下才能调用本函数 */
                 if (OsKernelVariable.SchedLockTimes == 0U)
@@ -1147,10 +1223,10 @@ TState TclDeactivateThread(TThread* pThread, TError* pError)
         }
 
         /* 检查线程是否已经被初始化 */
-        if (pThread->Property &OS_THREAD_PROP_READY)
+        if (pThread->Property & OS_THREAD_PROP_READY)
         {
             /* 检查线程是否接收相关API调用 */
-            if (pThread->ACAPI &OS_THREAD_ACAPI_DEACTIVATE)
+            if (pThread->ACAPI & OS_THREAD_ACAPI_DEACTIVATE)
             {
                 state = SetThreadUnready(pThread, OsThreadDormant, 0U, &HiRP, &error);
                 if (HiRP == eTrue)
@@ -1201,10 +1277,10 @@ TState TclActivateThread(TThread* pThread, TError* pError)
     if (OsKernelVariable.State == OsThreadState)
     {
         /* 检查线程是否已经被初始化 */
-        if (pThread->Property &OS_THREAD_PROP_READY)
+        if (pThread->Property & OS_THREAD_PROP_READY)
         {
             /* 检查线程是否接收相关API调用 */
-            if (pThread->ACAPI &OS_THREAD_ACAPI_ACTIVATE)
+            if (pThread->ACAPI & OS_THREAD_ACAPI_ACTIVATE)
             {
                 state = SetThreadReady(pThread, OsThreadDormant, &HiRP, &error);
                 if ((OsKernelVariable.SchedLockTimes == 0U) && (HiRP == eTrue))
@@ -1259,10 +1335,10 @@ TState TclSuspendThread(TThread* pThread, TError* pError)
         }
 
         /* 检查线程是否已经被初始化 */
-        if (pThread->Property &OS_THREAD_PROP_READY)
+        if (pThread->Property & OS_THREAD_PROP_READY)
         {
             /* 检查线程是否接收相关API调用 */
-            if (pThread->ACAPI &OS_THREAD_ACAPI_SUSPEND)
+            if (pThread->ACAPI & OS_THREAD_ACAPI_SUSPEND)
             {
                 state = SetThreadUnready(pThread, OsThreadSuspended, 0U, &HiRP, &error);
                 if (HiRP == eTrue)
@@ -1312,10 +1388,10 @@ TState TclResumeThread(TThread* pThread, TError* pError)
     if (OsKernelVariable.State == OsThreadState)
     {
         /* 检查线程是否已经被初始化 */
-        if (pThread->Property &OS_THREAD_PROP_READY)
+        if (pThread->Property & OS_THREAD_PROP_READY)
         {
             /* 检查线程是否接收相关API调用 */
-            if (pThread->ACAPI &OS_THREAD_ACAPI_RESUME)
+            if (pThread->ACAPI & OS_THREAD_ACAPI_RESUME)
             {
                 state = SetThreadReady(pThread, OsThreadSuspended, &HiRP, &error);
                 if ((OsKernelVariable.SchedLockTimes == 0U) && (HiRP == eTrue))
@@ -1370,10 +1446,10 @@ TState TclDelayThread(TTimeTick ticks, TError* pError)
         pThread = OsKernelVariable.CurrentThread;
 
         /* 检查线程是否已经被初始化 */
-        if (pThread->Property &OS_THREAD_PROP_READY)
+        if (pThread->Property & OS_THREAD_PROP_READY)
         {
             /* 检查线程是否接收相关API调用 */
-            if (pThread->ACAPI &OS_THREAD_ACAPI_DELAY)
+            if (pThread->ACAPI & OS_THREAD_ACAPI_DELAY)
             {
                 state = SetThreadUnready(pThread, OsThreadDelayed, ticks, &HiRP, &error);
                 if (HiRP == eTrue)
@@ -1422,10 +1498,10 @@ TState TclUndelayThread(TThread* pThread, TError* pError)
     if (OsKernelVariable.State == OsThreadState)
     {
         /* 检查线程是否已经被初始化 */
-        if (pThread->Property &OS_THREAD_PROP_READY)
+        if (pThread->Property & OS_THREAD_PROP_READY)
         {
             /* 检查线程是否接收相关API调用 */
-            if (pThread->ACAPI &OS_THREAD_ACAPI_UNDELAY)
+            if (pThread->ACAPI & OS_THREAD_ACAPI_UNDELAY)
             {
                 state = SetThreadReady(pThread, OsThreadDelayed, &HiRP, &error);
                 if ((OsKernelVariable.SchedLockTimes == 0U) && (HiRP == eTrue))
@@ -1474,10 +1550,10 @@ TState TclUnblockThread(TThread* pThread, TError* pError)
     if (OsKernelVariable.State == OsThreadState)
     {
         /* 检查线程是否已经被初始化 */
-        if (pThread->Property &OS_THREAD_PROP_READY)
+        if (pThread->Property & OS_THREAD_PROP_READY)
         {
             /* 检查线程是否接收相关API调用 */
-            if (pThread->ACAPI &OS_THREAD_ACAPI_UNBLOCK)
+            if (pThread->ACAPI & OS_THREAD_ACAPI_UNBLOCK)
             {
                 if (pThread->Status == OsThreadBlocked)
                 {

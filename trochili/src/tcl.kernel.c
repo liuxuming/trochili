@@ -15,7 +15,6 @@
 /* 内核关键参数集合 */
 TKernelVariable OsKernelVariable;
 
-static void CreateRootThread(void);
 
 /*************************************************************************************************
  *  功能：将内核对象加入系统中                                                                   *
@@ -123,7 +122,7 @@ void OsKernelTickISR(void)
     {
         OsKernelVariable.JiffyCycles++;
     }
-	
+
     /* 处理线程时钟节拍 */
     OsThreadTickUpdate();
 
@@ -325,7 +324,7 @@ void TclStartKernel(TUserEntry pUserEntry,
     OsCpuDisableInt();
 
     /* 初始化基本内核参数 */
-    memset(&OsKernelVariable, 0U, sizeof(OsKernelVariable));
+    memset(&OsKernelVariable, 0U, sizeof(TKernelVariable));
     OsKernelVariable.UserEntry       = pUserEntry;
     OsKernelVariable.CpuSetupEntry   = pCpuEntry;
     OsKernelVariable.BoardSetupEntry = pBoardEntry;
@@ -333,13 +332,10 @@ void TclStartKernel(TUserEntry pUserEntry,
     OsKernelVariable.SchedLockTimes  = 0U;
     OsKernelVariable.State           = OsOriginState;
 
-    /* 初始化线程管理模块 */
+    /* 初始化线程管理模块和内核ROOT线程 */
     OsThreadModuleInit();
 
-    /* 初始化内核ROOT线程并且激活 */
-    CreateRootThread();
-
-    /* 初始化定时器模块和定时器线程 */
+    /* 初始化用户定时器模块和定时器守护线程 */
 #if (TCLC_TIMER_ENABLE)
     OsTimerModuleInit();
 #endif
@@ -360,103 +356,10 @@ void TclStartKernel(TUserEntry pUserEntry,
     OsCpuEnableInt();
 
     /*
-     * 本段代码应该永远不会被执行，若运行到此，说明移植时出现问题。
-     * 这里的循环代码起到兜底作用，避免处理器进入非正常状态
+     * 本段代码应该永远不会被执行，若运行到此，说明RTOS移植时出现问题。
+     * 这里的代码起到兜底作用，避免处理器进入非正常状态
      */
-    while (eTrue)
-    {
-        OsDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
-    }
+    OsDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
 }
 
-
-/* 内核ROOT线程定义和栈定义 */
-static TThread RootThread;
-static TBase32 RootThreadStack[TCLC_ROOT_THREAD_STACK_BYTES >> 2];
-
-/* 内核ROOT线程不接受任何线程管理API操作 */
-#define OS_THREAD_ACAPI_ROOT (OS_THREAD_ACAPI_NONE)
-
-/*************************************************************************************************
- *  功能：内核ROOT线程函数                                                                       *
- *  参数：(1) argument 线程的参数                                                                *
- *  返回：无                                                                                     *
- *  说明：该函数首先开启多任务机制，然后调度其它线程运行                                         *
- *        注意线程栈容量大小的问题，这个线程函数不要做太多工作                                   *
- *************************************************************************************************/
-static void RootThreadEntry(TBase32 argument)
-{
-    /* 关闭处理器中断 */
-    OsCpuDisableInt();
-    {
-        /* 标记内核进入多线程模式 */
-        OsKernelVariable.State = OsThreadState;
-
-        /* 临时关闭线程调度功能 */
-        OsKernelVariable.SchedLockTimes = 1U;
-        {
-            /*
-             * 调用用户入口函数，初始化用户程序。
-             * 该函数运行在OsThreadState,但是禁止Schedulable的状态下
-             */
-            if(OsKernelVariable.UserEntry == (TUserEntry)0)
-            {
-                OsDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
-            }
-            OsKernelVariable.UserEntry();
-        }
-        /* 开启线程调度功能 */
-        OsKernelVariable.SchedLockTimes = 0U;
-
-        /* 打开系统时钟节拍 */
-        OsCpuStartTickClock();
-    }
-    /* 打开处理器中断 */
-    OsCpuEnableInt();
-
-    /* 调用IDLE Hook函数，此时多线程机制已经打开 */
-    while (eTrue)
-    {
-        if (OsKernelVariable.SysIdleEntry != (TSysIdleEntry)0)
-        {
-            OsKernelVariable.SysIdleEntry();
-        }
-    }
-}
-
-
-/*************************************************************************************************
- *  功能：用来创建内核ROOT线程                                                                   *
- *  参数：无                                                                                     *
- *  返回：无                                                                                     *
- *  说明：                                                                                       *
- *************************************************************************************************/
-static void CreateRootThread(void)
-{
-    /* 检查内核是否处于初始状态 */
-    if(OsKernelVariable.State != OsOriginState)
-    {
-        OsDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
-    }
-
-    /* 初始化内核ROOT线程 */
-    OsThreadCreate(&RootThread,
-                   "kernel root thread",
-                   OsThreadReady,
-                   OS_THREAD_PROP_PRIORITY_FIXED|\
-                   OS_THREAD_PROP_CLEAN_STACK|\
-                   OS_THREAD_PROP_KERNEL_ROOT,
-                   OS_THREAD_ACAPI_ROOT,
-                   RootThreadEntry,
-                   (TArgument)0,
-                   (void*)RootThreadStack,
-                   (TBase32)TCLC_ROOT_THREAD_STACK_BYTES,
-                   (TPriority)TCLC_ROOT_THREAD_PRIORITY,
-                   (TTimeTick)TCLC_ROOT_THREAD_SLICE);
-
-    /* 初始化相关的内核变量 */
-    OsKernelVariable.RootThread    = &RootThread;
-    OsKernelVariable.NomineeThread  = &RootThread;
-    OsKernelVariable.CurrentThread = &RootThread;
-}
 

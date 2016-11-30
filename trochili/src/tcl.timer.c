@@ -42,7 +42,7 @@ static void DispatchExpiredTimer(TTimer* pTimer)
 
     /*
      * 将定时器放入内核定时器期满列表，
-     * 最后由定时器守护线程处理。紧急的定时器优先处理;
+     * 最后由定时器守护线程处理。紧急的定时器优先处理。
      */
     if (!(pTimer->Property & OS_TIMER_PROP_EXPIRED))
     {
@@ -516,6 +516,9 @@ void OsTimerModuleInit(void)
         OsDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
 
+	/* 初始化用户定时器队列 */
+    TimerDormantList = (TLinkNode*)0;
+    TimerExpiredList = (TLinkNode*)0;
     memset(&TimerActiveListA, 0U, sizeof(TimerActiveListA));
     memset(&TimerActiveListB, 0U, sizeof(TimerActiveListB));
 

@@ -143,24 +143,24 @@ static void AppSetupEntry(void)
 
     /* 初始化用户定时器 */
     state = TclCreateTimer(&LedTimer1,"timer1", TCLP_TIMER_PERIODIC,
-                         TCLM_MLS2TICKS(1000), 
-                         &Blink1, (TArgument)0, (TPriority)5, &error);
+                           TCLM_MLS2TICKS(1000),
+                           &Blink1, (TArgument)0, (TPriority)5, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_TIMER_NONE), "");
 
     /* 初始化用户定时器 */
     state = TclCreateTimer(&LedTimer2, "timer2", TCLP_TIMER_PERIODIC,
-                         TCLM_MLS2TICKS(1000), 
-                         &Blink2, (TArgument)0, (TPriority)5, &error);
+                           TCLM_MLS2TICKS(1000),
+                           &Blink2, (TArgument)0, (TPriority)5, &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_TIMER_NONE), "");
 
     /* 初始化Led线程 */
     state = TclCreateThread(&ThreadLed, "thread led",
-                          &ThreadLedEntry, (TArgument)0,
-                          ThreadLedStack, THREAD_LED_STACK_BYTES,
-                          THREAD_LED_PRIORITY, THREAD_LED_SLICE,
-                          &error);
+                            &ThreadLedEntry, (TArgument)0,
+                            ThreadLedStack, THREAD_LED_STACK_BYTES,
+                            THREAD_LED_PRIORITY, THREAD_LED_SLICE,
+                            &error);
     TCLM_ASSERT((state == eSuccess), "");
     TCLM_ASSERT((error == TCLE_THREAD_NONE), "");
 

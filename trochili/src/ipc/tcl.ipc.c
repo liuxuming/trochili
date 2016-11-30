@@ -30,7 +30,7 @@ static void EnterBlockedQueue(TIpcQueue* pQueue, TIpcContext* pContext)
     property = *(pQueue->Property);
     if ((pContext->Option) & OS_IPC_OPT_UARGENT)
     {
-        if (property &OS_IPC_PROP_PREEMP_AUXIQ)
+        if (property & OS_IPC_PROP_PREEMP_AUXIQ)
         {
             OsObjQueueAddPriorityNode(&(pQueue->AuxiliaryHandle), &(pContext->LinkNode));
         }
@@ -117,7 +117,7 @@ void OsIpcBlockThread(TIpcContext* pContext, TIpcQueue* pQueue)
     /* 只有处于就绪状态的线程才可以被阻塞 */
     if (pThread->Status != OsThreadRunning)
     {
-        OsKernelVariable.Diagnosis |= KERNEL_DIAG_THREAD_ERROR;
+        OsKernelVariable.Diagnosis |= OS_KERNEL_DIAG_THREAD_ERROR;
         pThread->Diagnosis |= OS_THREAD_DIAG_INVALID_STATE;
         OsDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
@@ -157,7 +157,7 @@ void OsIpcUnblockThread(TIpcContext* pContext, TState state, TError error, TBool
     /* 只有处于阻塞状态的线程才可以被解除阻塞 */
     if (pThread->Status != OsThreadBlocked)
     {
-        OsKernelVariable.Diagnosis |= KERNEL_DIAG_THREAD_ERROR;
+        OsKernelVariable.Diagnosis |= OS_KERNEL_DIAG_THREAD_ERROR;
         pThread->Diagnosis |= OS_THREAD_DIAG_INVALID_STATE;
         OsDebugPanic("", __FILE__, __FUNCTION__, __LINE__);
     }
