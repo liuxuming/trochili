@@ -172,7 +172,7 @@ TState TclSetIrqVector(TIndex irqn, TISR pISR, TArgument data, TError* pError)
  *        (2) eFailure ²Ù×÷Ê§°Ü                                                                  *
  *  ËµÃ÷£º                                                                                       *
  *************************************************************************************************/
-TState TclClearnIrqVector(TIndex irqn, TError* pError)
+TState TclCleanIrqVector(TIndex irqn, TError* pError)
 {
     TState state = eFailure;
     TError error = OS_IRQ_ERR_FAULT;
@@ -390,5 +390,8 @@ void OsIrqModuleInit(void)
 #endif
 }
 
+#undef IRQ_VECTOR_PROP_NONE
+#undef IRQ_VECTOR_PROP_READY
+#undef IRQ_VECTOR_PROP_LOCKED
 #endif
 

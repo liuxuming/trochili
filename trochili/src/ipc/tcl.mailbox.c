@@ -183,7 +183,7 @@ TState TclReceiveMail(TMailbox* pMailbox, TMail* pMail2, TOption option, TTimeTi
             }
             else
             {
-                /*
+               /*
                 * 如果当前线程不能得到邮件,并且采用的是等待方式,并且内核没有关闭线程调度,
                 * 那么当前线程必须阻塞在邮箱队列中,并且强制线程调度
                 */

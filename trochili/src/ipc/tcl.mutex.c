@@ -327,9 +327,9 @@ TState TclLockMutex(TMutex* pMutex, TOption option, TTimeTick timeo, TError* pEr
                                          (option | OS_IPC_OPT_MUTEX), timeo, &state, &error);
 
                         /*
-                        						 * 当前线程阻塞在该互斥量的阻塞队列，时限或者无限等待，
-                        						 * 由OS_IPC_OPT_TIMEO参数决定
-                        						*/
+                         * 当前线程阻塞在该互斥量的阻塞队列，时限或者无限等待，
+                         * 由OS_IPC_OPT_TIMEO参数决定
+                         */
                         OsIpcBlockThread(&context, &(pMutex->Queue));
 
                         /* 当前线程被阻塞，其它线程得以执行 */
@@ -578,7 +578,7 @@ TState TclResetMutex(TMutex* pMutex, TError* pError)
 /*************************************************************************************************
  *  功能：互斥量阻塞终止函数,将指定的线程从互斥量的线程阻塞队列中终止阻塞并唤醒                  *
  *  参数：(1) pMutex   互斥量结构地址                                                            *
- *        (4) pError   详细调用结果                                                              *
+ *        (2) pError   详细调用结果                                                              *
  *  返回: (1) eSuccess 操作成功                                                                  *
  *        (2) eFailure 操作失败                                                                  *
  *  说明：                                                                                       *
